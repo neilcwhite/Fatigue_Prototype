@@ -21,6 +21,19 @@ npm run dev   # start the Vite development server on http://localhost:5173
 
 > **Note:** If the environment blocks access to npmjs.org the install step will fail with a 403 error. In that case, run the above commands in an environment with full registry access.
 
+## Prototype tour
+
+Once the development server is running, open the browser link printed in the terminal (typically `http://localhost:5173`). The prototype loads into the **Dashboard** view by default. Use the persistent navigation menu on the left to move between the core areas:
+
+1. **Dashboard** – Review portfolio-level compliance KPIs and quick project stats.
+2. **Project Planning** – Toggle between **Timeline**, **Gantt**, and **Weekly Grid** modes using the tab buttons above the workspace. Drag people or teams from the right-hand drawers into the schedule grid, or use the **Manual assignment** action for precise date ranges.
+3. **Person View** – Choose a member of staff from the drop-down to inspect their cross-project calendar, breach timeline, and rest periods.
+4. **Shift Pattern Manager** – Create new duty templates, edit existing patterns, or remove ones you no longer need. Changes are applied immediately to the planning tools.
+5. **Team Manager** – Maintain organisation-wide teams by adding or removing members. Teams can be assigned in bulk to shifts from the planning views.
+6. **Project Summary** – Pick a project to see total planned hours, compliance breakdowns, and shift-type analytics.
+
+Every time you add, edit, or delete an assignment, the compliance indicator lights beside each person will refresh to flag breaches (red), emerging risks (amber), or full compliance (green).
+
 ## Tech Stack
 
 - React 18 + Vite
