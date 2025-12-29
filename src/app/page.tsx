@@ -20,7 +20,6 @@ export default function Home() {
       return;
     }
 
-    // Check session with timeout
     const timeout = setTimeout(() => {
       console.log('Auth check timed out');
       setLoading(false);
@@ -65,74 +64,84 @@ export default function Home() {
     setUser(null);
   };
 
-  // No Supabase config
   if (!supabase) {
     return (
-      <div style={{ padding: 40, fontFamily: 'system-ui' }}>
-        <h1>Configuration Error</h1>
+      <div className="p-10">
+        <h1 className="text-2xl font-bold mb-4">Configuration Error</h1>
         <p>Supabase environment variables not set.</p>
       </div>
     );
   }
 
-  // Loading
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'system-ui' }}>
-        <div>Loading... (max 5 seconds)</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
       </div>
     );
   }
 
-  // Logged in
   if (user) {
     return (
-      <div style={{ padding: 40, fontFamily: 'system-ui' }}>
-        <h1>Fatigue Management</h1>
-        <p>Logged in as: {user.email}</p>
-        <button onClick={handleSignOut} style={{ padding: '10px 20px', cursor: 'pointer' }}>
+      <div className="p-10">
+        <h1 className="text-2xl font-bold mb-4">Fatigue Management</h1>
+        <p className="mb-4">Logged in as: {user.email}</p>
+        <button 
+          onClick={handleSignOut}
+          className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+        >
           Sign Out
         </button>
-        <hr style={{ margin: '20px 0' }} />
-        <p>✅ Authentication working. Dashboard component needs to be connected.</p>
+        <hr className="my-6" />
+        <p className="text-green-600">Auth working. Dashboard to be connected.</p>
       </div>
     );
   }
 
-  // Login form
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'system-ui' }}>
-      <div style={{ width: 320, padding: 20 }}>
-        <h1 style={{ textAlign: 'center' }}>Fatigue Management</h1>
-        <p style={{ textAlign: 'center', color: '#666' }}>Sign in to continue</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-80 p-6 bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold text-center mb-2">Fatigue Management</h1>
+        <p className="text-gray-500 text-center mb-6">Sign in to continue</p>
         
         {error && (
-          <div style={{ background: '#fee', border: '1px solid #fcc', padding: 10, borderRadius: 4, marginBottom: 15, color: '#c00' }}>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSignIn}>
-          <div style={{ marginBottom: 15 }}>
-            <label style={{ display: 'block', marginBottom: 5 }}>Email</label>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
-          <div style={{ marginBottom: 15 }}>
-            <label style={{ display: 'block', marginBottom: 5 }}>Password</label>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <button
             type="submit"
-            style={{ width: '100%', padding: 12, background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 16 }}
+            className="w-full bg-blue-600 text-white py-2 rounded font-medium hover:bg-blue-700"
+          >
+            Sign In
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
