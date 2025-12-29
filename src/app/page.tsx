@@ -1,11 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@/components/auth/AuthProvider';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Dashboard } from '@/components/dashboard/Dashboard';
+import { PasswordReset } from '@/components/auth/PasswordReset';
 
 function AppContent() {
   const { user, profile, loading } = useAuth();
+  const [isRecovery, setIsRecovery] = useState(false);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setIsRecovery(true);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -16,6 +26,10 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  if (isRecovery) {
+    return <PasswordReset onComplete={() => setIsRecovery(false)} />;
   }
 
   if (!user || !profile) {
