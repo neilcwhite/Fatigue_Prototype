@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.shift-tile {
+  @apply rounded px-2 py-1 text-xs font-medium cursor-pointer transition-all;
+}
+
+.shift-tile-day {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.shift-tile-night {
+  @apply bg-purple-100 text-purple-800;
+}
+
+.shift-tile-violation {
+  @apply border-2 border-red-500;
+}
+
+.risk-badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.risk-badge-low {
+  @apply bg-green-100 text-green-800;
+}
+
+.risk-badge-moderate {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.risk-badge-elevated {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.risk-badge-critical {
+  @apply bg-red-100 text-red-800;
+}
+
+.form-input {
+  @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200;
+}
+
+.card-header {
+  @apply px-4 py-3 border-b border-gray-200;
+}
+
+.card-body {
+  @apply p-4;
+}
+
+.modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+}
+
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto;
+}
+
+.modal-header {
+  @apply px-6 py-4 border-b border-gray-200 flex items-center justify-between;
+}
+
+.modal-body {
+  @apply px-6 py-4;
+}
+
+.modal-footer {
+  @apply px-6 py-4 border-t border-gray-200 flex justify-end gap-3;
+}
+
+.spinner {
+  @apply animate-spin h-5 w-5 border-2 border-gray-300 border-t-blue-600 rounded-full;
+}
+
+.status-dot {
+  @apply inline-block w-2 h-2 rounded-full;
+}
