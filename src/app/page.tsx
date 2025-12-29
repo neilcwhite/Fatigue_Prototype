@@ -2,87 +2,115 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { Dashboard } from '@/components/dashboard/Dashboard';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Key exists:', !!supabaseKey);
-
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
+export { supabase };
+
 export default function Home() {
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [debug, setDebug] = useState('Starting...');
 
   useEffect(() => {
-    console.log('useEffect running, supabase:', !!supabase);
-    setDebug('useEffect started');
-
     if (!supabase) {
-      console.log('No supabase client');
-      setDebug('No supabase client');
       setLoading(false);
       return;
     }
 
-    // Force timeout after 3 seconds
-    const timeout = setTimeout(() => {
-      console.log('Timeout reached, forcing loading off');
-      setDebug('Timeout - forcing login form');
+    // Check session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        await loadProfile(session.user.id);
+      }
       setLoading(false);
-    }, 3000);
+    });
 
-    console.log('Calling getSession...');
-    setDebug('Calling getSession...');
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        await loadProfile(session.user.id);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+      setLoading(false);
+    });
 
-    supabase.auth.getSession()
-      .then(({ data, error }) => {
-        console.log('getSession response:', { data, error });
-        setDebug('getSession done: ' + JSON.stringify({ hasSession: !!data?.session, error: error?.message }));
-        clearTimeout(timeout);
-        
-        if (data?.session?.user) {
-          setUser(data.session.user);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('getSession error:', err);
-        setDebug('getSession error: ' + err.message);
-        clearTimeout(timeout);
-        setLoading(false);
-      });
-
-    return () => clearTimeout(timeout);
+    return () => subscription.unsubscribe();
   }, []);
+
+  async function loadProfile(userId: string) {
+    if (!supabase) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*, organisations(*)')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Profile error:', error);
+        // Create default profile if none exists
+        if (error.code === 'PGRST116') {
+          await createDefaultProfile(userId);
+        }
+      } else {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    }
+  }
+
+  async function createDefaultProfile(userId: string) {
+    if (!supabase || !user) return;
+
+    const orgId = crypto.randomUUID();
+
+    // Create organisation
+    await supabase.from('organisations').insert({ id: orgId, name: 'My Organisation' });
+
+    // Create profile
+    const { data } = await supabase
+      .from('user_profiles')
+      .insert({
+        id: userId,
+        organisation_id: orgId,
+        email: user.email,
+        full_name: null,
+        role: 'admin',
+      })
+      .select('*, organisations(*)')
+      .single();
+
+    if (data) setProfile(data);
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) return;
     
     setError('');
-    setDebug('Signing in...');
 
     try {
-      console.log('Attempting sign in...');
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      console.log('Sign in response:', { data, error });
-      
       if (error) throw error;
-      
-      setDebug('Sign in success!');
       if (data.user) {
         setUser(data.user);
+        await loadProfile(data.user.id);
       }
     } catch (err: any) {
-      console.error('Sign in error:', err);
       setError(err.message || 'Sign in failed');
-      setDebug('Sign in error: ' + err.message);
     }
   };
 
@@ -90,48 +118,46 @@ export default function Home() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
+    setProfile(null);
   };
 
+  // No config
   if (!supabase) {
     return (
       <div className="p-10">
         <h1 className="text-2xl font-bold mb-4">Configuration Error</h1>
         <p>Supabase environment variables not set.</p>
-        <p className="mt-4 text-sm text-gray-500">URL: {supabaseUrl || 'missing'}</p>
-        <p className="text-sm text-gray-500">Key: {supabaseKey ? 'present' : 'missing'}</p>
       </div>
     );
   }
 
+  // Loading
   if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Logged in with profile - show Dashboard
+  if (user && profile) {
+    return <Dashboard profile={profile} onSignOut={handleSignOut} />;
+  }
+
+  // Logged in but no profile yet
+  if (user && !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading...</p>
-          <p className="mt-4 text-xs text-gray-400">{debug}</p>
+          <p>Setting up your account...</p>
         </div>
       </div>
     );
   }
 
-  if (user) {
-    return (
-      <div className="p-10">
-        <h1 className="text-2xl font-bold mb-4">Fatigue Management</h1>
-        <p className="mb-4">Logged in as: {user.email}</p>
-        <button 
-          onClick={handleSignOut}
-          className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-        >
-          Sign Out
-        </button>
-        <hr className="my-6" />
-        <p className="text-green-600">Auth working. Dashboard to be connected.</p>
-      </div>
-    );
-  }
-
+  // Login form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-80 p-6 bg-white rounded-lg shadow-md">
@@ -172,7 +198,6 @@ export default function Home() {
             Sign In
           </button>
         </form>
-        <p className="mt-4 text-xs text-gray-400 text-center">{debug}</p>
       </div>
     </div>
   );
