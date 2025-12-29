@@ -1,197 +1,243 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { signIn, signUp, supabase } from '@/lib/supabase';
+import { useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client directly to avoid import issues
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Check if environment variables are set
+const isConfigured = supabaseUrl && supabaseAnonKey;
+
+// Only create client if configured
+const supabase = isConfigured 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 export function LoginForm() {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset' | 'newpassword'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    // Check if this is a password reset callback
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      setMode('newpassword');
-    }
-    
-    // Also check for error in URL
-    if (hash && hash.includes('error=')) {
-      const params = new URLSearchParams(hash.substring(1));
-      const errorDesc = params.get('error_description');
-      if (errorDesc) {
-        setError(decodeURIComponent(errorDesc.replace(/\+/g, ' ')));
-      }
-    }
-  }, []);
+  // Show configuration error if env vars not set
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-8">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Configuration Error</h1>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-700 text-sm">
+              Supabase environment variables are not configured.
+            </p>
+          </div>
+          <p className="text-gray-600 text-sm mb-4">
+            Please set the following in your Vercel project settings:
+          </p>
+          <ul className="text-sm text-gray-700 space-y-2 bg-gray-50 p-4 rounded-lg font-mono">
+            <li>NEXT_PUBLIC_SUPABASE_URL</li>
+            <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+          </ul>
+          <p className="text-gray-500 text-xs mt-4">
+            After adding variables, redeploy the application.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setMessage(null);
+    
+    if (!supabase) {
+      setError('Supabase client not initialized');
+      return;
+    }
+
     setLoading(true);
+    setError('');
+    setMessage('');
 
     try {
-      if (mode === 'newpassword') {
-        if (password !== confirmPassword) {
-          throw new Error('Passwords do not match');
-        }
-        if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
-        }
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) throw error;
-        setMessage('Password updated successfully! You can now sign in.');
-        setMode('signin');
-        setPassword('');
-        setConfirmPassword('');
-        // Clear the hash from URL
-        window.history.replaceState(null, '', window.location.pathname);
-      } else if (mode === 'reset') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
+      if (mode === 'signup') {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
         });
-        if (error) throw error;
+        
+        if (signUpError) throw signUpError;
+        
+        if (data.user && !data.session) {
+          setMessage('Check your email to confirm your account before signing in.');
+          setMode('signin');
+        }
+      } else if (mode === 'reset') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}`,
+        });
+        
+        if (resetError) throw resetError;
         setMessage('Password reset email sent. Check your inbox.');
-      } else if (mode === 'signup') {
-        if (!fullName || !orgName) throw new Error('Please fill in all fields');
-        await signUp(email, password, fullName, orgName);
-        setMessage('Account created! Check your email to confirm, then sign in.');
-        setMode('signin');
       } else {
-        await signIn(email, password);
+        // Sign in
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (signInError) {
+          // Handle specific error messages
+          if (signInError.message.includes('Invalid login credentials')) {
+            throw new Error('Invalid email or password');
+          }
+          if (signInError.message.includes('Email not confirmed')) {
+            throw new Error('Please confirm your email before signing in. Check your inbox.');
+          }
+          throw signInError;
+        }
+        
+        // Success - the auth state change will be detected by AuthProvider
+        if (data.session) {
+          window.location.reload(); // Force reload to pick up new session
+        }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Auth error:', err);
-      if (err.message?.includes('User already registered')) {
-        setError('This email is already registered. Try signing in instead.');
-      } else if (err.message?.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please try again.');
-      } else if (err.message?.includes('Email not confirmed')) {
-        setError('Please confirm your email address first. Check your inbox.');
-      } else if (err.code === '23505') {
-        setError('This account already exists. Try signing in.');
-      } else if (err.message?.includes('row-level security')) {
-        setError('Account setup failed. Please contact support.');
-      } else {
-        setError(err.message || 'An unexpected error occurred. Please try again.');
-      }
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="text-center text-3xl font-bold text-gray-900">Fatigue Management</h1>
-          <h2 className="mt-2 text-center text-lg text-gray-600">Network Rail Compliance System</h2>
-          <p className="mt-6 text-center text-sm text-gray-500">
-            {mode === 'signin' && 'Sign in to your account'}
-            {mode === 'signup' && 'Create your account'}
-            {mode === 'reset' && 'Reset your password'}
-            {mode === 'newpassword' && 'Set your new password'}
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Fatigue Management</h1>
+          <p className="text-gray-500 mt-2">Network Rail Compliance System</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">{error}</div>
-          )}
-          {message && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm">{message}</div>
-          )}
+        {/* Mode title */}
+        <h2 className="text-lg font-semibold text-gray-700 mb-6 text-center">
+          {mode === 'signin' && 'Sign in to your account'}
+          {mode === 'signup' && 'Create a new account'}
+          {mode === 'reset' && 'Reset your password'}
+        </h2>
 
-          <div className="space-y-4">
-            {mode === 'signup' && (
-              <>
-                <div>
-                  <label htmlFor="fullName" className="form-label">Full Name</label>
-                  <input id="fullName" type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="form-input" placeholder="John Smith" />
-                </div>
-                <div>
-                  <label htmlFor="orgName" className="form-label">Organisation Name</label>
-                  <input id="orgName" type="text" required value={orgName} onChange={(e) => setOrgName(e.target.value)} className="form-input" placeholder="Your Company Ltd" />
-                </div>
-              </>
-            )}
-            
-            {mode !== 'newpassword' && mode !== 'reset' && (
-              <div>
-                <label htmlFor="email" className="form-label">Email Address</label>
-                <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="you@example.com" />
-              </div>
-            )}
-            
-            {mode === 'reset' && (
-              <div>
-                <label htmlFor="email" className="form-label">Email Address</label>
-                <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="you@example.com" />
-              </div>
-            )}
-            
-            {(mode === 'signin' || mode === 'signup') && (
-              <div>
-                <label htmlFor="password" className="form-label">Password</label>
-                <input id="password" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="form-input" placeholder="••••••••" minLength={6} />
-              </div>
-            )}
-            
-            {mode === 'newpassword' && (
-              <>
-                <div>
-                  <label htmlFor="password" className="form-label">New Password</label>
-                  <input id="password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="form-input" placeholder="••••••••" minLength={6} />
-                </div>
-                <div>
-                  <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
-                  <input id="confirmPassword" type="password" autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input" placeholder="••••••••" minLength={6} />
-                </div>
-              </>
-            )}
+        {/* Error message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
           </div>
+        )}
 
+        {/* Success message */}
+        {message && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+            {message}
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <button type="submit" disabled={loading} className="btn btn-primary w-full">
-              {loading ? 'Please wait...' : (
-                mode === 'signin' ? 'Sign In' : 
-                mode === 'signup' ? 'Create Account' : 
-                mode === 'reset' ? 'Send Reset Link' :
-                'Update Password'
-              )}
-            </button>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="you@example.com"
+              required
+              disabled={loading}
+            />
           </div>
 
-          <div className="text-center space-y-2">
-            {mode === 'signin' && (
+          {mode !== 'reset' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="••••••••"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Processing...
+              </span>
+            ) : (
               <>
-                <button type="button" onClick={() => { setMode('signup'); setError(null); setMessage(null); }} className="block w-full text-sm text-blue-600 hover:text-blue-500">
-                  Don't have an account? Sign up
-                </button>
-                <button type="button" onClick={() => { setMode('reset'); setError(null); setMessage(null); }} className="block w-full text-sm text-gray-500 hover:text-gray-700">
-                  Forgot your password?
-                </button>
+                {mode === 'signin' && 'Sign In'}
+                {mode === 'signup' && 'Create Account'}
+                {mode === 'reset' && 'Send Reset Link'}
               </>
             )}
-            {mode === 'signup' && (
-              <button type="button" onClick={() => { setMode('signin'); setError(null); setMessage(null); }} className="text-sm text-blue-600 hover:text-blue-500">
-                Already have an account? Sign in
-              </button>
-            )}
-            {(mode === 'reset' || mode === 'newpassword') && (
-              <button type="button" onClick={() => { setMode('signin'); setError(null); setMessage(null); }} className="text-sm text-blue-600 hover:text-blue-500">
-                Back to sign in
-              </button>
-            )}
-          </div>
+          </button>
         </form>
+
+        {/* Mode switches */}
+        <div className="mt-6 text-center space-y-2">
+          {mode === 'signin' && (
+            <>
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setError(''); setMessage(''); }}
+                className="text-blue-600 hover:text-blue-700 text-sm"
+              >
+                Don't have an account? Sign up
+              </button>
+              <br />
+              <button
+                type="button"
+                onClick={() => { setMode('reset'); setError(''); setMessage(''); }}
+                className="text-gray-500 hover:text-gray-700 text-sm"
+              >
+                Forgot your password?
+              </button>
+            </>
+          )}
+          {(mode === 'signup' || mode === 'reset') && (
+            <button
+              type="button"
+              onClick={() => { setMode('signin'); setError(''); setMessage(''); }}
+              className="text-blue-600 hover:text-blue-700 text-sm"
+            >
+              Back to sign in
+            </button>
+          )}
+        </div>
+
+        {/* Debug info (remove in production) */}
+        <div className="mt-8 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-400 text-center">
+            Connected to: {supabaseUrl.replace('https://', '').split('.')[0]}...
+          </p>
+        </div>
       </div>
     </div>
   );
