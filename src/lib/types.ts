@@ -112,7 +112,6 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
-// Compliance Types
 export type ViolationSeverity = 'error' | 'warning';
 
 export interface ComplianceViolation {
@@ -129,7 +128,6 @@ export interface ComplianceResult {
   isValid: boolean;
 }
 
-// Fatigue Calculator Types
 export interface ShiftDefinition {
   day: number;
   startTime: string;
@@ -157,7 +155,6 @@ export interface RiskLevel {
   color: string;
 }
 
-// Network Rail Period Types
 export interface NetworkRailPeriod {
   period: number;
   year: number;
@@ -166,10 +163,8 @@ export interface NetworkRailPeriod {
   label: string;
 }
 
-// View Types
 export type PlanningViewMode = 'timeline' | 'gantt' | 'weekly';
 
-// Project Statistics
 export interface ProjectStats {
   totalHours: number;
   employeeCount: number;
