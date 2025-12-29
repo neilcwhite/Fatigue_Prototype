@@ -5,6 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+console.log('Supabase URL:', supabaseUrl);
+console.log('Supabase Key exists:', !!supabaseKey);
+
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function Home() {
@@ -13,33 +17,48 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [debug, setDebug] = useState('Starting...');
 
   useEffect(() => {
+    console.log('useEffect running, supabase:', !!supabase);
+    setDebug('useEffect started');
+
     if (!supabase) {
+      console.log('No supabase client');
+      setDebug('No supabase client');
       setLoading(false);
       return;
     }
 
+    // Force timeout after 3 seconds
     const timeout = setTimeout(() => {
-      console.log('Auth check timed out');
+      console.log('Timeout reached, forcing loading off');
+      setDebug('Timeout - forcing login form');
       setLoading(false);
-    }, 5000);
+    }, 3000);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout);
-      setUser(session?.user || null);
-      setLoading(false);
-    }).catch((err) => {
-      clearTimeout(timeout);
-      console.error('Session check failed:', err);
-      setLoading(false);
-    });
+    console.log('Calling getSession...');
+    setDebug('Calling getSession...');
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        console.log('getSession response:', { data, error });
+        setDebug('getSession done: ' + JSON.stringify({ hasSession: !!data?.session, error: error?.message }));
+        clearTimeout(timeout);
+        
+        if (data?.session?.user) {
+          setUser(data.session.user);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('getSession error:', err);
+        setDebug('getSession error: ' + err.message);
+        clearTimeout(timeout);
+        setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+    return () => clearTimeout(timeout);
   }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -47,14 +66,23 @@ export default function Home() {
     if (!supabase) return;
     
     setError('');
-    setLoading(true);
+    setDebug('Signing in...');
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('Attempting sign in...');
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('Sign in response:', { data, error });
+      
       if (error) throw error;
+      
+      setDebug('Sign in success!');
+      if (data.user) {
+        setUser(data.user);
+      }
     } catch (err: any) {
+      console.error('Sign in error:', err);
       setError(err.message || 'Sign in failed');
-      setLoading(false);
+      setDebug('Sign in error: ' + err.message);
     }
   };
 
@@ -69,6 +97,8 @@ export default function Home() {
       <div className="p-10">
         <h1 className="text-2xl font-bold mb-4">Configuration Error</h1>
         <p>Supabase environment variables not set.</p>
+        <p className="mt-4 text-sm text-gray-500">URL: {supabaseUrl || 'missing'}</p>
+        <p className="text-sm text-gray-500">Key: {supabaseKey ? 'present' : 'missing'}</p>
       </div>
     );
   }
@@ -79,6 +109,7 @@ export default function Home() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p>Loading...</p>
+          <p className="mt-4 text-xs text-gray-400">{debug}</p>
         </div>
       </div>
     );
@@ -141,6 +172,7 @@ export default function Home() {
             Sign In
           </button>
         </form>
+        <p className="mt-4 text-xs text-gray-400 text-center">{debug}</p>
       </div>
     </div>
   );
