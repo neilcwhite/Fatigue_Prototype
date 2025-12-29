@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatigue Management System</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+        .min-h-screen { min-height: 100vh; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .gap-6 { gap: 1.5rem; }
+        .p-4 { padding: 1rem; }
+        .p-6 { padding: 1.5rem; }
+        .p-8 { padding: 2rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-6 { margin-top: 1.5rem; }
+        .mr-3 { margin-right: 0.75rem; }
+        .w-full { width: 100%; }
+        .max-w-md { max-width: 28rem; }
+        .max-w-7xl { max-width: 80rem; margin: 0 auto; }
+        .text-sm { font-size: 0.875rem; }
+        .text-lg { font-size: 1.125rem; }
+        .text-xl { font-size: 1.25rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .text-3xl { font-size: 1.875rem; }
+        .text-4xl { font-size: 2.25rem; }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+        .font-bold { font-weight: 700; }
+        .text-center { text-align: center; }
+        .text-white { color: #ffffff; }
+        .text-slate-300 { color: #cbd5e1; }
+        .text-slate-400 { color: #94a3b8; }
+        .text-slate-500 { color: #64748b; }
+        .text-green-400 { color: #4ade80; }
+        .text-red-400 { color: #f87171; }
+        .text-blue-400 { color: #60a5fa; }
+        .bg-slate-800 { background-color: #1e293b; }
+        .bg-slate-700 { background-color: #334155; }
+        .bg-slate-900 { background-color: #0f172a; }
+        .bg-blue-600 { background-color: #2563eb; }
+        .bg-blue-700 { background-color: #1d4ed8; }
+        .bg-green-600 { background-color: #16a34a; }
+        .bg-red-600 { background-color: #dc2626; }
+        .bg-red-900 { background-color: #7f1d1d; }
+        .border { border-width: 1px; }
+        .border-slate-600 { border-color: #475569; }
+        .border-slate-700 { border-color: #334155; }
+        .border-red-700 { border-color: #b91c1c; }
+        .rounded { border-radius: 0.25rem; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .rounded-xl { border-radius: 0.75rem; }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .cursor-pointer { cursor: pointer; }
+        .hover\:bg-blue-700:hover { background-color: #1d4ed8; }
+        .hover\:bg-slate-600:hover { background-color: #475569; }
+        .hover\:bg-slate-700:hover { background-color: #334155; }
+        .transition { transition: all 0.15s ease; }
+        .grid { display: grid; }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .overflow-hidden { overflow: hidden; }
+        .overflow-auto { overflow: auto; }
+        input, select { background: #1e293b; border: 1px solid #475569; color: #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; width: 100%; }
+        input:focus, select:focus { outline: none; border-color: #3b82f6; }
+        button { cursor: pointer; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.15s; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #334155; color: white; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
+        .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #0f172a; color: #94a3b8; font-weight: 500; font-size: 0.75rem; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Supabase config
+        const SUPABASE_URL = 'https://tditgrtsggyogttfwzso.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_TrbrfiGPuSFngQuIJU9fJg_kbzcaLVi7';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ============ ICONS ============
+        const Spinner = () => (
+            <svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" opacity="0.25"/>
+                <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"/>
+            </svg>
+        );
+
+        // ============ LOGIN ============
+        function LoginPage({ onLogin }) {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    onLogin(data.user);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                    <div className="w-full max-w-md p-8 card shadow-xl">
+                        <div className="text-center mb-8">
+                            <h1 className="text-3xl font-bold text-white mb-2">Fatigue Management</h1>
+                            <p className="text-slate-400">Network Rail Compliance System</p>
+                        </div>
+
+                        {error && (
+                            <div className="bg-red-900 border border-red-700 text-red-400 p-4 rounded-lg mb-6">
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit}>
+                            <div className="mb-4">
+                                <label className="block text-slate-300 mb-2 font-medium">Email</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="mb-6">
+                                <label className="block text-slate-300 mb-2 font-medium">Password</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <button type="submit" className="btn-primary w-full py-3 text-lg" disabled={loading}>
+                                {loading ? <span className="flex items-center justify-center gap-2"><Spinner /> Signing in...</span> : 'Sign In'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // ============ DASHBOARD ============
+        function Dashboard({ user, onLogout }) {
+            const [projects, setProjects] = useState([]);
+            const [employees, setEmployees] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [view, setView] = useState('dashboard');
+            const [selectedProject, setSelectedProject] = useState(null);
+            const [showNewProject, setShowNewProject] = useState(false);
+            const [showNewEmployee, setShowNewEmployee] = useState(false);
+            const [profile, setProfile] = useState(null);
+
+            useEffect(() => {
+                loadProfile();
+            }, []);
+
+            const loadProfile = async () => {
+                try {
+                    let { data, error } = await supabase
+                        .from('user_profiles')
+                        .select('*, organisations(*)')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (error && error.code === 'PGRST116') {
+                        // Create profile
+                        const orgId = crypto.randomUUID();
+                        await supabase.from('organisations').insert({ id: orgId, name: 'My Organisation' });
+                        const { data: newProfile } = await supabase
+                            .from('user_profiles')
+                            .insert({ id: user.id, organisation_id: orgId, email: user.email, role: 'admin' })
+                            .select('*, organisations(*)')
+                            .single();
+                        data = newProfile;
+                    }
+
+                    setProfile(data);
+                    await loadData(data?.organisation_id);
+                } catch (err) {
+                    console.error('Profile error:', err);
+                    setLoading(false);
+                }
+            };
+
+            const loadData = async (orgId) => {
+                try {
+                    const [projectsRes, employeesRes] = await Promise.all([
+                        supabase.from('projects').select('*').eq('organisation_id', orgId).order('name'),
+                        supabase.from('employees').select('*').eq('organisation_id', orgId).order('name'),
+                    ]);
+                    setProjects(projectsRes.data || []);
+                    setEmployees(employeesRes.data || []);
+                } catch (err) {
+                    console.error('Load error:', err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const createProject = async (name, location) => {
+                if (!profile) return;
+                try {
+                    await supabase.from('projects').insert({
+                        organisation_id: profile.organisation_id,
+                        name,
+                        location,
+                    });
+                    await loadData(profile.organisation_id);
+                    setShowNewProject(false);
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            };
+
+            const createEmployee = async (name, role) => {
+                if (!profile) return;
+                try {
+                    await supabase.from('employees').insert({
+                        organisation_id: profile.organisation_id,
+                        name,
+                        role,
+                    });
+                    await loadData(profile.organisation_id);
+                    setShowNewEmployee(false);
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                        <div className="flex items-center gap-4 text-white">
+                            <Spinner />
+                            <span>Loading...</span>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-900">
+                    {/* Header */}
+                    <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+                        <div className="max-w-7xl flex items-center justify-between">
+                            <div>
+                                <h1 className="text-xl font-bold text-white">Fatigue Management System</h1>
+                                <p className="text-slate-400 text-sm">{profile?.organisations?.name || 'My Organisation'}</p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-slate-300 text-sm">{user.email}</span>
+                                <button onClick={onLogout} className="btn-secondary">Sign Out</button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main */}
+                    <main className="max-w-7xl p-6">
+                        {/* Stats */}
+                        <div className="grid grid-cols-4 gap-6 mb-8">
+                            <div className="card p-6">
+                                <p className="text-slate-400 text-sm mb-1">Projects</p>
+                                <p className="text-4xl font-bold text-white">{projects.length}</p>
+                            </div>
+                            <div className="card p-6">
+                                <p className="text-slate-400 text-sm mb-1">Employees</p>
+                                <p className="text-4xl font-bold text-white">{employees.length}</p>
+                            </div>
+                            <div className="card p-6">
+                                <p className="text-slate-400 text-sm mb-1">Violations</p>
+                                <p className="text-4xl font-bold text-green-400">0</p>
+                            </div>
+                            <div className="card p-6">
+                                <p className="text-slate-400 text-sm mb-1">Status</p>
+                                <p className="text-4xl font-bold text-green-400">OK</p>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-4 mb-6">
+                            <button onClick={() => setShowNewProject(true)} className="btn-primary">+ New Project</button>
+                            <button onClick={() => setShowNewEmployee(true)} className="btn-secondary">+ Add Employee</button>
+                        </div>
+
+                        {/* Projects */}
+                        <h2 className="text-lg font-semibold text-white mb-4">Projects</h2>
+                        {projects.length === 0 ? (
+                            <div className="card p-12 text-center">
+                                <p className="text-slate-400 mb-4">No projects yet</p>
+                                <button onClick={() => setShowNewProject(true)} className="btn-primary">Create Your First Project</button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-3 gap-6 mb-8">
+                                {projects.map(p => (
+                                    <div key={p.id} className="card p-6 cursor-pointer hover:bg-slate-700 transition">
+                                        <h3 className="text-lg font-semibold text-white mb-2">{p.name}</h3>
+                                        <p className="text-slate-400 text-sm">{p.location || 'No location'}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Employees */}
+                        <h2 className="text-lg font-semibold text-white mb-4 mt-6">Employees</h2>
+                        {employees.length === 0 ? (
+                            <div className="card p-8 text-center">
+                                <p className="text-slate-400">No employees added yet</p>
+                            </div>
+                        ) : (
+                            <div className="card overflow-hidden">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Role</th>
+                                            <th>Email</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {employees.map(e => (
+                                            <tr key={e.id}>
+                                                <td className="text-white font-medium">{e.name}</td>
+                                                <td className="text-slate-400">{e.role || '-'}</td>
+                                                <td className="text-slate-400">{e.email || '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* New Project Modal */}
+                    {showNewProject && (
+                        <Modal title="New Project" onClose={() => setShowNewProject(false)}>
+                            <ProjectForm onSubmit={createProject} onCancel={() => setShowNewProject(false)} />
+                        </Modal>
+                    )}
+
+                    {/* New Employee Modal */}
+                    {showNewEmployee && (
+                        <Modal title="Add Employee" onClose={() => setShowNewEmployee(false)}>
+                            <EmployeeForm onSubmit={createEmployee} onCancel={() => setShowNewEmployee(false)} />
+                        </Modal>
+                    )}
+                </div>
+            );
+        }
+
+        // ============ MODAL ============
+        function Modal({ title, children, onClose }) {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" onClick={onClose}>
+                    <div className="card p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-semibold text-white mb-6">{title}</h2>
+                        {children}
+                    </div>
+                </div>
+            );
+        }
+
+        // ============ FORMS ============
+        function ProjectForm({ onSubmit, onCancel }) {
+            const [name, setName] = useState('');
+            const [location, setLocation] = useState('');
+
+            return (
+                <form onSubmit={(e) => { e.preventDefault(); onSubmit(name, location); }}>
+                    <div className="mb-4">
+                        <label className="block text-slate-300 mb-2">Project Name *</label>
+                        <input value={name} onChange={e => setName(e.target.value)} required />
+                    </div>
+                    <div className="mb-6">
+                        <label className="block text-slate-300 mb-2">Location</label>
+                        <input value={location} onChange={e => setLocation(e.target.value)} />
+                    </div>
+                    <div className="flex gap-4">
+                        <button type="submit" className="btn-primary flex-1">Create Project</button>
+                        <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            );
+        }
+
+        function EmployeeForm({ onSubmit, onCancel }) {
+            const [name, setName] = useState('');
+            const [role, setRole] = useState('');
+
+            return (
+                <form onSubmit={(e) => { e.preventDefault(); onSubmit(name, role); }}>
+                    <div className="mb-4">
+                        <label className="block text-slate-300 mb-2">Name *</label>
+                        <input value={name} onChange={e => setName(e.target.value)} required />
+                    </div>
+                    <div className="mb-6">
+                        <label className="block text-slate-300 mb-2">Role</label>
+                        <input value={role} onChange={e => setRole(e.target.value)} />
+                    </div>
+                    <div className="flex gap-4">
+                        <button type="submit" className="btn-primary flex-1">Add Employee</button>
+                        <button type="button" onClick={onCancel} className="btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            );
+        }
+
+        // ============ APP ============
+        function App() {
+            const [user, setUser] = useState(null);
+            const [checking, setChecking] = useState(true);
+
+            useEffect(() => {
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    setUser(session?.user || null);
+                    setChecking(false);
+                });
+
+                const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+                    setUser(session?.user || null);
+                });
+
+                return () => subscription.unsubscribe();
+            }, []);
+
+            const handleLogout = async () => {
+                await supabase.auth.signOut();
+                setUser(null);
+            };
+
+            if (checking) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-slate-900">
+                        <Spinner />
+                    </div>
+                );
+            }
+
+            if (!user) {
+                return <LoginPage onLogin={setUser} />;
+            }
+
+            return <Dashboard user={user} onLogout={handleLogout} />;
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
