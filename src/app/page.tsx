@@ -1,68 +1,138 @@
 'use client';
 
-import { useAuth } from '@/components/auth/AuthProvider';
-import { LoginForm } from '@/components/auth/LoginForm';
-import { Dashboard } from '@/components/dashboard/Dashboard';
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function Home() {
-  const { user, profile, loading, supabase } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  // Show loading spinner while checking auth
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
-  // Show error if Supabase not configured
+    // Check session with timeout
+    const timeout = setTimeout(() => {
+      console.log('Auth check timed out');
+      setLoading(false);
+    }, 5000);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout);
+      setUser(session?.user || null);
+      setLoading(false);
+    }).catch((err) => {
+      clearTimeout(timeout);
+      console.error('Session check failed:', err);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) return;
+    
+    setError('');
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Sign in failed');
+      setLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  // No Supabase config
   if (!supabase) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-8">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">⚠️ Configuration Required</h1>
-          <p className="text-gray-700 mb-4">
-            The application is not properly configured. Environment variables are missing.
-          </p>
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Required variables:</p>
-            <ul className="text-sm text-gray-600 space-y-1 font-mono">
-              <li>• NEXT_PUBLIC_SUPABASE_URL</li>
-              <li>• NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
-            </ul>
-          </div>
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm text-blue-700">
-              <strong>To fix:</strong> Go to Vercel Dashboard → Your Project → Settings → Environment Variables, 
-              add the variables, then redeploy.
-            </p>
-          </div>
-        </div>
+      <div style={{ padding: 40, fontFamily: 'system-ui' }}>
+        <h1>Configuration Error</h1>
+        <p>Supabase environment variables not set.</p>
       </div>
     );
   }
 
-  // Show login if not authenticated
-  if (!user) {
-    return <LoginForm />;
-  }
-
-  // Show loading while profile loads
-  if (!profile) {
+  // Loading
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
-          <p className="text-gray-600">Setting up your account...</p>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'system-ui' }}>
+        <div>Loading... (max 5 seconds)</div>
       </div>
     );
   }
 
-  // Show dashboard
-  return <Dashboard />;
-}
+  // Logged in
+  if (user) {
+    return (
+      <div style={{ padding: 40, fontFamily: 'system-ui' }}>
+        <h1>Fatigue Management</h1>
+        <p>Logged in as: {user.email}</p>
+        <button onClick={handleSignOut} style={{ padding: '10px 20px', cursor: 'pointer' }}>
+          Sign Out
+        </button>
+        <hr style={{ margin: '20px 0' }} />
+        <p>✅ Authentication working. Dashboard component needs to be connected.</p>
+      </div>
+    );
+  }
+
+  // Login form
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'system-ui' }}>
+      <div style={{ width: 320, padding: 20 }}>
+        <h1 style={{ textAlign: 'center' }}>Fatigue Management</h1>
+        <p style={{ textAlign: 'center', color: '#666' }}>Sign in to continue</p>
+        
+        {error && (
+          <div style={{ background: '#fee', border: '1px solid #fcc', padding: 10, borderRadius: 4, marginBottom: 15, color: '#c00' }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSignIn}>
+          <div style={{ marginBottom: 15 }}>
+            <label style={{ display: 'block', marginBottom: 5 }}>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+              required
+            />
+          </div>
+          <div style={{ marginBottom: 15 }}>
+            <label style={{ display: 'block', marginBottom: 5 }}>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            style={{ width: '100%', padding: 12, background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 16 }}
