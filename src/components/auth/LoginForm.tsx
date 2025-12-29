@@ -1,17 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signIn, signUp, supabase } from '@/lib/supabase';
 
 export function LoginForm() {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset' | 'newpassword'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if this is a password reset callback
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setMode('newpassword');
+    }
+    
+    // Also check for error in URL
+    if (hash && hash.includes('error=')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const errorDesc = params.get('error_description');
+      if (errorDesc) {
+        setError(decodeURIComponent(errorDesc.replace(/\+/g, ' ')));
+      }
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +38,22 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      if (mode === 'reset') {
+      if (mode === 'newpassword') {
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        setMessage('Password updated successfully! You can now sign in.');
+        setMode('signin');
+        setPassword('');
+        setConfirmPassword('');
+        // Clear the hash from URL
+        window.history.replaceState(null, '', window.location.pathname);
+      } else if (mode === 'reset') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
         });
@@ -64,6 +97,7 @@ export function LoginForm() {
             {mode === 'signin' && 'Sign in to your account'}
             {mode === 'signup' && 'Create your account'}
             {mode === 'reset' && 'Reset your password'}
+            {mode === 'newpassword' && 'Set your new password'}
           </p>
         </div>
 
@@ -88,22 +122,49 @@ export function LoginForm() {
                 </div>
               </>
             )}
-            <div>
-              <label htmlFor="email" className="form-label">Email Address</label>
-              <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="you@example.com" />
-            </div>
-            {mode !== 'reset' && (
+            
+            {mode !== 'newpassword' && mode !== 'reset' && (
+              <div>
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="you@example.com" />
+              </div>
+            )}
+            
+            {mode === 'reset' && (
+              <div>
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-input" placeholder="you@example.com" />
+              </div>
+            )}
+            
+            {(mode === 'signin' || mode === 'signup') && (
               <div>
                 <label htmlFor="password" className="form-label">Password</label>
                 <input id="password" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required value={password} onChange={(e) => setPassword(e.target.value)} className="form-input" placeholder="••••••••" minLength={6} />
               </div>
+            )}
+            
+            {mode === 'newpassword' && (
+              <>
+                <div>
+                  <label htmlFor="password" className="form-label">New Password</label>
+                  <input id="password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="form-input" placeholder="••••••••" minLength={6} />
+                </div>
+                <div>
+                  <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
+                  <input id="confirmPassword" type="password" autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input" placeholder="••••••••" minLength={6} />
+                </div>
+              </>
             )}
           </div>
 
           <div>
             <button type="submit" disabled={loading} className="btn btn-primary w-full">
               {loading ? 'Please wait...' : (
-                mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'
+                mode === 'signin' ? 'Sign In' : 
+                mode === 'signup' ? 'Create Account' : 
+                mode === 'reset' ? 'Send Reset Link' :
+                'Update Password'
               )}
             </button>
           </div>
@@ -124,7 +185,7 @@ export function LoginForm() {
                 Already have an account? Sign in
               </button>
             )}
-            {mode === 'reset' && (
+            {(mode === 'reset' || mode === 'newpassword') && (
               <button type="button" onClick={() => { setMode('signin'); setError(null); setMessage(null); }} className="text-sm text-blue-600 hover:text-blue-500">
                 Back to sign in
               </button>
