@@ -1,32 +1,89 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// ==================== ENVIRONMENT VARIABLES ====================
-// These should be set in .env.local for local development
-// and in Vercel environment variables for production
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Create client only if configured - don't throw
+let supabase: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase environment variables. ' +
-    'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY'
-  );
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
 
-// ==================== SUPABASE CLIENT ====================
-// This client is used for browser-side operations
-// It uses the anon key which respects Row Level Security (RLS)
+export { supabase };
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-});
+// Auth helper functions
+export async function signIn(email: string, password: string) {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-// ==================== TYPE EXPORTS ====================
-// Re-export commonly used Supabase types
+  if (error) throw error;
+  return data;
+}
 
-export type { User, Session, AuthError } from '@supabase/supabase-js';
+export async function signUp(email: string, password: string, fullName: string, orgName: string) {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (authError) throw authError;
+  if (!authData.user) throw new Error('No user returned from signup');
+
+  // Create organisation
+  const { data: orgData, error: orgError } = await supabase
+    .from('organisations')
+    .insert({ name: orgName })
+    .select()
+    .single();
+
+  if (orgError) throw orgError;
+
+  // Create user profile
+  const { error: profileError } = await supabase
+    .from('user_profiles')
+    .insert({
+      id: authData.user.id,
+      organisation_id: orgData.id,
+      email: email,
+      full_name: fullName,
+      role: 'admin',
+    });
+
+  if (profileError) throw profileError;
+
+  return authData;
+}
+
+export async function signOut() {
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+export async function getCurrentUser() {
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function getUserProfile() {
+  if (!supabase) return null;
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*, organisations(*)')
+    .eq('id', user.id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
