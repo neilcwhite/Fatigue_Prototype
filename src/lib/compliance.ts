@@ -67,9 +67,11 @@ function getShiftDuration(pattern: ShiftPattern, date: string): number {
 /**
  * Get day of week key (Sat, Sun, Mon, etc.)
  */
-function getDayOfWeek(dateStr: string): string {
+type DayKey = 'Sat' | 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri';
+
+function getDayOfWeek(dateStr: string): DayKey {
   const date = new Date(dateStr);
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days: DayKey[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return days[date.getDay()];
 }
 
