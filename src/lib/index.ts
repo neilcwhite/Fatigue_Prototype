@@ -79,3 +79,18 @@ export {
   getDateRange,
   daysBetween,
 } from './periods';
+
+// Import/Export
+export {
+  exportToExcel,
+  parseImportFile,
+  processImport,
+} from './importExport';
+
+export type {
+  ExportData,
+  ImportResult,
+  ParsedAssignment,
+  ProcessImportOptions,
+  ProcessImportResult,
+} from './importExport';

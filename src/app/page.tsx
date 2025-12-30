@@ -38,6 +38,7 @@ export default function Home() {
     error: dataError,
     createProject,
     createAssignment,
+    updateAssignment,
     deleteAssignment,
     createTeam,
     updateTeam,
@@ -181,6 +182,7 @@ export default function Home() {
           shiftPatterns={shiftPatterns}
           onBack={handleBackToDashboard}
           onCreateAssignment={createAssignment}
+          onUpdateAssignment={updateAssignment}
           onDeleteAssignment={deleteAssignment}
           onCreateShiftPattern={() => setShowShiftPatternModal(true)}
           onCreateShiftPatternDirect={createShiftPattern}

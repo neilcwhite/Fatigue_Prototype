@@ -5,6 +5,9 @@ import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle } from '@/components/ui/Icons';
 import { TimelineView } from './TimelineView';
 import { CustomTimeModal } from '@/components/modals/CustomTimeModal';
+import { ImportModal } from '@/components/modals/ImportModal';
+import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
+import { exportToExcel, processImport, type ParsedAssignment } from '@/lib/importExport';
 import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
 import { getEmployeeComplianceStatus } from '@/lib/compliance';
 import type { 
@@ -30,6 +33,7 @@ interface PlanningViewProps {
     customStartTime?: string;
     customEndTime?: string;
   }) => Promise<void>;
+  onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onDeleteAssignment: (id: number) => Promise<void>;
   onCreateShiftPattern?: () => void;
   onCreateShiftPatternDirect?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
@@ -47,6 +51,7 @@ export function PlanningView({
   shiftPatterns,
   onBack,
   onCreateAssignment,
+  onUpdateAssignment,
   onDeleteAssignment,
   onCreateShiftPattern,
   onCreateShiftPatternDirect,
@@ -80,6 +85,12 @@ export function PlanningView({
     date: string;
     patternName: string;
   } | null>(null);
+
+  // Import modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  // Edit assignment modal state
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
   
   // Generate periods for selected year
   const networkRailPeriods = useMemo(() => {
@@ -306,6 +317,36 @@ export function PlanningView({
   
   // Get current period
   const currentPeriod = networkRailPeriods.find(p => p.name === selectedPeriod);
+
+  // Export handler
+  const handleExport = () => {
+    exportToExcel({
+      project,
+      employees,
+      shiftPatterns: projectShiftPatterns,
+      assignments: projectAssignments,
+      periodName: currentPeriod?.name,
+    });
+  };
+
+  // Import handler
+  const handleImportConfirm = async (parsedAssignments: ParsedAssignment[]) => {
+    const result = await processImport({
+      parsedAssignments,
+      employees,
+      shiftPatterns: projectShiftPatterns,
+      projectId: project.id,
+      organisationId: project.organisationId,
+      onCreateAssignment,
+      existingAssignments: projectAssignments,
+    });
+
+    if (result.errors.length > 0) {
+      console.warn('Import completed with errors:', result.errors);
+    }
+
+    console.log(`Import complete: ${result.created} created, ${result.skipped} skipped, ${result.failed} failed`);
+  };
   
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-slate-100">
@@ -419,11 +460,18 @@ export function PlanningView({
           
           {/* Export/Import */}
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded text-sm bg-green-600 text-white hover:bg-green-700 flex items-center gap-1">
+            <button
+              onClick={handleExport}
+              disabled={projectAssignments.length === 0}
+              className="px-3 py-1.5 rounded text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="px-3 py-1.5 rounded text-sm bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-3 py-1.5 rounded text-sm bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1"
+            >
               <Upload className="w-4 h-4" />
               Import
             </button>
@@ -443,6 +491,7 @@ export function PlanningView({
             onCellDragOver={handleCellDragOver}
             onCellDrop={handleCellDrop}
             onDeleteAssignment={onDeleteAssignment}
+            onEditAssignment={setEditingAssignment}
             onNavigateToPerson={onNavigateToPerson}
           />
         )}
@@ -578,6 +627,28 @@ export function PlanningView({
           patternName={customTimeModal.patternName}
           onClose={() => setCustomTimeModal(null)}
           onConfirm={handleCustomTimeConfirm}
+        />
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <ImportModal
+          projectName={project.name}
+          onClose={() => setShowImportModal(false)}
+          onConfirm={handleImportConfirm}
+        />
+      )}
+
+      {/* Assignment Edit Modal */}
+      {editingAssignment && onUpdateAssignment && (
+        <AssignmentEditModal
+          assignment={editingAssignment}
+          employee={employees.find(e => e.id === editingAssignment.employeeId)!}
+          shiftPattern={projectShiftPatterns.find(p => p.id === editingAssignment.shiftPatternId)!}
+          allShiftPatterns={projectShiftPatterns}
+          onClose={() => setEditingAssignment(null)}
+          onSave={onUpdateAssignment}
+          onDelete={onDeleteAssignment}
         />
       )}
     </div>

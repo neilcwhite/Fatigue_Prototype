@@ -20,6 +20,7 @@ interface TimelineViewProps {
   onCellDragOver: (e: React.DragEvent) => void;
   onCellDrop: (e: React.DragEvent, shiftPatternId: string, date: string, isValidCell?: boolean) => void;
   onDeleteAssignment: (id: number) => Promise<void>;
+  onEditAssignment?: (assignment: AssignmentCamel) => void;
   onNavigateToPerson?: (employeeId: number) => void;
 }
 
@@ -32,6 +33,7 @@ export function TimelineView({
   onCellDragOver,
   onCellDrop,
   onDeleteAssignment,
+  onEditAssignment,
   onNavigateToPerson,
 }: TimelineViewProps) {
   // Generate 28 days from period start
@@ -243,6 +245,7 @@ export function TimelineView({
                             ? `${a.customStartTime}-${a.customEndTime}`
                             : null;
                           return {
+                            original: a, // Keep original for edit modal
                             ...a,
                             employeeName: getEmployeeName(a.employeeId),
                             violations,
@@ -290,10 +293,10 @@ export function TimelineView({
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onNavigateToPerson?.(assignment.employeeId);
+                                    onEditAssignment?.(assignment.original);
                                   }}
                                   className="hover:bg-white/50 rounded p-0.5"
-                                  title="View person details"
+                                  title="Edit assignment"
                                 >
                                   <Edit2 className="w-2.5 h-2.5" />
                                 </button>
