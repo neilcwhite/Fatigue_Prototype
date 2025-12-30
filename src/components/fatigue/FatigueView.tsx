@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronLeft, Plus, Trash2, Settings } from '@/components/ui/Icons';
+import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp } from '@/components/ui/Icons';
+import {
+  calculateFatigueSequence,
+  getRiskLevel,
+  DEFAULT_FATIGUE_PARAMS,
+  FATIGUE_TEMPLATES,
+  parseTimeToHours,
+  calculateDutyLength,
+} from '@/lib/fatigue';
+import type { ShiftDefinition, FatigueResult } from '@/lib/types';
 
-interface Shift {
+interface Shift extends ShiftDefinition {
   id: number;
-  day: number;
-  startTime: string;
-  endTime: string;
 }
 
 interface FatigueViewProps {
@@ -16,50 +22,9 @@ interface FatigueViewProps {
   onBack: () => void;
 }
 
-// Simple fatigue calculation (simplified from HSE RR446)
-function calculateSimpleFatigue(shift: Shift, allShifts: Shift[]) {
-  // Parse times
-  const startHour = parseInt(shift.startTime.split(':')[0]) + parseInt(shift.startTime.split(':')[1]) / 60;
-  let endHour = parseInt(shift.endTime.split(':')[0]) + parseInt(shift.endTime.split(':')[1]) / 60;
-  if (endHour <= startHour) endHour += 24;
-  
-  const dutyLength = endHour - startHour;
-  
-  // Simplified risk calculation
-  let risk = 1.0;
-  
-  // Long shift penalty
-  if (dutyLength > 8) risk += (dutyLength - 8) * 0.03;
-  if (dutyLength > 10) risk += (dutyLength - 10) * 0.05;
-  if (dutyLength > 12) risk += (dutyLength - 12) * 0.1;
-  
-  // Night shift penalty
-  if (startHour >= 18 || startHour < 6) risk += 0.15;
-  
-  // Early start penalty
-  if (startHour < 6) risk += 0.1;
-  
-  // Cumulative penalty (consecutive shifts)
-  const sortedShifts = [...allShifts].sort((a, b) => a.day - b.day);
-  const dayIndex = sortedShifts.findIndex(s => s.id === shift.id);
-  if (dayIndex > 0) {
-    risk += dayIndex * 0.02;
-  }
-  
-  return {
-    riskIndex: Math.round(risk * 100) / 100,
-    dutyLength: Math.round(dutyLength * 10) / 10,
-  };
-}
-
-function getRiskLevel(riskIndex: number): 'low' | 'moderate' | 'elevated' | 'critical' {
-  if (riskIndex < 1.0) return 'low';
-  if (riskIndex < 1.1) return 'moderate';
-  if (riskIndex < 1.2) return 'elevated';
-  return 'critical';
-}
-
+// Extended templates including the original simple ones
 const TEMPLATES = {
+  ...FATIGUE_TEMPLATES,
   standard5x8: {
     name: 'Standard 5×8h Days',
     shifts: [
@@ -100,6 +65,18 @@ const TEMPLATES = {
       { day: 7, startTime: '19:00', endTime: '07:00' },
     ],
   },
+  continental: {
+    name: 'Continental (2-2-3)',
+    shifts: [
+      { day: 1, startTime: '06:00', endTime: '18:00' },
+      { day: 2, startTime: '06:00', endTime: '18:00' },
+      { day: 5, startTime: '18:00', endTime: '06:00' },
+      { day: 6, startTime: '18:00', endTime: '06:00' },
+      { day: 9, startTime: '06:00', endTime: '18:00' },
+      { day: 10, startTime: '06:00', endTime: '18:00' },
+      { day: 11, startTime: '06:00', endTime: '18:00' },
+    ],
+  },
 };
 
 export function FatigueView({
@@ -108,39 +85,82 @@ export function FatigueView({
   onBack,
 }: FatigueViewProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [showDefaults, setShowDefaults] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [expandedShift, setExpandedShift] = useState<number | null>(null);
 
-  // Calculate results for all shifts
+  // Fatigue parameters - explicitly typed to allow mutable number values
+  const [params, setParams] = useState<{
+    commuteTime: number;
+    workload: number;
+    attention: number;
+    breakFrequency: number;
+    breakLength: number;
+    continuousWork: number;
+    breakAfterContinuous: number;
+  }>({
+    commuteTime: DEFAULT_FATIGUE_PARAMS.commuteTime,
+    workload: DEFAULT_FATIGUE_PARAMS.workload,
+    attention: DEFAULT_FATIGUE_PARAMS.attention,
+    breakFrequency: DEFAULT_FATIGUE_PARAMS.breakFrequency,
+    breakLength: DEFAULT_FATIGUE_PARAMS.breakLength,
+    continuousWork: DEFAULT_FATIGUE_PARAMS.continuousWork,
+    breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
+  });
+
+  // Calculate results using full HSE RR446 algorithm
   const results = useMemo(() => {
     if (shifts.length === 0) return null;
 
     const sortedShifts = [...shifts].sort((a, b) => a.day - b.day);
-    
-    const calculations = sortedShifts.map((shift) => {
-      const calc = calculateSimpleFatigue(shift, sortedShifts);
+    const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
+      day: s.day,
+      startTime: s.startTime,
+      endTime: s.endTime,
+    }));
+
+    const calculations = calculateFatigueSequence(shiftDefinitions, params);
+
+    // Calculate duty lengths for display
+    const calculationsWithDuty = calculations.map((calc, idx) => {
+      const shift = sortedShifts[idx];
+      const startHour = parseTimeToHours(shift.startTime);
+      let endHour = parseTimeToHours(shift.endTime);
+      if (endHour <= startHour) endHour += 24;
+      const dutyLength = calculateDutyLength(startHour, endHour);
+
       return {
-        ...shift,
         ...calc,
-        riskLevel: getRiskLevel(calc.riskIndex),
+        id: shift.id,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        dutyLength: Math.round(dutyLength * 10) / 10,
       };
     });
 
-    const riskIndices = calculations.map(c => c.riskIndex);
+    const riskIndices = calculationsWithDuty.map(c => c.riskIndex);
     const avgRisk = riskIndices.reduce((a, b) => a + b, 0) / riskIndices.length;
     const maxRisk = Math.max(...riskIndices);
-    const totalHours = calculations.reduce((a, c) => a + c.dutyLength, 0);
+    const totalHours = calculationsWithDuty.reduce((a, c) => a + c.dutyLength, 0);
+
+    // Component averages
+    const avgCumulative = calculationsWithDuty.reduce((a, c) => a + c.cumulative, 0) / calculationsWithDuty.length;
+    const avgTiming = calculationsWithDuty.reduce((a, c) => a + c.timing, 0) / calculationsWithDuty.length;
+    const avgJobBreaks = calculationsWithDuty.reduce((a, c) => a + c.jobBreaks, 0) / calculationsWithDuty.length;
 
     return {
-      calculations,
+      calculations: calculationsWithDuty,
       summary: {
-        avgRisk: Math.round(avgRisk * 100) / 100,
-        maxRisk: Math.round(maxRisk * 100) / 100,
-        dutyCount: calculations.length,
+        avgRisk: Math.round(avgRisk * 1000) / 1000,
+        maxRisk: Math.round(maxRisk * 1000) / 1000,
+        dutyCount: calculationsWithDuty.length,
         totalHours: Math.round(totalHours * 10) / 10,
-        highRiskCount: calculations.filter(c => c.riskIndex >= 1.1).length,
+        highRiskCount: calculationsWithDuty.filter(c => c.riskIndex >= 1.1).length,
+        avgCumulative: Math.round(avgCumulative * 1000) / 1000,
+        avgTiming: Math.round(avgTiming * 1000) / 1000,
+        avgJobBreaks: Math.round(avgJobBreaks * 1000) / 1000,
       },
     };
-  }, [shifts]);
+  }, [shifts, params]);
 
   const handleAddShift = () => {
     const lastDay = shifts.length > 0 ? Math.max(...shifts.map(s => s.day)) : 0;
@@ -166,6 +186,10 @@ export function FatigueView({
     setShifts([]);
   };
 
+  const handleResetParams = () => {
+    setParams({ ...DEFAULT_FATIGUE_PARAMS });
+  };
+
   const getRiskColor = (level: string) => {
     switch (level) {
       case 'low': return 'bg-green-100 text-green-800 border-green-300';
@@ -174,6 +198,25 @@ export function FatigueView({
       case 'critical': return 'bg-red-100 text-red-800 border-red-300';
       default: return 'bg-slate-100 text-slate-800 border-slate-300';
     }
+  };
+
+  // Risk bar visualization
+  const RiskBar = ({ value, max = 1.5, label, color }: { value: number; max?: number; label: string; color: string }) => {
+    const percentage = Math.min(100, (value / max) * 100);
+    return (
+      <div className="mb-2">
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-slate-600">{label}</span>
+          <span className="font-medium text-slate-800">{value.toFixed(3)}</span>
+        </div>
+        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${color} transition-all duration-300`}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -205,95 +248,237 @@ export function FatigueView({
       <div className="p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Input */}
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-800">📋 Shift Pattern Definition</h3>
-              <button
-                onClick={() => setShowDefaults(!showDefaults)}
-                className="text-sm px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded flex items-center gap-1"
-              >
-                <Settings className="w-4 h-4" />
-                Settings
-              </button>
-            </div>
+          <div className="space-y-4">
+            {/* Shift Pattern Definition */}
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-800">Shift Pattern Definition</h3>
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`text-sm px-3 py-1 rounded flex items-center gap-1 ${
+                    showSettings ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  Parameters
+                </button>
+              </div>
 
-            <div className="p-4">
-              {/* Templates */}
-              <div className="mb-4">
-                <label className="text-sm font-medium text-slate-700 mb-2 block">Load Template</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(TEMPLATES).map(([key, template]) => (
-                    <button
-                      key={key}
-                      onClick={() => handleLoadTemplate(key)}
-                      className="text-xs px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-left"
-                    >
-                      {template.name}
-                    </button>
-                  ))}
+              <div className="p-4">
+                {/* Templates */}
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-slate-700 mb-2 block">Load Template</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(TEMPLATES).map(([key, template]) => (
+                      <button
+                        key={key}
+                        onClick={() => handleLoadTemplate(key)}
+                        className="text-xs px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-left text-slate-700 truncate"
+                        title={template.name}
+                      >
+                        {template.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={handleAddShift}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1 text-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add Shift
+                  </button>
+                  <button
+                    onClick={handleClearAll}
+                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 text-sm"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
+                {/* Shifts List */}
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {shifts.length === 0 ? (
+                    <p className="text-slate-500 text-center py-8">
+                      Add shifts or load a template to calculate fatigue risk
+                    </p>
+                  ) : (
+                    [...shifts].sort((a, b) => a.day - b.day).map(shift => (
+                      <div key={shift.id} className="border rounded-lg p-3 bg-slate-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="number"
+                              min="1"
+                              max="28"
+                              value={shift.day}
+                              onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
+                              className="w-16 border rounded px-2 py-1 text-sm text-slate-900 bg-white text-center"
+                              title="Day number"
+                            />
+                            <input
+                              type="time"
+                              value={shift.startTime}
+                              onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
+                              className="border rounded px-2 py-1 text-sm text-slate-900 bg-white"
+                            />
+                            <span className="text-slate-600">to</span>
+                            <input
+                              type="time"
+                              value={shift.endTime}
+                              onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
+                              className="border rounded px-2 py-1 text-sm text-slate-900 bg-white"
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleRemoveShift(shift.id)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={handleAddShift}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1 text-sm"
-                >
-                  <Plus className="w-4 h-4" /> Add Shift
-                </button>
-                <button
-                  onClick={handleClearAll}
-                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 text-sm"
-                >
-                  Clear All
-                </button>
-              </div>
-
-              {/* Shifts List */}
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {shifts.length === 0 ? (
-                  <p className="text-slate-500 text-center py-8">
-                    Add shifts or load a template to calculate fatigue risk
-                  </p>
-                ) : (
-                  shifts.map(shift => (
-                    <div key={shift.id} className="border rounded-lg p-3 bg-slate-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-sm text-slate-900">Day {shift.day}</span>
-                          <input
-                            type="time"
-                            value={shift.startTime}
-                            onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
-                            className="border rounded px-2 py-1 text-sm text-slate-900 bg-white"
-                          />
-                          <span className="text-slate-600">to</span>
-                          <input
-                            type="time"
-                            value={shift.endTime}
-                            onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
-                            className="border rounded px-2 py-1 text-sm text-slate-900 bg-white"
-                          />
-                        </div>
-                        <button
-                          onClick={() => handleRemoveShift(shift.id)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
             </div>
+
+            {/* Parameters Panel (Collapsible) */}
+            {showSettings && (
+              <div className="bg-white rounded-lg shadow-md">
+                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800">HSE RR446 Parameters</h3>
+                  <button
+                    onClick={handleResetParams}
+                    className="text-xs text-blue-600 hover:text-blue-700"
+                  >
+                    Reset to Defaults
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Commute */}
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 block mb-1">
+                      Commute Time (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="180"
+                      value={params.commuteTime}
+                      onChange={(e) => setParams({ ...params, commuteTime: parseInt(e.target.value) || 0 })}
+                      className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Total daily commute time (home to work + work to home)</p>
+                  </div>
+
+                  {/* Workload & Attention */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1">
+                        Workload (1-5)
+                      </label>
+                      <select
+                        value={params.workload}
+                        onChange={(e) => setParams({ ...params, workload: parseInt(e.target.value) })}
+                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      >
+                        <option value={1}>1 - Light</option>
+                        <option value={2}>2 - Moderate</option>
+                        <option value={3}>3 - Average</option>
+                        <option value={4}>4 - Heavy</option>
+                        <option value={5}>5 - Very Heavy</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1">
+                        Attention (1-5)
+                      </label>
+                      <select
+                        value={params.attention}
+                        onChange={(e) => setParams({ ...params, attention: parseInt(e.target.value) })}
+                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      >
+                        <option value={1}>1 - Low</option>
+                        <option value={2}>2 - Moderate</option>
+                        <option value={3}>3 - Average</option>
+                        <option value={4}>4 - High</option>
+                        <option value={5}>5 - Very High</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Break Settings */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1">
+                        Break Frequency (mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="30"
+                        max="480"
+                        value={params.breakFrequency}
+                        onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })}
+                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1">
+                        Break Length (mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        max="60"
+                        value={params.breakLength}
+                        onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 30 })}
+                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Continuous Work */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1">
+                        Continuous Work (mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="30"
+                        max="480"
+                        value={params.continuousWork}
+                        onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 180 })}
+                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 block mb-1">
+                        Break After Continuous
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        max="60"
+                        value={params.breakAfterContinuous}
+                        onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })}
+                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Panel - Results */}
           <div className="bg-white rounded-lg shadow-md">
             <div className="p-4 border-b border-slate-200">
-              <h3 className="font-semibold text-slate-800">📊 Fatigue Risk Analysis</h3>
+              <h3 className="font-semibold text-slate-800">Fatigue Risk Analysis</h3>
             </div>
 
             <div className="p-4">
@@ -306,12 +491,12 @@ export function FatigueView({
                 <>
                   {/* Summary Cards */}
                   <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.avgRisk))}`}>
-                      <p className="text-xs font-medium opacity-75">Average Risk Index</p>
+                    <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.avgRisk).level)}`}>
+                      <p className="text-xs font-medium opacity-75">Average FRI</p>
                       <p className="text-2xl font-bold">{results.summary.avgRisk}</p>
                     </div>
-                    <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.maxRisk))}`}>
-                      <p className="text-xs font-medium opacity-75">Peak Risk Index</p>
+                    <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.maxRisk).level)}`}>
+                      <p className="text-xs font-medium opacity-75">Peak FRI</p>
                       <p className="text-2xl font-bold">{results.summary.maxRisk}</p>
                     </div>
                     <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
@@ -321,6 +506,23 @@ export function FatigueView({
                     <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
                       <p className="text-xs font-medium text-slate-600">High Risk Shifts</p>
                       <p className="text-2xl font-bold text-slate-800">{results.summary.highRiskCount}</p>
+                    </div>
+                  </div>
+
+                  {/* Component Breakdown */}
+                  <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+                    <h4 className="text-sm font-medium text-slate-700 mb-3">Average Component Scores</h4>
+                    <RiskBar value={results.summary.avgCumulative} label="Cumulative Fatigue" color="bg-blue-500" />
+                    <RiskBar value={results.summary.avgTiming} label="Timing Component" color="bg-purple-500" />
+                    <RiskBar value={results.summary.avgJobBreaks} label="Job/Breaks Component" color="bg-amber-500" />
+                    <div className="mt-3 pt-3 border-t border-slate-200">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600 font-medium">Combined FRI</span>
+                        <span className="font-bold text-slate-800">{results.summary.avgRisk}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        FRI = Cumulative × Timing × Job/Breaks
+                      </p>
                     </div>
                   </div>
 
@@ -336,27 +538,59 @@ export function FatigueView({
                   </div>
 
                   {/* Per-Shift Results */}
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
                     {results.calculations.map((calc) => (
-                      <div 
+                      <div
                         key={calc.id}
-                        className={`p-3 rounded-lg border ${getRiskColor(calc.riskLevel)}`}
+                        className={`rounded-lg border overflow-hidden ${getRiskColor(calc.riskLevel.level)}`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-medium">Day {calc.day}</span>
-                            <span className="text-sm ml-2 opacity-75">
-                              {calc.startTime} - {calc.endTime}
-                            </span>
+                        <div
+                          className="p-3 cursor-pointer"
+                          onClick={() => setExpandedShift(expandedShift === calc.id ? null : calc.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {expandedShift === calc.id ? (
+                                <ChevronUp className="w-4 h-4 opacity-50" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 opacity-50" />
+                              )}
+                              <div>
+                                <span className="font-medium">Day {calc.day}</span>
+                                <span className="text-sm ml-2 opacity-75">
+                                  {calc.startTime} - {calc.endTime}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-lg">{calc.riskIndex}</span>
+                              <span className="text-xs ml-1 opacity-75">FRI</span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="font-bold">{calc.riskIndex}</span>
-                            <span className="text-xs ml-1 opacity-75">FRI</span>
+                          <div className="text-xs mt-1 opacity-75">
+                            Duration: {calc.dutyLength}h • {calc.riskLevel.label}
                           </div>
                         </div>
-                        <div className="text-xs mt-1 opacity-75">
-                          Duration: {calc.dutyLength}h
-                        </div>
+
+                        {/* Expanded Component Details */}
+                        {expandedShift === calc.id && (
+                          <div className="px-3 pb-3 pt-0 border-t border-current/20">
+                            <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                              <div className="bg-white/50 rounded p-2">
+                                <p className="opacity-75">Cumulative</p>
+                                <p className="font-bold">{calc.cumulative}</p>
+                              </div>
+                              <div className="bg-white/50 rounded p-2">
+                                <p className="opacity-75">Timing</p>
+                                <p className="font-bold">{calc.timing}</p>
+                              </div>
+                              <div className="bg-white/50 rounded p-2">
+                                <p className="opacity-75">Job/Breaks</p>
+                                <p className="font-bold">{calc.jobBreaks}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

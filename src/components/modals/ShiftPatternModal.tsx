@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from '@/components/ui/Icons';
+import { X, ChevronDown, ChevronUp } from '@/components/ui/Icons';
 import type { WeeklySchedule } from '@/lib/types';
 
 interface ShiftPatternModalProps {
@@ -15,6 +15,12 @@ interface ShiftPatternModalProps {
     dutyType: string;
     isNight: boolean;
     weeklySchedule: WeeklySchedule;
+    // Fatigue parameters
+    workload?: number;
+    attention?: number;
+    commuteTime?: number;
+    breakFrequency?: number;
+    breakLength?: number;
   }) => Promise<void>;
 }
 
@@ -75,6 +81,14 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
   const [selectedDays, setSelectedDays] = useState<DayKey[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fatigue parameters
+  const [showFatigueSettings, setShowFatigueSettings] = useState(false);
+  const [workload, setWorkload] = useState<number>(2);
+  const [attention, setAttention] = useState<number>(2);
+  const [commuteTime, setCommuteTime] = useState<number>(60);
+  const [breakFrequency, setBreakFrequency] = useState<number>(180);
+  const [breakLength, setBreakLength] = useState<number>(30);
 
   const toggleDay = (day: DayKey) => {
     if (selectedDays.includes(day)) {
@@ -137,6 +151,12 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
         dutyType,
         isNight,
         weeklySchedule,
+        // Fatigue parameters
+        workload,
+        attention,
+        commuteTime,
+        breakFrequency,
+        breakLength,
       });
       onClose();
     } catch (err: any) {
@@ -307,6 +327,114 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
               <p className="text-xs text-slate-500 mt-1">
                 Click to toggle. Employees can only be assigned on active days.
               </p>
+            </div>
+
+            {/* Fatigue Settings (Collapsible) */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowFatigueSettings(!showFatigueSettings)}
+                className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
+              >
+                <span className="font-medium text-slate-700">Fatigue Risk Parameters</span>
+                {showFatigueSettings ? (
+                  <ChevronUp className="w-4 h-4 text-slate-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-500" />
+                )}
+              </button>
+
+              {showFatigueSettings && (
+                <div className="p-4 space-y-4 bg-white border-t border-slate-200">
+                  <p className="text-xs text-slate-500 mb-3">
+                    These values are used in HSE RR446 fatigue calculations for this shift pattern.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Workload (1-5)
+                      </label>
+                      <select
+                        value={workload}
+                        onChange={(e) => setWorkload(parseInt(e.target.value))}
+                        className={selectStyle}
+                        style={{ color: '#1e293b' }}
+                      >
+                        <option value={1}>1 - Light</option>
+                        <option value={2}>2 - Moderate</option>
+                        <option value={3}>3 - Average</option>
+                        <option value={4}>4 - Heavy</option>
+                        <option value={5}>5 - Very Heavy</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Attention (1-5)
+                      </label>
+                      <select
+                        value={attention}
+                        onChange={(e) => setAttention(parseInt(e.target.value))}
+                        className={selectStyle}
+                        style={{ color: '#1e293b' }}
+                      >
+                        <option value={1}>1 - Low</option>
+                        <option value={2}>2 - Moderate</option>
+                        <option value={3}>3 - Average</option>
+                        <option value={4}>4 - High</option>
+                        <option value={5}>5 - Very High</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Commute Time (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="180"
+                      value={commuteTime}
+                      onChange={(e) => setCommuteTime(parseInt(e.target.value) || 0)}
+                      className={inputStyle}
+                      style={{ color: '#1e293b' }}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Total daily commute (home to work + work to home)</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Break Frequency (mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="30"
+                        max="480"
+                        value={breakFrequency}
+                        onChange={(e) => setBreakFrequency(parseInt(e.target.value) || 180)}
+                        className={inputStyle}
+                        style={{ color: '#1e293b' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Break Length (mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        max="60"
+                        value={breakLength}
+                        onChange={(e) => setBreakLength(parseInt(e.target.value) || 30)}
+                        className={inputStyle}
+                        style={{ color: '#1e293b' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

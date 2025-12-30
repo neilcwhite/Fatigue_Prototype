@@ -69,6 +69,12 @@ export interface ShiftPattern {
   organisation_id: string;
   created_at?: string;
   updated_at?: string;
+  // Fatigue parameters
+  workload?: number;      // 1-5 scale
+  attention?: number;     // 1-5 scale
+  commute_time?: number;  // minutes
+  break_frequency?: number; // minutes between breaks
+  break_length?: number;  // minutes per break
 }
 
 export interface Assignment {
@@ -208,6 +214,12 @@ export interface ShiftPatternCamel {
   dutyType: 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other';
   isNight: boolean;
   organisationId: string;
+  // Fatigue parameters
+  workload?: number;      // 1-5 scale
+  attention?: number;     // 1-5 scale
+  commuteTime?: number;   // minutes
+  breakFrequency?: number; // minutes between breaks
+  breakLength?: number;   // minutes per break
 }
 
 export interface AssignmentCamel {

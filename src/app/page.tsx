@@ -141,6 +141,11 @@ export default function Home() {
     dutyType: string;
     isNight: boolean;
     weeklySchedule: any;
+    workload?: number;
+    attention?: number;
+    commuteTime?: number;
+    breakFrequency?: number;
+    breakLength?: number;
   }) => {
     await createShiftPattern({
       projectId: data.projectId,
@@ -150,6 +155,12 @@ export default function Home() {
       dutyType: data.dutyType as 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other',
       isNight: data.isNight,
       weeklySchedule: data.weeklySchedule,
+      // Fatigue parameters
+      workload: data.workload,
+      attention: data.attention,
+      commuteTime: data.commuteTime,
+      breakFrequency: data.breakFrequency,
+      breakLength: data.breakLength,
     });
   };
 

@@ -33,8 +33,19 @@ const CONSTANTS = {
   CONST2: 1.146457295,
 } as const;
 
+// Fatigue parameters type
+export interface FatigueParams {
+  commuteTime: number;
+  workload: number;
+  attention: number;
+  breakFrequency: number;
+  breakLength: number;
+  continuousWork: number;
+  breakAfterContinuous: number;
+}
+
 // Default fatigue parameters
-export const DEFAULT_FATIGUE_PARAMS = {
+export const DEFAULT_FATIGUE_PARAMS: FatigueParams = {
   commuteTime: 60,
   workload: 2,
   attention: 1,
@@ -42,7 +53,7 @@ export const DEFAULT_FATIGUE_PARAMS = {
   breakLength: 30,
   continuousWork: 180,
   breakAfterContinuous: 30,
-} as const;
+};
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -280,7 +291,7 @@ export function calculateRiskIndex(
   duty: ShiftDefinition,
   dutyIndex: number,
   allDuties: ShiftDefinition[],
-  params: typeof DEFAULT_FATIGUE_PARAMS = DEFAULT_FATIGUE_PARAMS
+  params: FatigueParams = DEFAULT_FATIGUE_PARAMS
 ): FatigueResult {
   const startHour = parseTimeToHours(duty.startTime);
   let endHour = parseTimeToHours(duty.endTime);
@@ -309,7 +320,7 @@ export function calculateRiskIndex(
  */
 export function calculateFatigueSequence(
   shifts: ShiftDefinition[],
-  params: typeof DEFAULT_FATIGUE_PARAMS = DEFAULT_FATIGUE_PARAMS
+  params: FatigueParams = DEFAULT_FATIGUE_PARAMS
 ): FatigueResult[] {
   return shifts.map((shift, index) => calculateRiskIndex(shift, index, shifts, params));
 }

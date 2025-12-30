@@ -117,6 +117,12 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         dutyType: sp.duty_type || 'Non-Possession',
         isNight: sp.is_night || false,
         organisationId: sp.organisation_id,
+        // Fatigue parameters
+        workload: sp.workload,
+        attention: sp.attention,
+        commuteTime: sp.commute_time,
+        breakFrequency: sp.break_frequency,
+        breakLength: sp.break_length,
       }));
 
       const assignments: AssignmentCamel[] = (assignmentsRes.data || []).map(a => ({
@@ -304,6 +310,12 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       duty_type: patternData.dutyType,
       is_night: patternData.isNight,
       organisation_id: organisationId,
+      // Fatigue parameters
+      workload: patternData.workload,
+      attention: patternData.attention,
+      commute_time: patternData.commuteTime,
+      break_frequency: patternData.breakFrequency,
+      break_length: patternData.breakLength,
     });
 
     if (error) throw error;
@@ -312,7 +324,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
     if (!supabase) throw new Error('Not configured');
-    
+
     const { error } = await supabase.from('shift_patterns').update({
       name: updateData.name,
       start_time: updateData.startTime,
@@ -320,8 +332,14 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       weekly_schedule: updateData.weeklySchedule,
       duty_type: updateData.dutyType,
       is_night: updateData.isNight,
+      // Fatigue parameters
+      workload: updateData.workload,
+      attention: updateData.attention,
+      commute_time: updateData.commuteTime,
+      break_frequency: updateData.breakFrequency,
+      break_length: updateData.breakLength,
     }).eq('id', id);
-    
+
     if (error) throw error;
     await loadAllData();
   };
