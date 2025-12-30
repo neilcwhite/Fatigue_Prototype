@@ -19,6 +19,7 @@ import type {
 interface ProjectStats {
   totalHours: number;
   employeeCount: number;
+  shiftPatternCount: number;
   violations: string[];
 }
 
@@ -30,6 +31,7 @@ interface DashboardProps {
   assignments: AssignmentCamel[];
   shiftPatterns: ShiftPatternCamel[];
   onSelectProject: (projectId: number) => void;
+  onViewSummary: (projectId: number) => void;
   onViewEmployee: () => void;
   onViewFatigue: () => void;
   onViewTeams: () => void;
@@ -44,6 +46,7 @@ export function Dashboard({
   assignments,
   shiftPatterns,
   onSelectProject,
+  onViewSummary,
   onViewEmployee,
   onViewFatigue,
   onViewTeams,
@@ -78,6 +81,7 @@ export function Dashboard({
     return {
       totalHours: Math.round(totalHours),
       employeeCount: employeeIds.size,
+      shiftPatternCount: projectPatterns.length,
       violations,
     };
   };
