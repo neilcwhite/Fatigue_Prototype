@@ -1,14 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Edit2, Trash2 } from '@/components/ui/Icons';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { Edit2, Trash2, Copy, X, Check } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
-import type { 
-  ProjectCamel, 
+import type {
+  ProjectCamel,
   EmployeeCamel,
-  AssignmentCamel, 
+  AssignmentCamel,
   ShiftPatternCamel,
-  NetworkRailPeriod 
+  NetworkRailPeriod
 } from '@/lib/types';
 
 interface TimelineViewProps {
@@ -22,6 +22,14 @@ interface TimelineViewProps {
   onDeleteAssignment: (id: number) => Promise<void>;
   onEditAssignment?: (assignment: AssignmentCamel) => void;
   onNavigateToPerson?: (employeeId: number) => void;
+  onCreateAssignment?: (data: {
+    employeeId: number;
+    projectId: number;
+    shiftPatternId: string;
+    date: string;
+    customStartTime?: string;
+    customEndTime?: string;
+  }) => Promise<void>;
 }
 
 export function TimelineView({
@@ -35,32 +43,75 @@ export function TimelineView({
   onDeleteAssignment,
   onEditAssignment,
   onNavigateToPerson,
+  onCreateAssignment,
 }: TimelineViewProps) {
+  // Selection state
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<number>>(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState<number | null>(null);
+  const [isCopyMode, setIsCopyMode] = useState(false);
+  const [copyTargetDates, setCopyTargetDates] = useState<Set<string>>(new Set());
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Track sorted assignments for shift-click range selection
+  const sortedAssignmentsRef = useRef<AssignmentCamel[]>([]);
+
   // Generate 28 days from period start
   const dates = useMemo(() => {
     const result: string[] = [];
     const startDate = new Date(period.startDate);
-    
+
     for (let i = 0; i < 28; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
       result.push(date.toISOString().split('T')[0]);
     }
-    
+
     return result;
   }, [period.startDate]);
+
+  // Update sorted assignments ref when assignments change
+  useEffect(() => {
+    sortedAssignmentsRef.current = [...assignments].sort((a, b) => {
+      // Sort by pattern, then date, then employee
+      if (a.shiftPatternId !== b.shiftPatternId) {
+        return a.shiftPatternId.localeCompare(b.shiftPatternId);
+      }
+      if (a.date !== b.date) {
+        return a.date.localeCompare(b.date);
+      }
+      return a.employeeId - b.employeeId;
+    });
+  }, [assignments]);
+
+  // Clear selection on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedAssignmentIds(new Set());
+        setLastSelectedId(null);
+        setIsCopyMode(false);
+        setCopyTargetDates(new Set());
+      }
+      // Delete selected with Delete key
+      if (e.key === 'Delete' && selectedAssignmentIds.size > 0 && !isProcessing) {
+        handleBulkDelete();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedAssignmentIds, isProcessing]);
 
   // Build compliance violations map for all employees
   const complianceByEmployee = useMemo(() => {
     const result = new Map<number, ComplianceViolation[]>();
-    
+
     const employeeIds = [...new Set(assignments.map(a => a.employeeId))];
-    
+
     for (const empId of employeeIds) {
       const compliance = checkEmployeeCompliance(empId, assignments, shiftPatterns);
       result.set(empId, compliance.violations);
     }
-    
+
     return result;
   }, [assignments, shiftPatterns]);
 
@@ -72,8 +123,6 @@ export function TimelineView({
 
   // Check if shift pattern has hours for a given day
   const shiftPatternHasHoursForDay = (pattern: ShiftPatternCamel, dateStr: string): boolean => {
-    // Custom (ad-hoc) pattern - check if there's an assignment with custom times for this date
-    // This pattern accepts drops via the modal, so we only show as "valid" cells that have assignments
     if (pattern.id.endsWith('-custom')) {
       const hasAssignmentOnDate = assignments.some(
         a => a.shiftPatternId === pattern.id && a.date === dateStr
@@ -81,7 +130,6 @@ export function TimelineView({
       return hasAssignmentOnDate;
     }
 
-    // If pattern has weekly schedule, check that day
     if (pattern.weeklySchedule) {
       const dayOfWeek = new Date(dateStr).getDay();
       const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
@@ -91,29 +139,185 @@ export function TimelineView({
       return !!(daySchedule?.startTime && daySchedule?.endTime);
     }
 
-    // Simple pattern - always has hours
     return !!(pattern.startTime && pattern.endTime);
   };
-
 
   // Get employee name by ID
   const getEmployeeName = (employeeId: number): string => {
     return employees.find(e => e.id === employeeId)?.name || 'Unknown';
   };
 
+  // Handle tile click for selection
+  const handleTileClick = useCallback((e: React.MouseEvent, assignment: AssignmentCamel) => {
+    e.stopPropagation();
+
+    // If in copy mode, ignore tile clicks
+    if (isCopyMode) return;
+
+    const assignmentId = assignment.id;
+
+    if (e.shiftKey && lastSelectedId !== null) {
+      // Shift+click: range selection
+      const sorted = sortedAssignmentsRef.current;
+      const lastIdx = sorted.findIndex(a => a.id === lastSelectedId);
+      const currentIdx = sorted.findIndex(a => a.id === assignmentId);
+
+      if (lastIdx !== -1 && currentIdx !== -1) {
+        const [start, end] = [Math.min(lastIdx, currentIdx), Math.max(lastIdx, currentIdx)];
+        const rangeIds = sorted.slice(start, end + 1).map(a => a.id);
+
+        if (e.ctrlKey || e.metaKey) {
+          // Add range to existing selection
+          setSelectedAssignmentIds(prev => {
+            const next = new Set(prev);
+            rangeIds.forEach(id => next.add(id));
+            return next;
+          });
+        } else {
+          // Replace selection with range
+          setSelectedAssignmentIds(new Set(rangeIds));
+        }
+      }
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl+click: toggle individual selection
+      setSelectedAssignmentIds(prev => {
+        const next = new Set(prev);
+        if (next.has(assignmentId)) {
+          next.delete(assignmentId);
+        } else {
+          next.add(assignmentId);
+        }
+        return next;
+      });
+      setLastSelectedId(assignmentId);
+    } else {
+      // Regular click: select only this one (or deselect if already sole selection)
+      if (selectedAssignmentIds.size === 1 && selectedAssignmentIds.has(assignmentId)) {
+        setSelectedAssignmentIds(new Set());
+        setLastSelectedId(null);
+      } else {
+        setSelectedAssignmentIds(new Set([assignmentId]));
+        setLastSelectedId(assignmentId);
+      }
+    }
+  }, [lastSelectedId, isCopyMode, selectedAssignmentIds]);
+
+  // Handle cell click for copy target selection
+  const handleCellClick = useCallback((e: React.MouseEvent, date: string, isValidCell: boolean) => {
+    if (!isCopyMode || !isValidCell) return;
+
+    e.stopPropagation();
+    setCopyTargetDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
+  }, [isCopyMode]);
+
   // Handle delete with confirmation
   const handleDelete = async (assignmentId: number, employeeId: number) => {
     const employeeName = getEmployeeName(employeeId);
     if (confirm(`Remove ${employeeName} from this shift?`)) {
       try {
-        console.log('Deleting assignment:', assignmentId);
         await onDeleteAssignment(assignmentId);
-        console.log('Assignment deleted successfully');
       } catch (err) {
         console.error('Error deleting assignment:', err);
         alert('Failed to delete assignment');
       }
     }
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedAssignmentIds.size === 0) return;
+
+    const count = selectedAssignmentIds.size;
+    if (!confirm(`Delete ${count} selected assignment${count > 1 ? 's' : ''}?`)) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const ids = Array.from(selectedAssignmentIds);
+      for (const id of ids) {
+        await onDeleteAssignment(id);
+      }
+      setSelectedAssignmentIds(new Set());
+      setLastSelectedId(null);
+    } catch (err) {
+      console.error('Error bulk deleting:', err);
+      alert('Failed to delete some assignments');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Enter copy mode
+  const handleStartCopy = () => {
+    setIsCopyMode(true);
+    setCopyTargetDates(new Set());
+  };
+
+  // Execute copy
+  const handleExecuteCopy = async () => {
+    if (!onCreateAssignment || copyTargetDates.size === 0) return;
+
+    setIsProcessing(true);
+    try {
+      const selectedAssignments = assignments.filter(a => selectedAssignmentIds.has(a.id));
+      const targetDates = Array.from(copyTargetDates);
+
+      for (const assignment of selectedAssignments) {
+        for (const targetDate of targetDates) {
+          // Check if assignment already exists
+          const exists = assignments.some(
+            a => a.employeeId === assignment.employeeId &&
+                 a.shiftPatternId === assignment.shiftPatternId &&
+                 a.date === targetDate
+          );
+
+          if (!exists) {
+            await onCreateAssignment({
+              employeeId: assignment.employeeId,
+              projectId: assignment.projectId,
+              shiftPatternId: assignment.shiftPatternId,
+              date: targetDate,
+              customStartTime: assignment.customStartTime,
+              customEndTime: assignment.customEndTime,
+            });
+          }
+        }
+      }
+
+      // Exit copy mode and clear selection
+      setIsCopyMode(false);
+      setCopyTargetDates(new Set());
+      setSelectedAssignmentIds(new Set());
+      setLastSelectedId(null);
+    } catch (err) {
+      console.error('Error copying assignments:', err);
+      alert('Failed to copy some assignments');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Cancel copy mode
+  const handleCancelCopy = () => {
+    setIsCopyMode(false);
+    setCopyTargetDates(new Set());
+  };
+
+  // Clear selection
+  const handleClearSelection = () => {
+    setSelectedAssignmentIds(new Set());
+    setLastSelectedId(null);
+    setIsCopyMode(false);
+    setCopyTargetDates(new Set());
   };
 
   // Format date for header
@@ -126,11 +330,15 @@ export function TimelineView({
     };
   };
 
-  // Get tile color based on violations
-  const getTileStyle = (violations: ComplianceViolation[]) => {
+  // Get tile color based on violations and selection
+  const getTileStyle = (violations: ComplianceViolation[], isSelected: boolean) => {
+    if (isSelected) {
+      return 'bg-blue-500 text-white border-blue-600 border-2 ring-2 ring-blue-300';
+    }
+
     const hasError = violations.some(v => v.severity === 'error');
     const hasWarning = violations.some(v => v.severity === 'warning');
-    
+
     if (hasError) {
       return 'bg-red-100 text-red-800 border-red-400 border-2';
     }
@@ -147,10 +355,78 @@ export function TimelineView({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+    <div className="bg-white rounded-lg shadow-md overflow-x-auto relative">
+      {/* Bulk Operations Toolbar */}
+      {selectedAssignmentIds.size > 0 && (
+        <div className="sticky top-0 left-0 right-0 z-20 bg-blue-600 text-white px-4 py-2 flex items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-3">
+            <span className="font-medium">
+              {selectedAssignmentIds.size} selected
+            </span>
+            <span className="text-blue-200 text-sm">
+              (Ctrl+click to multi-select, Shift+click for range, Esc to clear)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!isCopyMode ? (
+              <>
+                {onCreateAssignment && (
+                  <button
+                    onClick={handleStartCopy}
+                    disabled={isProcessing}
+                    className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 rounded text-sm flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy to...
+                  </button>
+                )}
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 bg-red-500 hover:bg-red-400 rounded text-sm flex items-center gap-1 disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+                <button
+                  onClick={handleClearSelection}
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 rounded text-sm flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  Clear
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-blue-200">
+                  Click on dates to select copy targets ({copyTargetDates.size} selected)
+                </span>
+                <button
+                  onClick={handleExecuteCopy}
+                  disabled={isProcessing || copyTargetDates.size === 0}
+                  className="px-3 py-1.5 bg-green-500 hover:bg-green-400 rounded text-sm flex items-center gap-1 disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  Confirm Copy
+                </button>
+                <button
+                  onClick={handleCancelCopy}
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 bg-slate-500 hover:bg-slate-400 rounded text-sm flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="min-w-max">
         {/* Header Row */}
-        <div 
+        <div
           className="grid border-b border-slate-200"
           style={{ gridTemplateColumns: '200px repeat(28, 100px)' }}
         >
@@ -159,12 +435,17 @@ export function TimelineView({
           </div>
           {dates.map((date, idx) => {
             const { day, date: dateStr, isWeekend } = formatDateHeader(date);
-            
+            const isCopyTarget = copyTargetDates.has(date);
+
             return (
               <div
                 key={idx}
                 className={`p-2 text-center text-xs border-l border-slate-200 ${
-                  isWeekend ? 'weekend-header' : 'bg-slate-50'
+                  isCopyMode && isCopyTarget
+                    ? 'bg-green-200 border-green-400 border-2'
+                    : isWeekend
+                      ? 'weekend-header'
+                      : 'bg-slate-50'
                 }`}
               >
                 <div className="font-semibold text-slate-900">{day}</div>
@@ -209,32 +490,49 @@ export function TimelineView({
                   const cellAssignments = patternAssignments.filter(a => a.date === date);
                   const isPartOfPattern = shiftPatternHasHoursForDay(pattern, date);
                   const { isWeekend } = formatDateHeader(date);
+                  const isCopyTarget = copyTargetDates.has(date);
 
                   return (
                     <div
                       key={idx}
                       className={`border-l border-slate-200 p-1 min-h-[70px] transition-colors ${
-                        !isPartOfPattern 
-                          ? 'bg-slate-100/50 cursor-not-allowed' 
-                          : isWeekend 
-                            ? 'weekend-hatch hover:bg-blue-50 cursor-pointer' 
-                            : 'hover:bg-blue-50 cursor-pointer'
+                        isCopyMode && isCopyTarget
+                          ? 'bg-green-100 ring-2 ring-green-400 ring-inset'
+                          : isCopyMode && isPartOfPattern
+                            ? 'bg-blue-50 hover:bg-green-50 cursor-pointer'
+                            : !isPartOfPattern
+                              ? 'bg-slate-100/50 cursor-not-allowed'
+                              : isWeekend
+                                ? 'weekend-hatch hover:bg-blue-50 cursor-pointer'
+                                : 'hover:bg-blue-50 cursor-pointer'
                       }`}
+                      onClick={(e) => handleCellClick(e, date, isPartOfPattern)}
                       onDragOver={(e) => {
-                        if (isPartOfPattern) {
+                        if (isPartOfPattern && !isCopyMode) {
                           onCellDragOver(e);
                         }
                       }}
                       onDrop={(e) => {
+                        if (isCopyMode) {
+                          e.preventDefault();
+                          return;
+                        }
                         if (isPartOfPattern) {
                           onCellDrop(e, pattern.id, date);
                         } else {
                           e.preventDefault();
-                          // Call custom drop handler for non-pattern days
                           onCellDrop(e, pattern.id, date, false);
                         }
                       }}
-                      title={!isPartOfPattern ? 'This day is not part of the shift pattern' : 'Drop employee here to assign'}
+                      title={
+                        isCopyMode
+                          ? isPartOfPattern
+                            ? 'Click to select as copy target'
+                            : 'This day is not part of the shift pattern'
+                          : !isPartOfPattern
+                            ? 'This day is not part of the shift pattern'
+                            : 'Drop employee here to assign'
+                      }
                     >
                       {/* Assignment Tiles */}
                       {cellAssignments
@@ -245,7 +543,7 @@ export function TimelineView({
                             ? `${a.customStartTime}-${a.customEndTime}`
                             : null;
                           return {
-                            original: a, // Keep original for edit modal
+                            original: a,
                             ...a,
                             employeeName: getEmployeeName(a.employeeId),
                             violations,
@@ -253,67 +551,78 @@ export function TimelineView({
                           };
                         })
                         .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
-                        .map((assignment) => (
-                          <div
-                            key={assignment.id}
-                            className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-colors ${getTileStyle(assignment.violations)}`}
-                            title={
-                              assignment.timeDisplay
-                                ? `${assignment.employeeName}\n${assignment.timeDisplay}${assignment.violations.length > 0 ? `\n\n${getViolationTooltip(assignment.violations)}` : ''}`
-                                : assignment.violations.length > 0
-                                  ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
-                                  : assignment.employeeName
-                            }
-                            onDragOver={(e) => {
-                              if (isPartOfPattern) {
-                                onCellDragOver(e);
+                        .map((assignment) => {
+                          const isSelected = selectedAssignmentIds.has(assignment.id);
+
+                          return (
+                            <div
+                              key={assignment.id}
+                              onClick={(e) => handleTileClick(e, assignment.original)}
+                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, isSelected)}`}
+                              title={
+                                assignment.timeDisplay
+                                  ? `${assignment.employeeName}\n${assignment.timeDisplay}${assignment.violations.length > 0 ? `\n\n${getViolationTooltip(assignment.violations)}` : ''}`
+                                  : assignment.violations.length > 0
+                                    ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
+                                    : `${assignment.employeeName}\n\nClick to select, Ctrl+click for multi-select`
                               }
-                            }}
-                            onDrop={(e) => {
-                              if (isPartOfPattern) {
-                                onCellDrop(e, pattern.id, date);
-                              } else {
-                                e.preventDefault();
-                                onCellDrop(e, pattern.id, date, false);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between gap-0.5">
-                              <div className="truncate">
-                                <span className="font-medium">
-                                  {assignment.employeeName}
-                                </span>
-                                {assignment.timeDisplay && (
-                                  <span className="text-[8px] opacity-75 ml-1">
-                                    {assignment.timeDisplay}
+                              onDragOver={(e) => {
+                                if (isPartOfPattern && !isCopyMode) {
+                                  onCellDragOver(e);
+                                }
+                              }}
+                              onDrop={(e) => {
+                                if (isCopyMode) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                if (isPartOfPattern) {
+                                  onCellDrop(e, pattern.id, date);
+                                } else {
+                                  e.preventDefault();
+                                  onCellDrop(e, pattern.id, date, false);
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-between gap-0.5">
+                                <div className="truncate">
+                                  <span className="font-medium">
+                                    {assignment.employeeName}
                                   </span>
+                                  {assignment.timeDisplay && (
+                                    <span className={`text-[8px] ml-1 ${isSelected ? 'opacity-75' : 'opacity-75'}`}>
+                                      {assignment.timeDisplay}
+                                    </span>
+                                  )}
+                                </div>
+                                {!isCopyMode && (
+                                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditAssignment?.(assignment.original);
+                                      }}
+                                      className={`hover:bg-white/50 rounded p-0.5 ${isSelected ? 'text-white' : ''}`}
+                                      title="Edit assignment"
+                                    >
+                                      <Edit2 className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(assignment.id, assignment.employeeId);
+                                      }}
+                                      className={`hover:bg-red-200 rounded p-0.5 ${isSelected ? 'text-white hover:text-red-800' : ''}`}
+                                      title="Remove from shift"
+                                    >
+                                      <Trash2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  </div>
                                 )}
                               </div>
-                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEditAssignment?.(assignment.original);
-                                  }}
-                                  className="hover:bg-white/50 rounded p-0.5"
-                                  title="Edit assignment"
-                                >
-                                  <Edit2 className="w-2.5 h-2.5" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(assignment.id, assignment.employeeId);
-                                  }}
-                                  className="hover:bg-red-200 rounded p-0.5"
-                                  title="Remove from shift"
-                                >
-                                  <Trash2 className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   );
                 })}

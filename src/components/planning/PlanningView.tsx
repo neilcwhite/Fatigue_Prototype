@@ -495,6 +495,7 @@ export function PlanningView({
             onDeleteAssignment={onDeleteAssignment}
             onEditAssignment={setEditingAssignment}
             onNavigateToPerson={onNavigateToPerson}
+            onCreateAssignment={onCreateAssignment}
           />
         )}
         
