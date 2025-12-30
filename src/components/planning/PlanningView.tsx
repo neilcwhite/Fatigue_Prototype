@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle } from '@/components/ui/Icons';
 import { TimelineView } from './TimelineView';
+import { GanttView } from './GanttView';
+import { WeeklyView } from './WeeklyView';
 import { CustomTimeModal } from '@/components/modals/CustomTimeModal';
 import { ImportModal } from '@/components/modals/ImportModal';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
@@ -515,16 +517,32 @@ export function PlanningView({
           </div>
         )}
         
-        {viewMode === 'gantt' && (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-slate-500">
-            Gantt view coming soon
-          </div>
+        {viewMode === 'gantt' && currentPeriod && (
+          <GanttView
+            project={project}
+            employees={employees}
+            shiftPatterns={projectShiftPatterns}
+            assignments={projectAssignments}
+            period={currentPeriod}
+            onCellDragOver={handleCellDragOver}
+            onCellDrop={handleCellDrop}
+            onDeleteAssignment={onDeleteAssignment}
+            onEditAssignment={setEditingAssignment}
+          />
         )}
-        
-        {viewMode === 'weekly' && (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-slate-500">
-            Weekly view coming soon
-          </div>
+
+        {viewMode === 'weekly' && currentPeriod && (
+          <WeeklyView
+            project={project}
+            employees={employees}
+            shiftPatterns={projectShiftPatterns}
+            assignments={projectAssignments}
+            period={currentPeriod}
+            onCellDragOver={handleCellDragOver}
+            onCellDrop={handleCellDrop}
+            onDeleteAssignment={onDeleteAssignment}
+            onEditAssignment={setEditingAssignment}
+          />
         )}
       </div>
       
