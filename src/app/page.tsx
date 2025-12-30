@@ -17,6 +17,9 @@ export default function Home() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
 
+  // Debug logging
+  console.log('Page render:', { authLoading, hasUser: !!user, hasProfile: !!profile });
+
   // Load app data once we have an organisation
   const {
     employees,

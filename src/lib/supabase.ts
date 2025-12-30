@@ -8,6 +8,13 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
+// Debug logging
+console.log('Supabase config:', { 
+  hasUrl: !!supabaseUrl, 
+  hasKey: !!supabaseKey,
+  urlPrefix: supabaseUrl.substring(0, 20) 
+});
+
 // Validate configuration
 if (!supabaseUrl || !supabaseKey) {
   console.warn('Supabase environment variables not set');

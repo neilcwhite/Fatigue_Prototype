@@ -89,24 +89,30 @@ export function useAuth(): UseAuthReturn {
 
   // Check session on mount
   useEffect(() => {
+    console.log('useAuth: checking session, supabase:', !!supabase);
+    
     if (!supabase) {
+      console.log('useAuth: no supabase client, setting loading false');
       setLoading(false);
       return;
     }
 
     // Get current session
+    console.log('useAuth: calling getSession...');
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
+        console.log('useAuth: getSession result, session:', !!session);
         if (session?.user) {
           setUser(session.user);
           loadProfile(session.user.id, session.user.email || '');
         }
       })
       .catch((err) => {
-        console.error('Error getting session:', err);
+        console.error('useAuth: getSession error:', err);
         setError(err.message);
       })
       .finally(() => {
+        console.log('useAuth: setting loading false');
         setLoading(false);
       });
 
