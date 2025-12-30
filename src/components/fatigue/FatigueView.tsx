@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp } from '@/components/ui/Icons';
+import { useState, useMemo, useRef } from 'react';
+import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart } from '@/components/ui/Icons';
 import {
   calculateFatigueSequence,
   getRiskLevel,
@@ -11,6 +11,7 @@ import {
   calculateDutyLength,
 } from '@/lib/fatigue';
 import type { ShiftDefinition, FatigueResult } from '@/lib/types';
+import { FatigueChart } from './FatigueChart';
 
 interface Shift extends ShiftDefinition {
   id: number;
@@ -87,6 +88,9 @@ export function FatigueView({
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [expandedShift, setExpandedShift] = useState<number | null>(null);
+  const [showChart, setShowChart] = useState(true);
+  const [showComponents, setShowComponents] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Fatigue parameters - explicitly typed to allow mutable number values
   const [params, setParams] = useState<{
@@ -188,6 +192,189 @@ export function FatigueView({
 
   const handleResetParams = () => {
     setParams({ ...DEFAULT_FATIGUE_PARAMS });
+  };
+
+  // Export to CSV
+  const handleExportCSV = () => {
+    if (!results) return;
+
+    const headers = [
+      'Day',
+      'Start Time',
+      'End Time',
+      'Duration (h)',
+      'Cumulative',
+      'Timing',
+      'Job/Breaks',
+      'FRI',
+      'Risk Level',
+    ];
+
+    const rows = results.calculations.map(calc => [
+      calc.day,
+      calc.startTime,
+      calc.endTime,
+      calc.dutyLength,
+      calc.cumulative,
+      calc.timing,
+      calc.jobBreaks,
+      calc.riskIndex,
+      calc.riskLevel.label,
+    ]);
+
+    // Add summary row
+    rows.push([]);
+    rows.push(['Summary']);
+    rows.push(['Average FRI', '', '', '', '', '', '', results.summary.avgRisk]);
+    rows.push(['Peak FRI', '', '', '', '', '', '', results.summary.maxRisk]);
+    rows.push(['Total Hours', '', '', results.summary.totalHours]);
+    rows.push(['High Risk Shifts', '', '', '', '', '', '', results.summary.highRiskCount]);
+
+    // Add parameters
+    rows.push([]);
+    rows.push(['Parameters']);
+    rows.push(['Commute Time', `${params.commuteTime} min`]);
+    rows.push(['Workload', params.workload]);
+    rows.push(['Attention', params.attention]);
+    rows.push(['Break Frequency', `${params.breakFrequency} min`]);
+    rows.push(['Break Length', `${params.breakLength} min`]);
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fatigue-assessment-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Print/Export report
+  const handlePrint = () => {
+    if (!results) return;
+
+    const printContent = `
+      <html>
+        <head>
+          <title>Fatigue Risk Assessment Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+            h1 { color: #1e293b; border-bottom: 3px solid #f97316; padding-bottom: 10px; }
+            h2 { color: #475569; margin-top: 30px; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+            th { background: #f8fafc; font-weight: 600; }
+            .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+            .summary-card { background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; }
+            .summary-card .value { font-size: 24px; font-weight: bold; color: #1e293b; }
+            .summary-card .label { font-size: 12px; color: #64748b; }
+            .low { background: #dcfce7; color: #166534; }
+            .moderate { background: #fef9c3; color: #854d0e; }
+            .elevated { background: #ffedd5; color: #9a3412; }
+            .critical { background: #fee2e2; color: #991b1b; }
+            .params { background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .params-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+            .param { font-size: 13px; }
+            .param-label { color: #64748b; }
+            .param-value { font-weight: 600; color: #1e293b; }
+            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+            @media print { body { padding: 20px; } }
+          </style>
+        </head>
+        <body>
+          <h1>Fatigue Risk Assessment Report</h1>
+          <p style="color: #64748b;">Generated: ${new Date().toLocaleString()}</p>
+          <p style="color: #64748b;">HSE Research Report RR446 Compliant</p>
+
+          <h2>Summary</h2>
+          <div class="summary">
+            <div class="summary-card ${getRiskLevel(results.summary.avgRisk).level}">
+              <div class="value">${results.summary.avgRisk}</div>
+              <div class="label">Average FRI</div>
+            </div>
+            <div class="summary-card ${getRiskLevel(results.summary.maxRisk).level}">
+              <div class="value">${results.summary.maxRisk}</div>
+              <div class="label">Peak FRI</div>
+            </div>
+            <div class="summary-card">
+              <div class="value">${results.summary.totalHours}h</div>
+              <div class="label">Total Hours</div>
+            </div>
+            <div class="summary-card">
+              <div class="value">${results.summary.highRiskCount}</div>
+              <div class="label">High Risk Shifts</div>
+            </div>
+          </div>
+
+          <h2>Component Analysis</h2>
+          <table>
+            <tr><th>Component</th><th>Average Score</th></tr>
+            <tr><td>Cumulative Fatigue</td><td>${results.summary.avgCumulative}</td></tr>
+            <tr><td>Timing Factor</td><td>${results.summary.avgTiming}</td></tr>
+            <tr><td>Job/Breaks Factor</td><td>${results.summary.avgJobBreaks}</td></tr>
+          </table>
+
+          <h2>Shift-by-Shift Analysis</h2>
+          <table>
+            <tr>
+              <th>Day</th>
+              <th>Times</th>
+              <th>Duration</th>
+              <th>Cumulative</th>
+              <th>Timing</th>
+              <th>Job/Breaks</th>
+              <th>FRI</th>
+              <th>Risk</th>
+            </tr>
+            ${results.calculations.map(calc => `
+              <tr class="${calc.riskLevel.level}">
+                <td>${calc.day}</td>
+                <td>${calc.startTime} - ${calc.endTime}</td>
+                <td>${calc.dutyLength}h</td>
+                <td>${calc.cumulative}</td>
+                <td>${calc.timing}</td>
+                <td>${calc.jobBreaks}</td>
+                <td><strong>${calc.riskIndex}</strong></td>
+                <td>${calc.riskLevel.label}</td>
+              </tr>
+            `).join('')}
+          </table>
+
+          <h2>Assessment Parameters</h2>
+          <div class="params">
+            <div class="params-grid">
+              <div class="param"><span class="param-label">Commute Time:</span> <span class="param-value">${params.commuteTime} min</span></div>
+              <div class="param"><span class="param-label">Workload:</span> <span class="param-value">${params.workload}/5</span></div>
+              <div class="param"><span class="param-label">Attention:</span> <span class="param-value">${params.attention}/5</span></div>
+              <div class="param"><span class="param-label">Break Frequency:</span> <span class="param-value">${params.breakFrequency} min</span></div>
+              <div class="param"><span class="param-label">Break Length:</span> <span class="param-value">${params.breakLength} min</span></div>
+              <div class="param"><span class="param-label">Continuous Work:</span> <span class="param-value">${params.continuousWork} min</span></div>
+            </div>
+          </div>
+
+          <h2>Risk Level Guide</h2>
+          <table>
+            <tr><th>FRI Range</th><th>Risk Level</th><th>Action</th></tr>
+            <tr class="low"><td>&lt; 1.0</td><td>Low</td><td>No action required</td></tr>
+            <tr class="moderate"><td>1.0 - 1.1</td><td>Moderate</td><td>Monitor and review</td></tr>
+            <tr class="elevated"><td>1.1 - 1.2</td><td>Elevated</td><td>Consider mitigation measures</td></tr>
+            <tr class="critical"><td>&gt; 1.2</td><td>Critical</td><td>Immediate review required</td></tr>
+          </table>
+
+          <div class="footer">
+            <p>This assessment uses the HSE Research Report RR446 methodology for calculating fatigue risk.</p>
+            <p>FRI = Cumulative Factor × Timing Factor × Job/Breaks Factor</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
   const getRiskColor = (level: string) => {
@@ -476,9 +663,38 @@ export function FatigueView({
           </div>
 
           {/* Right Panel - Results */}
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="p-4 border-b border-slate-200">
+          <div className="bg-white rounded-lg shadow-md" ref={resultsRef}>
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="font-semibold text-slate-800">Fatigue Risk Analysis</h3>
+              {results && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowChart(!showChart)}
+                    className={`text-xs px-3 py-1.5 rounded flex items-center gap-1 transition-colors ${
+                      showChart ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <BarChart className="w-3.5 h-3.5" />
+                    Chart
+                  </button>
+                  <button
+                    onClick={handleExportCSV}
+                    className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 flex items-center gap-1"
+                    title="Export to CSV"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    CSV
+                  </button>
+                  <button
+                    onClick={handlePrint}
+                    className="text-xs px-3 py-1.5 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 flex items-center gap-1"
+                    title="Print Report"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Report
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="p-4">
@@ -489,6 +705,29 @@ export function FatigueView({
                 </div>
               ) : (
                 <>
+                  {/* Fatigue Chart */}
+                  {showChart && (
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-slate-700">FRI Progression Chart</h4>
+                        <label className="flex items-center gap-2 text-xs text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={showComponents}
+                            onChange={(e) => setShowComponents(e.target.checked)}
+                            className="rounded border-slate-300"
+                          />
+                          Show component lines
+                        </label>
+                      </div>
+                      <FatigueChart
+                        data={results.calculations}
+                        showThresholds={true}
+                        showComponents={showComponents}
+                      />
+                    </div>
+                  )}
+
                   {/* Summary Cards */}
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.avgRisk).level)}`}>
