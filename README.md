@@ -1,115 +1,216 @@
-# Fatigue Management System - Prototype
+# Fatigue Management System
 
-A Network Rail fatigue management and compliance system built with Next.js and Supabase.
-
-## Features
-
-- ✅ User authentication (email/password)
-- ✅ Multi-project dashboard with statistics
-- ✅ Timeline planning view with 28-day periods
-- ✅ Shift pattern management
-- ✅ Drag-and-drop assignment
-- ✅ Compliance rule enforcement
-- ✅ HSE Fatigue Index calculator
-- ✅ Network Rail period system support
+A Network Rail compliant shift planning and fatigue monitoring system, implementing HSE Research Report RR446 fatigue calculations.
 
 ## Quick Start
 
-### Prerequisites
+```bash
+# Install dependencies
+npm install
 
-- Node.js 18+ installed
-- Supabase project (already configured)
-- Vercel account for deployment
+# Copy environment file and add your Supabase credentials
+cp .env.local.example .env.local
 
-### Local Development
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-3. Open http://localhost:3000
-
-### Deployment to Vercel
-
-1. Push this code to your GitHub repository
-2. Go to vercel.com and click "New Project"
-3. Import your GitHub repository
-4. Add environment variables:
-   - `NEXT_PUBLIC_SUPABASE_URL` = `https://tditgrtsggyogttfwzso.supabase.co`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `sb_publishable_TrbrfiGPuSFngQuIJU9fJg_kbzcaLVi`
-5. Click Deploy
+# Run development server
+npm run dev
+```
 
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js app router pages
-│   ├── layout.tsx         # Root layout
-│   ├── page.tsx           # Main entry point
-│   └── globals.css        # Global styles
-├── components/
-│   ├── auth/              # Authentication components
-│   ├── dashboard/         # Dashboard and project cards
-│   ├── planning/          # Timeline planning view
-│   └── calculator/        # Fatigue calculator
-└── lib/
-    ├── supabase.ts        # Supabase client
-    ├── types.ts           # TypeScript definitions
-    ├── fatigue-calculator.ts  # HSE RR446 algorithm
-    ├── compliance.ts      # Compliance rules engine
-    ├── data-service.ts    # Database operations
-    └── network-rail-periods.ts  # Period calculations
+fatigue-management/
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── layout.tsx          # Root layout
+│   │   ├── page.tsx            # Main page (to be created)
+│   │   └── globals.css         # Global styles + Tailwind
+│   │
+│   ├── components/             # React components
+│   │   ├── auth/               # Authentication (LoginForm, SignOutHeader)
+│   │   ├── dashboard/          # Dashboard (ProjectCard, StatsCards)
+│   │   ├── planning/           # Planning views (Timeline, Gantt, Weekly)
+│   │   ├── calculator/         # Fatigue calculator
+│   │   ├── modals/             # Modal dialogs
+│   │   └── ui/                 # Shared UI components
+│   │
+│   ├── hooks/                  # Custom React hooks
+│   │   ├── useSupabase.ts      # Supabase client hook
+│   │   ├── useProjects.ts      # Projects data hook
+│   │   └── useCompliance.ts    # Compliance checking hook
+│   │
+│   └── lib/                    # Core business logic
+│       ├── types.ts            # TypeScript interfaces
+│       ├── supabase.ts         # Supabase client & helpers
+│       ├── fatigue.ts          # HSE RR446 calculations
+│       ├── compliance.ts       # Network Rail rules
+│       └── periods.ts          # NR period utilities
+│
+├── package.json
+├── tsconfig.json               # Strict TypeScript config
+├── tailwind.config.ts
+└── .env.local.example
 ```
 
-## Compliance Rules
+## Core Modules
 
-| Rule | Limit | Severity |
-|------|-------|----------|
-| Maximum shift length | 12 hours | Error |
-| Minimum rest period | 12 hours | Error |
-| Maximum weekly hours | 72 hours (rolling 7 days) | Error |
-| Day-to-night transition | Prohibited same day | Error |
-| Approaching weekly limit | >66 hours | Warning |
+### `/src/lib/types.ts`
+TypeScript interfaces for all entities:
+- `Employee`, `Project`, `Team`, `ShiftPattern`, `Assignment`
+- `FatigueResult`, `RiskLevel`, `ComplianceViolation`
+- `NetworkRailPeriod`
 
-## Fatigue Index
+### `/src/lib/fatigue.ts`
+HSE Research Report RR446 fatigue index calculator:
+- `calculateFatigueSequence()` - Calculate fatigue for shift sequence
+- `getRiskLevel()` - Classify risk (low/moderate/elevated/critical)
+- `FATIGUE_TEMPLATES` - Pre-built shift patterns
 
-Based on HSE Research Report RR446:
+### `/src/lib/compliance.ts`
+Network Rail compliance rule checking:
+- Maximum 12-hour shifts
+- Minimum 12-hour rest between shifts
+- Maximum 72 hours per rolling 7 days
+- Maximum 13 consecutive days
+- Maximum 7 consecutive nights
 
-- **< 1.0** — Low Risk (Green)
-- **1.0 - 1.1** — Moderate (Yellow)
-- **1.1 - 1.2** — Elevated (Orange)
-- **> 1.2** — High Risk (Red)
+### `/src/lib/periods.ts`
+Network Rail 13-period financial year:
+- `generateNetworkRailPeriods()` - Generate periods for a year
+- `findPeriodForDate()` - Find which period a date falls into
+- `getCurrentPeriod()` - Get current period
+
+## Supabase Schema
+
+The system uses these tables (matching the v76 POC):
+
+```sql
+-- Organisations (multi-tenant)
+CREATE TABLE organisations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User profiles
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  email TEXT NOT NULL,
+  full_name TEXT,
+  role TEXT DEFAULT 'viewer',
+  organisation_id UUID REFERENCES organisations(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Employees
+CREATE TABLE employees (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  role TEXT,
+  email TEXT,
+  team_id INTEGER,
+  organisation_id UUID REFERENCES organisations(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Projects
+CREATE TABLE projects (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  location TEXT,
+  start_date DATE,
+  end_date DATE,
+  type TEXT,
+  organisation_id UUID REFERENCES organisations(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Teams
+CREATE TABLE teams (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  member_ids INTEGER[],
+  organisation_id UUID REFERENCES organisations(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Shift patterns
+CREATE TABLE shift_patterns (
+  id TEXT PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id),
+  name TEXT NOT NULL,
+  start_time TEXT,
+  end_time TEXT,
+  weekly_schedule JSONB,
+  duty_type TEXT DEFAULT 'Non-Possession',
+  is_night BOOLEAN DEFAULT FALSE,
+  organisation_id UUID REFERENCES organisations(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Assignments
+CREATE TABLE assignments (
+  id SERIAL PRIMARY KEY,
+  employee_id INTEGER REFERENCES employees(id),
+  project_id INTEGER REFERENCES projects(id),
+  shift_pattern_id TEXT REFERENCES shift_patterns(id),
+  date DATE NOT NULL,
+  custom_start_time TEXT,
+  custom_end_time TEXT,
+  notes TEXT,
+  organisation_id UUID REFERENCES organisations(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+## Development
+
+```bash
+# Run development server
+npm run dev
+
+# Type checking
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Build for production
+npm run build
+```
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase publishable key |
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
-## First Time Setup
+## Reference Documents
 
-1. Deploy the application
-2. Create an account (first user becomes admin)
-3. Add employees
-4. Create a project
-5. Create shift patterns
-6. Start assigning shifts
+- `Fatigue-Management-System-Technical-Specification.docx` - Full requirements
+- `Fatigue-Algorithm-Reference.docx` - HSE RR446 formulas
+- `Coding-Standards.docx` - Development conventions
+- `fatigue-management-v76.html` - Working POC reference
 
-## Tech Stack
+## Compliance Rules (Non-negotiable)
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Styling**: Tailwind CSS
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Hosting**: Vercel
+| Rule | Limit | Source |
+|------|-------|--------|
+| Maximum shift duration | 12 hours | NR/L2/OHS/003 |
+| Minimum rest between shifts | 12 hours | NR/L2/OHS/003 |
+| Maximum weekly hours | 72 hours (rolling 7 days) | Working Time Regs |
+| Maximum consecutive days | 13 days | NR/L2/OHS/003 |
+| Maximum consecutive nights | 7 nights | NR/L2/OHS/003 |
+
+## Fatigue Risk Levels
+
+| Index | Level | Colour |
+|-------|-------|--------|
+| < 1.0 | Low | Green |
+| 1.0 - 1.1 | Moderate | Yellow |
+| 1.1 - 1.2 | Elevated | Orange |
+| > 1.2 | Critical | Red |
 
 ## License
 
-Confidential - C Spencer Ltd
+Proprietary - All rights reserved
