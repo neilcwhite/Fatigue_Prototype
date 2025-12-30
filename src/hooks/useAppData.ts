@@ -159,7 +159,9 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [organisationId, loadAllData]);
 
