@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Edit2, Trash2, AlertTriangle } from '@/components/ui/Icons';
+import { Edit2 } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
 import type { 
   ProjectCamel, 
@@ -90,11 +90,13 @@ export function TimelineView({
   };
 
   // Handle delete with confirmation
-  const handleDelete = async (assignment: AssignmentCamel) => {
-    const employeeName = getEmployeeName(assignment.employeeId);
+  const handleDelete = async (assignmentId: number, employeeId: number) => {
+    const employeeName = getEmployeeName(employeeId);
     if (confirm(`Remove ${employeeName} from this shift?`)) {
       try {
-        await onDeleteAssignment(assignment.id);
+        console.log('Deleting assignment:', assignmentId);
+        await onDeleteAssignment(assignmentId);
+        console.log('Assignment deleted successfully');
       } catch (err) {
         console.error('Error deleting assignment:', err);
         alert('Failed to delete assignment');
@@ -236,26 +238,20 @@ export function TimelineView({
                         .map((assignment) => (
                           <div
                             key={assignment.id}
-                            className={`text-[10px] px-1.5 py-1 mb-1 rounded group hover:opacity-90 transition-colors ${getTileStyle(assignment.violations)}`}
-                            title={assignment.violations.length > 0 
+                            className={`text-[10px] px-1.5 py-1 mb-1 rounded group hover:opacity-90 transition-colors cursor-pointer ${getTileStyle(assignment.violations)}`}
+                            title={assignment.violations.length > 0
                               ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
                               : assignment.employeeName
                             }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(assignment.id, assignment.employeeId);
+                            }}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <div className="flex items-center gap-1 min-w-0 flex-1">
-                                {assignment.violations.some(v => v.severity === 'error') && (
-                                  <AlertTriangle className="w-3 h-3 flex-shrink-0 text-red-600" />
-                                )}
-                                {assignment.violations.some(v => v.severity === 'warning') && 
-                                 !assignment.violations.some(v => v.severity === 'error') && (
-                                  <AlertTriangle className="w-3 h-3 flex-shrink-0 text-amber-600" />
-                                )}
-                                <span className="truncate font-medium">
-                                  {assignment.employeeName.split(' ')[0]}
-                                  {assignment.employeeName.split(' ')[1] ? ` ${assignment.employeeName.split(' ')[1][0]}.` : ''}
-                                </span>
-                              </div>
+                              <span className="font-medium truncate flex-1">
+                                {assignment.employeeName}
+                              </span>
                               <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 <button
                                   onClick={(e) => {
@@ -266,16 +262,6 @@ export function TimelineView({
                                   title="View person details"
                                 >
                                   <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(assignment);
-                                  }}
-                                  className="hover:bg-red-200 rounded p-0.5"
-                                  title="Remove"
-                                >
-                                  <Trash2 className="w-3 h-3" />
                                 </button>
                               </div>
                             </div>
