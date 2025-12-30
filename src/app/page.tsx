@@ -146,7 +146,7 @@ export default function Home() {
       name: data.name,
       startTime: data.startTime,
       endTime: data.endTime,
-      dutyType: data.dutyType,
+      dutyType: data.dutyType as 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other',
       isNight: data.isNight,
       weeklySchedule: data.weeklySchedule,
     });

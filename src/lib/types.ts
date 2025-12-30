@@ -64,7 +64,7 @@ export interface ShiftPattern {
   start_time?: string;
   end_time?: string;
   weekly_schedule?: WeeklySchedule;
-  duty_type: 'Possession' | 'Non-Possession' | 'Office';
+  duty_type: 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other';
   is_night: boolean;
   organisation_id: string;
   created_at?: string;
@@ -205,7 +205,7 @@ export interface ShiftPatternCamel {
   startTime?: string;
   endTime?: string;
   weeklySchedule?: WeeklySchedule;
-  dutyType: 'Possession' | 'Non-Possession' | 'Office';
+  dutyType: 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other';
   isNight: boolean;
   organisationId: string;
 }
