@@ -183,6 +183,7 @@ export default function Home() {
           onCreateAssignment={createAssignment}
           onDeleteAssignment={deleteAssignment}
           onCreateShiftPattern={() => setShowShiftPatternModal(true)}
+          onCreateShiftPatternDirect={createShiftPattern}
           onNavigateToPerson={(empId) => {
             setSelectedEmployee(empId);
             setCurrentView('person');

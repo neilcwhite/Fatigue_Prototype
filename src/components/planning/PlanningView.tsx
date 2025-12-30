@@ -32,6 +32,7 @@ interface PlanningViewProps {
   }) => Promise<void>;
   onDeleteAssignment: (id: number) => Promise<void>;
   onCreateShiftPattern?: () => void;
+  onCreateShiftPatternDirect?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
   onNavigateToPerson?: (employeeId: number) => void;
 }
 
@@ -48,6 +49,7 @@ export function PlanningView({
   onCreateAssignment,
   onDeleteAssignment,
   onCreateShiftPattern,
+  onCreateShiftPatternDirect,
   onNavigateToPerson,
 }: PlanningViewProps) {
   // View mode state
@@ -102,6 +104,33 @@ export function PlanningView({
   // Filter data for this project
   const projectShiftPatterns = shiftPatterns.filter(sp => sp.projectId === project.id);
   const projectAssignments = assignments.filter(a => a.projectId === project.id);
+
+  // Find or track the Custom pattern for ad-hoc assignments
+  const customPatternId = `${project.id}-custom`;
+  const customPattern = projectShiftPatterns.find(sp => sp.id === customPatternId);
+
+  // Helper to ensure Custom pattern exists
+  const ensureCustomPattern = async (): Promise<string> => {
+    if (customPattern) {
+      return customPatternId;
+    }
+
+    // Create the Custom pattern if it doesn't exist
+    if (onCreateShiftPatternDirect) {
+      await onCreateShiftPatternDirect({
+        id: customPatternId,  // Use specific ID so we can find it later
+        projectId: project.id,
+        name: 'Custom (Ad-hoc)',
+        startTime: '',
+        endTime: '',
+        dutyType: 'Other',
+        isNight: false,
+        weeklySchedule: null,
+      } as any);  // Cast to any since base type doesn't have id
+    }
+
+    return customPatternId;
+  };
   
   // Filter employees for search
   const filteredEmployees = employees.filter(emp =>
@@ -240,23 +269,27 @@ export function PlanningView({
     draggedEmployeeRef.current = null;
   };
 
-  // Handle custom time confirmation
+  // Handle custom time confirmation - assigns to Custom pattern, not original
   const handleCustomTimeConfirm = async (startTime: string, endTime: string) => {
     if (!customTimeModal) return;
-    
-    const { employees: emps, shiftPatternId, date } = customTimeModal;
-    
+
+    const { employees: emps, date } = customTimeModal;
+
+    // Ensure the Custom pattern exists and get its ID
+    const patternId = await ensureCustomPattern();
+
     for (const employee of emps) {
+      // Check if already assigned to Custom pattern on this date
       const existing = projectAssignments.find(
-        a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
+        a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
       );
-      
+
       if (!existing) {
         try {
           await onCreateAssignment({
             employeeId: employee.id,
             projectId: project.id,
-            shiftPatternId,
+            shiftPatternId: patternId,
             date,
             customStartTime: startTime,
             customEndTime: endTime,
@@ -266,7 +299,7 @@ export function PlanningView({
         }
       }
     }
-    
+
     setCustomTimeModal(null);
     clearSelection();
   };

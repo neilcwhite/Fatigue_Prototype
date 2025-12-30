@@ -288,11 +288,12 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   // ==================== SHIFT PATTERN OPERATIONS ====================
 
-  const createShiftPattern = async (patternData: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => {
+  const createShiftPattern = async (patternData: Omit<ShiftPatternCamel, 'id' | 'organisationId'> & { id?: string }) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
-    
-    const id = `${patternData.projectId}-${Date.now()}`;
-    
+
+    // Use provided ID or generate one
+    const id = patternData.id || `${patternData.projectId}-${Date.now()}`;
+
     const { error } = await supabase.from('shift_patterns').insert({
       id,
       project_id: patternData.projectId,
@@ -304,7 +305,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       is_night: patternData.isNight,
       organisation_id: organisationId,
     });
-    
+
     if (error) throw error;
     await loadAllData();
   };

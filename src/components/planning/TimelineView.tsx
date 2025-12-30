@@ -70,19 +70,29 @@ export function TimelineView({
 
   // Check if shift pattern has hours for a given day
   const shiftPatternHasHoursForDay = (pattern: ShiftPatternCamel, dateStr: string): boolean => {
+    // Custom (ad-hoc) pattern - check if there's an assignment with custom times for this date
+    // This pattern accepts drops via the modal, so we only show as "valid" cells that have assignments
+    if (pattern.id.endsWith('-custom')) {
+      const hasAssignmentOnDate = assignments.some(
+        a => a.shiftPatternId === pattern.id && a.date === dateStr
+      );
+      return hasAssignmentOnDate;
+    }
+
     // If pattern has weekly schedule, check that day
     if (pattern.weeklySchedule) {
       const dayOfWeek = new Date(dateStr).getDay();
-      const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = 
+      const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
         ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const dayKey = dayNames[dayOfWeek];
       const daySchedule = pattern.weeklySchedule[dayKey];
       return !!(daySchedule?.startTime && daySchedule?.endTime);
     }
-    
+
     // Simple pattern - always has hours
     return !!(pattern.startTime && pattern.endTime);
   };
+
 
   // Get employee name by ID
   const getEmployeeName = (employeeId: number): string => {
@@ -228,20 +238,28 @@ export function TimelineView({
                       {cellAssignments
                         .map(a => {
                           const violations = getViolationsForCell(a.employeeId, date);
-                          return { 
-                            ...a, 
+                          const hasCustomTimes = !!(a.customStartTime && a.customEndTime);
+                          const timeDisplay = hasCustomTimes
+                            ? `${a.customStartTime}-${a.customEndTime}`
+                            : null;
+                          return {
+                            ...a,
                             employeeName: getEmployeeName(a.employeeId),
-                            violations
+                            violations,
+                            timeDisplay
                           };
                         })
                         .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
                         .map((assignment) => (
                           <div
                             key={assignment.id}
-                            className={`text-xs px-2 py-1.5 mb-1 rounded group hover:opacity-90 transition-colors ${getTileStyle(assignment.violations)}`}
-                            title={assignment.violations.length > 0
-                              ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
-                              : assignment.employeeName
+                            className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-colors ${getTileStyle(assignment.violations)}`}
+                            title={
+                              assignment.timeDisplay
+                                ? `${assignment.employeeName}\n${assignment.timeDisplay}${assignment.violations.length > 0 ? `\n\n${getViolationTooltip(assignment.violations)}` : ''}`
+                                : assignment.violations.length > 0
+                                  ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
+                                  : assignment.employeeName
                             }
                             onDragOver={(e) => {
                               if (isPartOfPattern) {
@@ -257,30 +275,39 @@ export function TimelineView({
                               }
                             }}
                           >
-                            <div className="font-medium mb-1">
-                              {assignment.employeeName}
-                            </div>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onNavigateToPerson?.(assignment.employeeId);
-                                }}
-                                className="hover:bg-white/50 rounded p-0.5"
-                                title="View person details"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(assignment.id, assignment.employeeId);
-                                }}
-                                className="hover:bg-red-200 rounded p-0.5"
-                                title="Remove from shift"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                            <div className="flex items-center justify-between gap-0.5">
+                              <div className="truncate">
+                                <span className="font-medium">
+                                  {assignment.employeeName}
+                                </span>
+                                {assignment.timeDisplay && (
+                                  <span className="text-[8px] opacity-75 ml-1">
+                                    {assignment.timeDisplay}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onNavigateToPerson?.(assignment.employeeId);
+                                  }}
+                                  className="hover:bg-white/50 rounded p-0.5"
+                                  title="View person details"
+                                >
+                                  <Edit2 className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(assignment.id, assignment.employeeId);
+                                  }}
+                                  className="hover:bg-red-200 rounded p-0.5"
+                                  title="Remove from shift"
+                                >
+                                  <Trash2 className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
