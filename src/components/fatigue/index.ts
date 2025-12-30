@@ -1,1 +1,0 @@
-export { FatigueView } from './FatigueView';
