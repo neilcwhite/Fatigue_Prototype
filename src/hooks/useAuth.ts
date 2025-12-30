@@ -95,13 +95,20 @@ export function useAuth(): UseAuthReturn {
     }
 
     // Get current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        loadProfile(session.user.id, session.user.email || '');
-      }
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (session?.user) {
+          setUser(session.user);
+          loadProfile(session.user.id, session.user.email || '');
+        }
+      })
+      .catch((err) => {
+        console.error('Error getting session:', err);
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
