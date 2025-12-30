@@ -176,6 +176,7 @@ export default function Home() {
           assignments={assignments}
           shiftPatterns={shiftPatterns}
           onSelectProject={handleSelectProject}
+          onViewSummary={handleNavigateToSummary}
           onViewEmployee={handleViewEmployee}
           onViewFatigue={() => setCurrentView('fatigue')}
           onViewTeams={() => setCurrentView('teams')}
@@ -231,6 +232,7 @@ export default function Home() {
           shiftPatterns={shiftPatterns}
           onSelectProject={(id) => setSelectedProject(id)}
           onNavigateToPerson={handleNavigateToPerson}
+          onNavigateToPlanning={handleSelectProject}
         />
       )}
 
@@ -249,9 +251,12 @@ export default function Home() {
           onBack={handleBackToDashboard}
           teams={teams}
           employees={employees}
+          projects={projects}
+          shiftPatterns={shiftPatterns}
           onCreateTeam={createTeam}
           onUpdateTeam={updateTeam}
           onDeleteTeam={deleteTeam}
+          onCreateAssignment={createAssignment}
         />
       )}
 

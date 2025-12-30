@@ -132,6 +132,10 @@ export function Dashboard({
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
+                    <span className="text-slate-600">Shift Patterns:</span>
+                    <span className="font-semibold">{stats.shiftPatternCount}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-slate-600">Total Hours:</span>
                     <span className="font-semibold">{stats.totalHours.toLocaleString()}h</span>
                   </div>
@@ -142,16 +146,27 @@ export function Dashboard({
                   <div className="flex justify-between">
                     <span className="text-slate-600">Compliance:</span>
                     <span className={`font-semibold ${stats.violations.length > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.violations.length === 0 
-                        ? 'Compliant' 
+                      {stats.violations.length === 0
+                        ? 'Compliant'
                         : `${stats.violations.length} Breach${stats.violations.length > 1 ? 'es' : ''}`}
                     </span>
                   </div>
                 </div>
 
-                <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors">
-                  Open Project
-                </button>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                    className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    Planning
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onViewSummary(project.id); }}
+                    className="flex-1 bg-violet-600 text-white py-2 rounded-md hover:bg-violet-700 transition-colors text-sm font-medium"
+                  >
+                    Summary
+                  </button>
+                </div>
               </div>
             );
           })}

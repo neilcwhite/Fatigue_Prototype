@@ -21,6 +21,7 @@ interface SummaryViewProps {
   shiftPatterns: ShiftPatternCamel[];
   onSelectProject: (id: number) => void;
   onNavigateToPerson: (employeeId: number) => void;
+  onNavigateToPlanning: (projectId: number) => void;
 }
 
 function getShiftDuration(pattern: ShiftPatternCamel, date: string): number {
@@ -62,6 +63,7 @@ export function SummaryView({
   shiftPatterns,
   onSelectProject,
   onNavigateToPerson,
+  onNavigateToPlanning,
 }: SummaryViewProps) {
   const projectAssignments = useMemo(() => 
     assignments.filter(a => a.projectId === project.id),
@@ -162,6 +164,12 @@ export function SummaryView({
               <span className="text-white font-semibold text-lg">{project.name} <span className="text-violet-400">Summary</span></span>
               <span className="text-slate-500 text-sm ml-3">{project.location}</span>
             </div>
+            <button
+              onClick={() => onNavigateToPlanning(project.id)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Go to Planning
+            </button>
           </div>
           <div className="flex items-center gap-4">
             <select value={project.id} onChange={(e) => onSelectProject(Number(e.target.value))} className="bg-slate-700 text-white border-none px-3 py-1.5 rounded text-sm">
