@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Edit2 } from '@/components/ui/Icons';
+import { Edit2, Trash2 } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
 import type { 
   ProjectCamel, 
@@ -238,32 +238,49 @@ export function TimelineView({
                         .map((assignment) => (
                           <div
                             key={assignment.id}
-                            className={`text-[10px] px-1.5 py-1 mb-1 rounded group hover:opacity-90 transition-colors cursor-pointer ${getTileStyle(assignment.violations)}`}
+                            className={`text-xs px-2 py-1.5 mb-1 rounded group hover:opacity-90 transition-colors ${getTileStyle(assignment.violations)}`}
                             title={assignment.violations.length > 0
                               ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
                               : assignment.employeeName
                             }
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(assignment.id, assignment.employeeId);
+                            onDragOver={(e) => {
+                              if (isPartOfPattern) {
+                                onCellDragOver(e);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              if (isPartOfPattern) {
+                                onCellDrop(e, pattern.id, date);
+                              } else {
+                                e.preventDefault();
+                                onCellDrop(e, pattern.id, date, false);
+                              }
                             }}
                           >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-medium truncate flex-1">
-                                {assignment.employeeName}
-                              </span>
-                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigateToPerson?.(assignment.employeeId);
-                                  }}
-                                  className="hover:bg-white/50 rounded p-0.5"
-                                  title="View person details"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                              </div>
+                            <div className="font-medium mb-1">
+                              {assignment.employeeName}
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onNavigateToPerson?.(assignment.employeeId);
+                                }}
+                                className="hover:bg-white/50 rounded p-0.5"
+                                title="View person details"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(assignment.id, assignment.employeeId);
+                                }}
+                                className="hover:bg-red-200 rounded p-0.5"
+                                title="Remove from shift"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
                           </div>
                         ))}
