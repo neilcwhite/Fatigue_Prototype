@@ -463,8 +463,18 @@ export function TimelineView({
             <span className="text-sm">Create a shift pattern to start planning.</span>
           </div>
         ) : (
-          shiftPatterns.map(pattern => {
+          // Sort patterns so Custom (Ad-hoc) appears at the bottom
+          [...shiftPatterns]
+            .sort((a, b) => {
+              const aIsCustom = a.id.endsWith('-custom');
+              const bIsCustom = b.id.endsWith('-custom');
+              if (aIsCustom && !bIsCustom) return 1;
+              if (!aIsCustom && bIsCustom) return -1;
+              return a.name.localeCompare(b.name);
+            })
+            .map(pattern => {
             const patternAssignments = assignments.filter(a => a.shiftPatternId === pattern.id);
+            const isCustomPattern = pattern.id.endsWith('-custom');
 
             return (
               <div
@@ -475,14 +485,22 @@ export function TimelineView({
                 {/* Pattern Name Cell */}
                 <div className="p-3 sticky left-0 bg-white border-r border-slate-200 z-10">
                   <div className="font-semibold text-sm text-slate-800">{pattern.name}</div>
-                  <div className="text-xs text-slate-600">
-                    {pattern.startTime || '??:??'} - {pattern.endTime || '??:??'}
-                  </div>
-                  <div className={`text-xs mt-1 ${
-                    pattern.isNight ? 'text-purple-600' : 'text-slate-500'
-                  }`}>
-                    {pattern.dutyType} {pattern.isNight && '🌙'}
-                  </div>
+                  {!isCustomPattern && (
+                    <div className="text-xs text-slate-600">
+                      {pattern.startTime || '??:??'} - {pattern.endTime || '??:??'}
+                    </div>
+                  )}
+                  {isCustomPattern ? (
+                    <div className="text-xs mt-1 text-amber-600">
+                      Ad-hoc shifts
+                    </div>
+                  ) : (
+                    <div className={`text-xs mt-1 ${
+                      pattern.isNight ? 'text-purple-600' : 'text-slate-500'
+                    }`}>
+                      {pattern.dutyType} {pattern.isNight && '🌙'}
+                    </div>
+                  )}
                 </div>
 
                 {/* Day Cells */}
@@ -578,7 +596,7 @@ export function TimelineView({
                               }}
                             >
                               <div className="flex items-center justify-between gap-0.5">
-                                <div className="truncate">
+                                <div className="whitespace-nowrap">
                                   <span className="font-medium">
                                     {assignment.employeeName}
                                   </span>
