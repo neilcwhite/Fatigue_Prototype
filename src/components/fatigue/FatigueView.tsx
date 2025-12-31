@@ -328,6 +328,34 @@ export function FatigueView({
     setParams({ ...DEFAULT_FATIGUE_PARAMS });
   };
 
+  // Apply role preset to workload/attention
+  const handleApplyRolePreset = (roleKey: RoleKey) => {
+    setSelectedRole(roleKey);
+    if (roleKey !== 'custom') {
+      const role = ROLE_PRESETS[roleKey];
+      setParams(prev => ({
+        ...prev,
+        workload: role.workload,
+        attention: role.attention,
+      }));
+      // Also update all existing shifts
+      setShifts(shifts.map(s => ({
+        ...s,
+        workload: role.workload,
+        attention: role.attention,
+      })));
+    }
+  };
+
+  // Toggle a role in the comparison list
+  const toggleCompareRole = (roleKey: RoleKey) => {
+    if (selectedRolesForCompare.includes(roleKey)) {
+      setSelectedRolesForCompare(selectedRolesForCompare.filter(r => r !== roleKey));
+    } else {
+      setSelectedRolesForCompare([...selectedRolesForCompare, roleKey]);
+    }
+  };
+
   // Export to CSV
   const handleExportCSV = () => {
     if (!results) return;
