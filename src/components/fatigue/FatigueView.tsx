@@ -15,6 +15,13 @@ import { FatigueChart } from './FatigueChart';
 
 interface Shift extends ShiftDefinition {
   id: number;
+  // Per-day parameters (optional - uses global defaults if not set)
+  commuteIn?: number;
+  commuteOut?: number;
+  workload?: number;
+  attention?: number;
+  breakFreq?: number;
+  breakLen?: number;
 }
 
 interface FatigueViewProps {
@@ -88,6 +95,7 @@ export function FatigueView({
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [expandedShift, setExpandedShift] = useState<number | null>(null);
+  const [expandedShiftParams, setExpandedShiftParams] = useState<number | null>(null);
   const [showChart, setShowChart] = useState(true);
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -168,21 +176,57 @@ export function FatigueView({
 
   const handleAddShift = () => {
     const lastDay = shifts.length > 0 ? Math.max(...shifts.map(s => s.day)) : 0;
-    setShifts([...shifts, { id: Date.now(), day: lastDay + 1, startTime: '08:00', endTime: '17:00' }]);
+    setShifts([...shifts, {
+      id: Date.now(),
+      day: lastDay + 1,
+      startTime: '08:00',
+      endTime: '17:00',
+      // Initialize with global defaults split into in/out
+      commuteIn: Math.floor(params.commuteTime / 2),
+      commuteOut: Math.ceil(params.commuteTime / 2),
+      workload: params.workload,
+      attention: params.attention,
+      breakFreq: params.breakFrequency,
+      breakLen: params.breakLength,
+    }]);
   };
 
   const handleRemoveShift = (id: number) => {
     setShifts(shifts.filter(s => s.id !== id));
+    if (expandedShiftParams === id) setExpandedShiftParams(null);
   };
 
   const handleUpdateShift = (id: number, field: keyof Shift, value: any) => {
     setShifts(shifts.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
 
+  // Apply global params to all shifts
+  const handleApplyGlobalToAll = () => {
+    setShifts(shifts.map(s => ({
+      ...s,
+      commuteIn: Math.floor(params.commuteTime / 2),
+      commuteOut: Math.ceil(params.commuteTime / 2),
+      workload: params.workload,
+      attention: params.attention,
+      breakFreq: params.breakFrequency,
+      breakLen: params.breakLength,
+    })));
+  };
+
   const handleLoadTemplate = (templateKey: string) => {
     const template = TEMPLATES[templateKey as keyof typeof TEMPLATES];
     if (template) {
-      setShifts(template.shifts.map((s, i) => ({ ...s, id: Date.now() + i })));
+      setShifts(template.shifts.map((s, i) => ({
+        ...s,
+        id: Date.now() + i,
+        // Initialize with global defaults
+        commuteIn: Math.floor(params.commuteTime / 2),
+        commuteOut: Math.ceil(params.commuteTime / 2),
+        workload: params.workload,
+        attention: params.attention,
+        breakFreq: params.breakFrequency,
+        breakLen: params.breakLength,
+      })));
     }
   };
 
@@ -485,49 +529,169 @@ export function FatigueView({
                   </button>
                 </div>
 
-                {/* Shifts List */}
-                <div className="space-y-2 max-h-80 overflow-y-auto">
+                {/* Shifts List with Per-Day Parameters */}
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
                   {shifts.length === 0 ? (
                     <p className="text-slate-500 text-center py-8">
                       Add shifts or load a template to calculate fatigue risk
                     </p>
                   ) : (
-                    [...shifts].sort((a, b) => a.day - b.day).map(shift => (
-                      <div key={shift.id} className="border rounded-lg p-3 bg-slate-50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="number"
-                              min="1"
-                              max="28"
-                              value={shift.day}
-                              onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
-                              className="w-16 border rounded px-2 py-1 text-sm text-slate-900 bg-white text-center"
-                              title="Day number"
-                            />
-                            <input
-                              type="time"
-                              value={shift.startTime}
-                              onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
-                              className="border rounded px-2 py-1 text-sm text-slate-900 bg-white"
-                            />
-                            <span className="text-slate-600">to</span>
-                            <input
-                              type="time"
-                              value={shift.endTime}
-                              onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
-                              className="border rounded px-2 py-1 text-sm text-slate-900 bg-white"
-                            />
+                    [...shifts].sort((a, b) => a.day - b.day).map(shift => {
+                      const isExpanded = expandedShiftParams === shift.id;
+                      return (
+                        <div key={shift.id} className="border rounded-lg bg-slate-50 overflow-hidden">
+                          {/* Main Row */}
+                          <div className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-slate-500 w-8">Day</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="28"
+                                  value={shift.day}
+                                  onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
+                                  className="w-14 border rounded px-2 py-1 text-sm text-slate-900 bg-white text-center"
+                                  title="Day number"
+                                />
+                              </div>
+                              <input
+                                type="time"
+                                value={shift.startTime}
+                                onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
+                                className="border rounded px-2 py-1 text-sm text-slate-900 bg-white w-24"
+                              />
+                              <span className="text-slate-400 text-xs">to</span>
+                              <input
+                                type="time"
+                                value={shift.endTime}
+                                onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
+                                className="border rounded px-2 py-1 text-sm text-slate-900 bg-white w-24"
+                              />
+                              {/* Commute summary inline */}
+                              <div className="flex items-center gap-1 ml-2 text-xs text-slate-500">
+                                <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded" title="Commute to work">
+                                  {shift.commuteIn ?? 30}m in
+                                </span>
+                                <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded" title="Commute from work">
+                                  {shift.commuteOut ?? 30}m out
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setExpandedShiftParams(isExpanded ? null : shift.id)}
+                                className={`p-1.5 rounded transition-colors ${isExpanded ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}
+                                title="Edit day parameters"
+                              >
+                                <Settings className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRemoveShift(shift.id)}
+                                className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => handleRemoveShift(shift.id)}
-                            className="text-red-500 hover:text-red-700 p-1"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+
+                          {/* Expanded Per-Day Parameters */}
+                          {isExpanded && (
+                            <div className="px-3 pb-3 pt-0 border-t border-slate-200 bg-white">
+                              <div className="pt-3 space-y-3">
+                                <p className="text-xs text-slate-500 font-medium">Day {shift.day} Fatigue Parameters</p>
+
+                                {/* Commute In/Out */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1">Commute IN (mins)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="180"
+                                      value={shift.commuteIn ?? 30}
+                                      onChange={(e) => handleUpdateShift(shift.id, 'commuteIn', parseInt(e.target.value) || 0)}
+                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Travel TO work this morning</p>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1">Commute OUT (mins)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="180"
+                                      value={shift.commuteOut ?? 30}
+                                      onChange={(e) => handleUpdateShift(shift.id, 'commuteOut', parseInt(e.target.value) || 0)}
+                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Travel FROM work this evening</p>
+                                  </div>
+                                </div>
+
+                                {/* Workload / Attention */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1">Workload (1-5)</label>
+                                    <select
+                                      value={shift.workload ?? 2}
+                                      onChange={(e) => handleUpdateShift(shift.id, 'workload', parseInt(e.target.value))}
+                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                                    >
+                                      <option value={1}>1 - Light</option>
+                                      <option value={2}>2 - Moderate</option>
+                                      <option value={3}>3 - Average</option>
+                                      <option value={4}>4 - Heavy</option>
+                                      <option value={5}>5 - Very Heavy</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1">Attention (1-5)</label>
+                                    <select
+                                      value={shift.attention ?? 1}
+                                      onChange={(e) => handleUpdateShift(shift.id, 'attention', parseInt(e.target.value))}
+                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                                    >
+                                      <option value={1}>1 - Low</option>
+                                      <option value={2}>2 - Moderate</option>
+                                      <option value={3}>3 - Average</option>
+                                      <option value={4}>4 - High</option>
+                                      <option value={5}>5 - Very High</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                {/* Break Frequency / Length */}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1">Break Freq (mins)</label>
+                                    <input
+                                      type="number"
+                                      min="30"
+                                      max="480"
+                                      value={shift.breakFreq ?? 180}
+                                      onChange={(e) => handleUpdateShift(shift.id, 'breakFreq', parseInt(e.target.value) || 180)}
+                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1">Break Length (mins)</label>
+                                    <input
+                                      type="number"
+                                      min="5"
+                                      max="60"
+                                      value={shift.breakLen ?? 30}
+                                      onChange={(e) => handleUpdateShift(shift.id, 'breakLen', parseInt(e.target.value) || 30)}
+                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -537,19 +701,32 @@ export function FatigueView({
             {showSettings && (
               <div className="bg-white rounded-lg shadow-md">
                 <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-800">HSE RR446 Parameters</h3>
-                  <button
-                    onClick={handleResetParams}
-                    className="text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    Reset to Defaults
-                  </button>
+                  <h3 className="font-semibold text-slate-800">HSE RR446 Default Parameters</h3>
+                  <div className="flex items-center gap-2">
+                    {shifts.length > 0 && (
+                      <button
+                        onClick={handleApplyGlobalToAll}
+                        className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
+                      >
+                        Apply to All Days
+                      </button>
+                    )}
+                    <button
+                      onClick={handleResetParams}
+                      className="text-xs text-blue-600 hover:text-blue-700"
+                    >
+                      Reset Defaults
+                    </button>
+                  </div>
                 </div>
                 <div className="p-4 space-y-4">
+                  <p className="text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                    These are default values for new shifts. Click the <Settings className="w-3 h-3 inline" /> icon on each shift to customize per-day parameters (e.g., different commute times for hotel stays).
+                  </p>
                   {/* Commute */}
                   <div>
                     <label className="text-sm font-medium text-slate-700 block mb-1">
-                      Commute Time (minutes)
+                      Default Commute Time (minutes)
                     </label>
                     <input
                       type="number"
@@ -559,7 +736,7 @@ export function FatigueView({
                       onChange={(e) => setParams({ ...params, commuteTime: parseInt(e.target.value) || 0 })}
                       className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
                     />
-                    <p className="text-xs text-slate-500 mt-1">Total daily commute time (home to work + work to home)</p>
+                    <p className="text-xs text-slate-500 mt-1">Total daily commute (split 50/50 for in/out)</p>
                   </div>
 
                   {/* Workload & Attention */}

@@ -286,6 +286,7 @@ export function getRiskLevel(riskIndex: number): RiskLevel {
 
 /**
  * Calculate fatigue index for a single shift
+ * Uses per-shift parameters if provided, otherwise falls back to global params
  */
 export function calculateRiskIndex(
   duty: ShiftDefinition,
@@ -296,15 +297,35 @@ export function calculateRiskIndex(
   const startHour = parseTimeToHours(duty.startTime);
   let endHour = parseTimeToHours(duty.endTime);
   if (endHour <= startHour) endHour += 24;
-  
+
   const dutyLength = endHour - startHour;
-  
+
+  // Use per-shift parameters if available, otherwise use global params
+  const commuteIn = duty.commuteIn ?? Math.floor(params.commuteTime / 2);
+  const commuteOut = duty.commuteOut ?? Math.ceil(params.commuteTime / 2);
+  const totalCommute = commuteIn + commuteOut;
+
+  const shiftWorkload = duty.workload ?? params.workload;
+  const shiftAttention = duty.attention ?? params.attention;
+  const shiftBreakFreq = duty.breakFreq ?? params.breakFrequency;
+  const shiftBreakLen = duty.breakLen ?? params.breakLength;
+
+  // Build per-shift job/breaks params
+  const shiftJobParams = {
+    workload: shiftWorkload,
+    attention: shiftAttention,
+    breakFrequency: shiftBreakFreq,
+    breakLength: shiftBreakLen,
+    continuousWork: shiftBreakFreq,
+    breakAfterContinuous: shiftBreakLen,
+  };
+
   const cumulative = calculateCumulativeComponent(allDuties, dutyIndex);
-  const timing = calculateTimingComponent(startHour, endHour, params.commuteTime);
-  const jobBreaks = calculateJobBreaksComponent(dutyLength, params);
-  
+  const timing = calculateTimingComponent(startHour, endHour, totalCommute);
+  const jobBreaks = calculateJobBreaksComponent(dutyLength, shiftJobParams);
+
   const riskIndex = cumulative * timing * jobBreaks;
-  
+
   return {
     day: duty.day,
     riskIndex: Math.round(riskIndex * 1000) / 1000,
