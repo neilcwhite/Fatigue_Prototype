@@ -59,8 +59,8 @@ export function PersonView({
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(initialPeriodInfo.periodIdx);
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
 
-  // Fatigue parameters UI state
-  const [showFatigueParams, setShowFatigueParams] = useState(false);
+  // Fatigue parameters UI state - expanded by default
+  const [showFatigueParams, setShowFatigueParams] = useState(true);
   const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
   const [editingParams, setEditingParams] = useState<{
     workload: number;
@@ -140,15 +140,28 @@ export function PersonView({
     };
   }, [periodAssignments, shiftPatterns, currentPeriod]);
 
-  // Get unique shift patterns used in this period with their fatigue parameters
+  // Get unique shift patterns used in this period with their fatigue parameters and average FRI
   const periodPatterns = useMemo(() => {
     const patternIds = [...new Set(periodAssignments.map(a => a.shiftPatternId))];
     return patternIds.map(id => {
       const pattern = shiftPatterns.find(p => p.id === id);
-      const assignmentCount = periodAssignments.filter(a => a.shiftPatternId === id).length;
-      return pattern ? { ...pattern, assignmentCount } : null;
-    }).filter(Boolean) as (ShiftPatternCamel & { assignmentCount: number })[];
-  }, [periodAssignments, shiftPatterns]);
+      const patternAssignmentIndices = periodAssignments
+        .map((a, idx) => a.shiftPatternId === id ? idx : -1)
+        .filter(i => i !== -1);
+      const assignmentCount = patternAssignmentIndices.length;
+
+      // Calculate average FRI for this pattern's assignments
+      let avgFRI = 0;
+      let maxFRI = 0;
+      if (fatigueAnalysis && patternAssignmentIndices.length > 0) {
+        const friValues = patternAssignmentIndices.map(i => fatigueAnalysis.results[i]?.riskIndex || 0);
+        avgFRI = friValues.reduce((sum, v) => sum + v, 0) / friValues.length;
+        maxFRI = Math.max(...friValues);
+      }
+
+      return pattern ? { ...pattern, assignmentCount, avgFRI, maxFRI } : null;
+    }).filter(Boolean) as (ShiftPatternCamel & { assignmentCount: number; avgFRI: number; maxFRI: number })[];
+  }, [periodAssignments, shiftPatterns, fatigueAnalysis]);
 
   // Build map of assignment IDs to their violation severity (error takes precedence over warning)
   const violationAssignmentSeverity = useMemo(() => {
@@ -620,57 +633,36 @@ export function PersonView({
               </div>
             </div>
             <div className="p-3">
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                <div className="bg-slate-50 rounded p-2">
-                  <p className="text-[10px] text-slate-500">Average FRI</p>
-                  <p className={`text-base font-bold ${getFRIColor(fatigueAnalysis.avgFRI).split(' ')[0]}`}>
+              {/* Compact FRI Summary Row */}
+              <div className="flex items-center gap-4 mb-3 pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Avg:</span>
+                  <span className={`text-sm font-bold ${getFRIColor(fatigueAnalysis.avgFRI).split(' ')[0]}`}>
                     {fatigueAnalysis.avgFRI.toFixed(3)}
-                  </p>
+                  </span>
                 </div>
-                <div className="bg-slate-50 rounded p-2">
-                  <p className="text-[10px] text-slate-500">Maximum FRI</p>
-                  <p className={`text-base font-bold ${getFRIColor(fatigueAnalysis.maxFRI).split(' ')[0]}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Max:</span>
+                  <span className={`text-sm font-bold ${getFRIColor(fatigueAnalysis.maxFRI).split(' ')[0]}`}>
                     {fatigueAnalysis.maxFRI.toFixed(3)}
-                  </p>
+                  </span>
                 </div>
-                <div className="bg-slate-50 rounded p-2">
-                  <p className="text-[10px] text-slate-500">Elevated Shifts</p>
-                  <p className="text-base font-bold text-amber-600">{fatigueAnalysis.elevatedShifts}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Elevated:</span>
+                  <span className="text-sm font-bold text-amber-600">{fatigueAnalysis.elevatedShifts}</span>
                 </div>
-                <div className="bg-slate-50 rounded p-2">
-                  <p className="text-[10px] text-slate-500">Critical Shifts</p>
-                  <p className="text-base font-bold text-red-600">{fatigueAnalysis.criticalShifts}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Critical:</span>
+                  <span className="text-sm font-bold text-red-600">{fatigueAnalysis.criticalShifts}</span>
                 </div>
               </div>
 
-              {/* FRI Bar Chart */}
-              <div className="h-32 flex items-end gap-1">
-                {fatigueAnalysis.results.map((result, idx) => {
-                  const height = Math.min(100, (result.riskIndex / 1.5) * 100);
-                  const assignment = periodAssignments[idx];
-                  const d = new Date(assignment.date);
-
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center">
-                      <div
-                        className={`w-full rounded-t transition-all ${getFRIColor(result.riskIndex)}`}
-                        style={{ height: `${height}%` }}
-                        title={`${d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}\nFRI: ${result.riskIndex.toFixed(3)}`}
-                      />
-                      <div className="text-[8px] text-slate-500 mt-1 truncate w-full text-center">
-                        {d.getDate()}/{d.getMonth() + 1}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Shift Pattern Fatigue Parameters - Collapsible */}
+              {/* Shift Pattern Fatigue Parameters - Expanded by Default */}
               {periodPatterns.length > 0 && (
-                <div className="mt-4 border-t border-slate-200 pt-4">
+                <div>
                   <button
                     onClick={() => setShowFatigueParams(!showFatigueParams)}
-                    className="flex items-center justify-between w-full text-left"
+                    className="flex items-center justify-between w-full text-left mb-2"
                   >
                     <div className="flex items-center gap-2">
                       <Settings className="w-4 h-4 text-slate-500" />
@@ -776,6 +768,12 @@ export function PersonView({
                                   <span className="font-medium text-slate-800 text-sm">{pattern.name}</span>
                                   {pattern.isNight && <span className="text-purple-600">🌙</span>}
                                   <span className="text-[10px] text-slate-400">({pattern.assignmentCount} shift{pattern.assignmentCount > 1 ? 's' : ''})</span>
+                                  {/* FRI indicator for this pattern */}
+                                  {pattern.avgFRI > 0 && (
+                                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${getFRIColor(pattern.maxFRI)}`}>
+                                      FRI: {pattern.avgFRI.toFixed(2)} (max {pattern.maxFRI.toFixed(2)})
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-slate-600">
                                   <span>
