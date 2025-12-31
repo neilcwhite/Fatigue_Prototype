@@ -348,6 +348,16 @@ export function TimelineView({
     return 'bg-green-100 text-green-800 border border-green-300';
   };
 
+  // Get just the background color for the hover buttons overlay
+  const getTileBackground = (violations: ComplianceViolation[], isSelected: boolean) => {
+    if (isSelected) return 'bg-blue-500';
+    const hasError = violations.some(v => v.severity === 'error');
+    const hasWarning = violations.some(v => v.severity === 'warning');
+    if (hasError) return 'bg-red-100';
+    if (hasWarning) return 'bg-amber-100';
+    return 'bg-green-100';
+  };
+
   // Format violation tooltip
   const getViolationTooltip = (violations: ComplianceViolation[]): string => {
     if (violations.length === 0) return '';
@@ -599,9 +609,9 @@ export function TimelineView({
                                 <span className="font-medium truncate">
                                   {assignment.employeeName}
                                 </span>
-                                {/* Edit/Delete buttons - overlay on hover, obscuring name */}
+                                {/* Edit/Delete buttons - overlay on hover with solid background matching tile */}
                                 {!isCopyMode && (
-                                  <div className="absolute inset-0 flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-current/20 to-transparent">
+                                  <div className={`absolute right-0 top-0 bottom-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-r px-0.5 ${getTileBackground(assignment.violations, isSelected)}`}>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
