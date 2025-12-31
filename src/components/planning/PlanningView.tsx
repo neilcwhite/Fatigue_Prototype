@@ -124,22 +124,35 @@ export function PlanningView({
 
   // Helper to ensure Custom pattern exists
   const ensureCustomPattern = async (): Promise<string> => {
+    console.log('📋 ensureCustomPattern: checking if custom pattern exists', customPatternId);
+    console.log('📋 customPattern found:', customPattern);
+
     if (customPattern) {
+      console.log('✅ Custom pattern already exists');
       return customPatternId;
     }
 
     // Create the Custom pattern if it doesn't exist
     if (onCreateShiftPatternDirect) {
-      await onCreateShiftPatternDirect({
-        id: customPatternId,  // Use specific ID so we can find it later
-        projectId: project.id,
-        name: 'Custom (Ad-hoc)',
-        startTime: '',
-        endTime: '',
-        dutyType: 'Other',
-        isNight: false,
-        weeklySchedule: null,
-      } as any);  // Cast to any since base type doesn't have id
+      console.log('🆕 Creating new Custom pattern...');
+      try {
+        await onCreateShiftPatternDirect({
+          id: customPatternId,  // Use specific ID so we can find it later
+          projectId: project.id,
+          name: 'Custom (Ad-hoc)',
+          startTime: '',
+          endTime: '',
+          dutyType: 'Other',
+          isNight: false,
+          weeklySchedule: null,
+        } as any);  // Cast to any since base type doesn't have id
+        console.log('✅ Custom pattern created successfully');
+      } catch (err) {
+        console.error('❌ Error creating custom pattern:', err);
+        throw err;
+      }
+    } else {
+      console.warn('⚠️ onCreateShiftPatternDirect not available');
     }
 
     return customPatternId;
@@ -289,33 +302,47 @@ export function PlanningView({
 
   // Handle custom time confirmation - assigns to Custom pattern, not original
   const handleCustomTimeConfirm = async (startTime: string, endTime: string) => {
-    if (!customTimeModal) return;
+    console.log('🎯 handleCustomTimeConfirm called', { startTime, endTime });
+    if (!customTimeModal) {
+      console.log('❌ No customTimeModal');
+      return;
+    }
 
     const { employees: emps, date } = customTimeModal;
+    console.log('📋 Creating custom assignments for', emps.length, 'employees on', date);
 
-    // Ensure the Custom pattern exists and get its ID
-    const patternId = await ensureCustomPattern();
+    try {
+      // Ensure the Custom pattern exists and get its ID
+      const patternId = await ensureCustomPattern();
+      console.log('📋 Using pattern ID:', patternId);
 
-    for (const employee of emps) {
-      // Check if already assigned to Custom pattern on this date
-      const existing = projectAssignments.find(
-        a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
-      );
+      for (const employee of emps) {
+        // Check if already assigned to Custom pattern on this date
+        const existing = projectAssignments.find(
+          a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
+        );
 
-      if (!existing) {
-        try {
-          await onCreateAssignment({
-            employeeId: employee.id,
-            projectId: project.id,
-            shiftPatternId: patternId,
-            date,
-            customStartTime: startTime,
-            customEndTime: endTime,
-          });
-        } catch (err) {
-          console.error('Error creating custom assignment:', err);
+        if (!existing) {
+          try {
+            console.log('📝 Creating assignment for', employee.name);
+            await onCreateAssignment({
+              employeeId: employee.id,
+              projectId: project.id,
+              shiftPatternId: patternId,
+              date,
+              customStartTime: startTime,
+              customEndTime: endTime,
+            });
+            console.log('✅ Assignment created for', employee.name);
+          } catch (err) {
+            console.error('❌ Error creating custom assignment:', err);
+          }
+        } else {
+          console.log('⏭️ Assignment already exists for', employee.name);
         }
       }
+    } catch (err) {
+      console.error('❌ Error in handleCustomTimeConfirm:', err);
     }
 
     setCustomTimeModal(null);
