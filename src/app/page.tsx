@@ -248,6 +248,8 @@ export default function Home() {
           employees={employees}
           shiftPatterns={shiftPatterns}
           assignments={assignments}
+          onCreateShiftPattern={createShiftPattern}
+          onUpdateShiftPattern={updateShiftPattern}
         />
       )}
 

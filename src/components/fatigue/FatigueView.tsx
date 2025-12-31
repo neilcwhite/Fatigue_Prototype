@@ -16,6 +16,7 @@ import { getRiskColor } from '@/lib/utils';
 
 interface Shift extends ShiftDefinition {
   id: number;
+  isRestDay?: boolean;  // Mark day as rest/off (no work)
   // Per-day parameters (optional - uses global defaults if not set)
   commuteIn?: number;
   commuteOut?: number;
@@ -34,6 +35,9 @@ interface FatigueViewProps {
   employees?: EmployeeCamel[];
   shiftPatterns?: ShiftPatternCamel[];
   assignments?: AssignmentCamel[];
+  // Save functions
+  onCreateShiftPattern?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
+  onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
 }
 
 // Extended templates including the original simple ones
@@ -118,6 +122,55 @@ const getDayOfWeek = (dayNum: number, startDay: number = 1): string => {
   return days[index];
 };
 
+// Network Rail week days (Saturday to Friday)
+const NR_DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
+type NRDayKey = typeof NR_DAYS[number];
+
+// Map NR day index (0=Sat) to Shift day number (1=Sat for NR week)
+const nrDayIndexToShiftDay = (nrIndex: number): number => nrIndex + 1;
+
+// Convert shifts array to WeeklySchedule format for database storage
+const shiftsToWeeklySchedule = (shifts: Shift[], defaultParams: { commuteTime: number; workload: number; attention: number; breakFrequency: number; breakLength: number }) => {
+  const schedule: Record<string, { startTime: string; endTime: string; commuteIn?: number; commuteOut?: number; workload?: number; attention?: number; breakFreq?: number; breakLen?: number } | null> = {
+    Sat: null,
+    Sun: null,
+    Mon: null,
+    Tue: null,
+    Wed: null,
+    Thu: null,
+    Fri: null,
+  };
+
+  // Map day number to NR day name (1=Sat, 2=Sun, etc.)
+  const dayNumToNRDay: Record<number, NRDayKey> = {
+    1: 'Sat',
+    2: 'Sun',
+    3: 'Mon',
+    4: 'Tue',
+    5: 'Wed',
+    6: 'Thu',
+    7: 'Fri',
+  };
+
+  shifts.forEach(shift => {
+    const dayName = dayNumToNRDay[shift.day];
+    if (dayName && !shift.isRestDay) {
+      schedule[dayName] = {
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        commuteIn: shift.commuteIn,
+        commuteOut: shift.commuteOut,
+        workload: shift.workload,
+        attention: shift.attention,
+        breakFreq: shift.breakFreq,
+        breakLen: shift.breakLen,
+      };
+    }
+  });
+
+  return schedule;
+};
+
 export function FatigueView({
   user,
   onSignOut,
@@ -126,6 +179,8 @@ export function FatigueView({
   employees = [],
   shiftPatterns = [],
   assignments = [],
+  onCreateShiftPattern,
+  onUpdateShiftPattern,
 }: FatigueViewProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -135,14 +190,26 @@ export function FatigueView({
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  // View mode: 'weekly' (7-day grid) or 'multiweek' (original flexible list)
+  const [viewMode, setViewMode] = useState<'weekly' | 'multiweek'>('weekly');
+
   // Project, shift pattern, and employee selection for loading rosters
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
 
+  // Save modal state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savePatternName, setSavePatternName] = useState('');
+  const [saveProjectId, setSaveProjectId] = useState<number | null>(null);
+  const [saveDutyType, setSaveDutyType] = useState<string>('Non-Possession');
+  const [saveIsNight, setSaveIsNight] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   // Role and day-of-week settings
   const [selectedRole, setSelectedRole] = useState<RoleKey>('custom');
-  const [startDayOfWeek, setStartDayOfWeek] = useState<number>(1); // 1=Mon, 2=Tue, etc.
+  const [startDayOfWeek, setStartDayOfWeek] = useState<number>(1); // 1=Sat for NR week
   const [compareRoles, setCompareRoles] = useState(false);
   const [selectedRolesForCompare, setSelectedRolesForCompare] = useState<RoleKey[]>(['coss', 'lookout', 'labourer']);
 
@@ -491,6 +558,147 @@ export function FatigueView({
     }
   };
 
+  // Initialize 7-day week for weekly view mode
+  const initializeWeeklyShifts = () => {
+    const weekShifts: Shift[] = NR_DAYS.map((_, index) => ({
+      id: Date.now() + index,
+      day: nrDayIndexToShiftDay(index),
+      startTime: '07:00',
+      endTime: '19:00',
+      isRestDay: index === 0 || index === 1, // Sat/Sun rest by default
+      commuteIn: Math.floor(params.commuteTime / 2),
+      commuteOut: Math.ceil(params.commuteTime / 2),
+      workload: params.workload,
+      attention: params.attention,
+      breakFreq: params.breakFrequency,
+      breakLen: params.breakLength,
+    }));
+    setShifts(weekShifts);
+    setStartDayOfWeek(6); // Saturday start for NR week
+  };
+
+  // Toggle rest day for weekly view
+  const toggleRestDay = (dayIndex: number) => {
+    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    setShifts(prev => prev.map(s =>
+      s.day === dayNum ? { ...s, isRestDay: !s.isRestDay } : s
+    ));
+  };
+
+  // Update shift time for weekly view
+  const updateWeeklyShiftTime = (dayIndex: number, field: 'startTime' | 'endTime', value: string) => {
+    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    setShifts(prev => prev.map(s =>
+      s.day === dayNum ? { ...s, [field]: value } : s
+    ));
+  };
+
+  // Get shift for a specific NR day index
+  const getShiftForDay = (dayIndex: number): Shift | undefined => {
+    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    return shifts.find(s => s.day === dayNum);
+  };
+
+  // Save pattern handler
+  const handleSavePattern = async () => {
+    if (!savePatternName.trim()) {
+      setSaveError('Pattern name is required');
+      return;
+    }
+    if (!saveProjectId) {
+      setSaveError('Please select a project');
+      return;
+    }
+    if (!onCreateShiftPattern) {
+      setSaveError('Save function not available');
+      return;
+    }
+
+    // Check at least one working day
+    const workingShifts = shifts.filter(s => !s.isRestDay);
+    if (workingShifts.length === 0) {
+      setSaveError('At least one working day is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const weeklySchedule = shiftsToWeeklySchedule(shifts, params);
+
+      // Get representative start/end times from first working shift
+      const firstWorking = workingShifts[0];
+
+      await onCreateShiftPattern({
+        projectId: saveProjectId,
+        name: savePatternName.trim(),
+        startTime: firstWorking.startTime,
+        endTime: firstWorking.endTime,
+        weeklySchedule,
+        dutyType: saveDutyType as 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other',
+        isNight: saveIsNight,
+        workload: params.workload,
+        attention: params.attention,
+        commuteTime: params.commuteTime,
+        breakFrequency: params.breakFrequency,
+        breakLength: params.breakLength,
+      });
+
+      setShowSaveModal(false);
+      setSavePatternName('');
+      setSaveProjectId(null);
+      setSaveError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save pattern';
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Update existing pattern handler
+  const handleUpdateExistingPattern = async () => {
+    if (!selectedPatternId || !onUpdateShiftPattern) {
+      setSaveError('No pattern selected or update function not available');
+      return;
+    }
+
+    const workingShifts = shifts.filter(s => !s.isRestDay);
+    if (workingShifts.length === 0) {
+      setSaveError('At least one working day is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const weeklySchedule = shiftsToWeeklySchedule(shifts, params);
+      const firstWorking = workingShifts[0];
+
+      await onUpdateShiftPattern(selectedPatternId, {
+        startTime: firstWorking.startTime,
+        endTime: firstWorking.endTime,
+        weeklySchedule,
+        workload: params.workload,
+        attention: params.attention,
+        commuteTime: params.commuteTime,
+        breakFrequency: params.breakFrequency,
+        breakLength: params.breakLength,
+      });
+
+      setSaveError(null);
+      // Show success feedback
+      alert('Pattern updated successfully!');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update pattern';
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Toggle a role in the comparison list
   const toggleCompareRole = (roleKey: RoleKey) => {
     if (selectedRolesForCompare.includes(roleKey)) {
@@ -729,10 +937,203 @@ export function FatigueView({
       </header>
 
       <div className="p-6">
+        {/* View Mode Toggle */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+            <button
+              onClick={() => setViewMode('weekly')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'weekly'
+                  ? 'bg-orange-500 text-white'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              7-Day Week
+            </button>
+            <button
+              onClick={() => setViewMode('multiweek')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'multiweek'
+                  ? 'bg-orange-500 text-white'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Multi-Week Pattern
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {shifts.length > 0 && onCreateShiftPattern && (
+              <button
+                onClick={() => {
+                  setSaveProjectId(selectedProjectId);
+                  setShowSaveModal(true);
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Save as New Pattern
+              </button>
+            )}
+            {shifts.length > 0 && selectedPatternId && onUpdateShiftPattern && (
+              <button
+                onClick={handleUpdateExistingPattern}
+                disabled={isSaving}
+                className="px-4 py-2 bg-violet-600 text-white rounded-md text-sm font-medium hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isSaving ? 'Saving...' : 'Update Pattern'}
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Input */}
           <div className="space-y-4">
-            {/* Shift Pattern Definition */}
+            {/* 7-Day Weekly View */}
+            {viewMode === 'weekly' && (
+              <div className="bg-white rounded-lg shadow-md">
+                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800">Network Rail Week (Sat-Fri)</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={initializeWeeklyShifts}
+                      className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      Reset Week
+                    </button>
+                    <button
+                      onClick={() => setShowSettings(!showSettings)}
+                      className={`text-sm px-3 py-1 rounded flex items-center gap-1 ${
+                        showSettings ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Parameters
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  {/* Instructions */}
+                  <p className="text-xs text-slate-500 mb-4">
+                    Network Rail week runs Saturday to Friday. Check "Rest" for non-working days.
+                  </p>
+
+                  {/* 7-Day Grid */}
+                  {shifts.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-slate-500 mb-4">Click "Reset Week" to create a 7-day roster template</p>
+                      <button
+                        onClick={initializeWeeklyShifts}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Create Week Template
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Header */}
+                      <div className="grid grid-cols-[80px_60px_100px_100px_1fr] gap-2 text-xs font-medium text-slate-600 px-2">
+                        <span>Day</span>
+                        <span className="text-center">Rest</span>
+                        <span className="text-center">Start</span>
+                        <span className="text-center">End</span>
+                        <span className="text-center">Duration</span>
+                      </div>
+
+                      {/* Day Rows */}
+                      {NR_DAYS.map((dayName, index) => {
+                        const shift = getShiftForDay(index);
+                        const isRestDay = shift?.isRestDay ?? true;
+                        const startHour = shift ? parseTimeToHours(shift.startTime) : 0;
+                        let endHour = shift ? parseTimeToHours(shift.endTime) : 0;
+                        if (endHour <= startHour) endHour += 24;
+                        const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
+
+                        return (
+                          <div
+                            key={dayName}
+                            className={`grid grid-cols-[80px_60px_100px_100px_1fr] gap-2 p-2 rounded-lg items-center ${
+                              isRestDay
+                                ? 'bg-slate-100 text-slate-400'
+                                : index < 2
+                                  ? 'bg-amber-50 border border-amber-200'
+                                  : 'bg-green-50 border border-green-200'
+                            }`}
+                          >
+                            {/* Day Name */}
+                            <span className={`font-medium ${isRestDay ? 'text-slate-400' : 'text-slate-700'}`}>
+                              {dayName}
+                            </span>
+
+                            {/* Rest Checkbox */}
+                            <div className="flex justify-center">
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isRestDay}
+                                  onChange={() => toggleRestDay(index)}
+                                  className="w-4 h-4 text-slate-600 border-slate-300 rounded"
+                                />
+                                <span className="text-xs">Rest</span>
+                              </label>
+                            </div>
+
+                            {/* Start Time */}
+                            <input
+                              type="time"
+                              value={shift?.startTime || '07:00'}
+                              onChange={(e) => updateWeeklyShiftTime(index, 'startTime', e.target.value)}
+                              disabled={isRestDay}
+                              className={`border rounded px-2 py-1 text-sm ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-900'
+                              }`}
+                            />
+
+                            {/* End Time */}
+                            <input
+                              type="time"
+                              value={shift?.endTime || '19:00'}
+                              onChange={(e) => updateWeeklyShiftTime(index, 'endTime', e.target.value)}
+                              disabled={isRestDay}
+                              className={`border rounded px-2 py-1 text-sm ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-900'
+                              }`}
+                            />
+
+                            {/* Duration */}
+                            <div className="text-center">
+                              {isRestDay ? (
+                                <span className="text-xs text-slate-400">-</span>
+                              ) : (
+                                <span className={`text-sm font-medium ${duration > 10 ? 'text-amber-600' : 'text-slate-700'}`}>
+                                  {duration.toFixed(1)}h
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Weekly Summary */}
+                      <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Working Days:</span>
+                          <span className="font-medium text-slate-800">{shifts.filter(s => !s.isRestDay).length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-1">
+                          <span className="text-slate-600">Rest Days:</span>
+                          <span className="font-medium text-slate-800">{shifts.filter(s => s.isRestDay).length}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Multi-Week Pattern View (Original) */}
+            {viewMode === 'multiweek' && (
             <div className="bg-white rounded-lg shadow-md">
               <div className="p-4 border-b border-slate-200 flex items-center justify-between">
                 <h3 className="font-semibold text-slate-800">Shift Pattern Definition</h3>
@@ -1105,6 +1506,7 @@ export function FatigueView({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Parameters Panel (Collapsible) */}
             {showSettings && (
@@ -1515,6 +1917,130 @@ export function FatigueView({
           </div>
         </div>
       </div>
+
+      {/* Save Pattern Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900">Save Shift Pattern</h2>
+              <button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setSaveError(null);
+                }}
+                className="text-slate-500 hover:text-slate-700"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {saveError && (
+                <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
+                  {saveError}
+                </div>
+              )}
+
+              {/* Pattern Name */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Pattern Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={savePatternName}
+                  onChange={(e) => setSavePatternName(e.target.value)}
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                  placeholder="e.g., Day Shift Mon-Fri"
+                />
+              </div>
+
+              {/* Project Selection */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Assign to Project <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={saveProjectId || ''}
+                  onChange={(e) => setSaveProjectId(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                >
+                  <option value="">Select project...</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Duty Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Duty Type
+                </label>
+                <select
+                  value={saveDutyType}
+                  onChange={(e) => setSaveDutyType(e.target.value)}
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                >
+                  <option value="Non-Possession">Non-Possession</option>
+                  <option value="Possession">Possession</option>
+                  <option value="Office">Office</option>
+                  <option value="Lookout">Lookout</option>
+                  <option value="Machine">Machine</option>
+                  <option value="Protection">Protection</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {/* Night Shift Toggle */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="saveIsNight"
+                  checked={saveIsNight}
+                  onChange={(e) => setSaveIsNight(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 border-slate-300 rounded"
+                />
+                <label htmlFor="saveIsNight" className="text-sm font-medium text-slate-700">
+                  Night Shift Pattern
+                </label>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-slate-50 p-3 rounded-lg text-sm">
+                <p className="font-medium text-slate-700 mb-1">Pattern Summary</p>
+                <p className="text-slate-600">
+                  Working days: {shifts.filter(s => !s.isRestDay).length} •
+                  Rest days: {shifts.filter(s => s.isRestDay).length}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setSaveError(null);
+                }}
+                className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePattern}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Pattern'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -54,7 +54,7 @@ src/
 │   │   └── SummaryView.tsx     # Stats, compliance, patterns
 │   │
 │   ├── fatigue/                # Fatigue calculator
-│   │   ├── FatigueView.tsx     # Pattern builder + analysis
+│   │   ├── FatigueView.tsx     # Pattern builder, 7-day editor, save/update
 │   │   └── FatigueChart.tsx    # Risk visualization chart
 │   │
 │   ├── teams/                  # Team management
@@ -237,6 +237,61 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 6. **Cross-Project Compliance** - Check employees across all projects
 7. **Team Assignments** - Bulk assign teams to shifts
 8. **Excel Import/Export** - Portable assignment data
+
+## Fatigue Risk Assessment Tool
+
+The FatigueView provides a comprehensive shift pattern editor with HSE RR446 fatigue calculations.
+
+### View Modes
+
+| Mode | Description |
+|------|-------------|
+| **7-Day Week** | Network Rail week (Sat-Fri) with rest day checkboxes |
+| **Multi-Week Pattern** | Flexible day-based pattern builder for longer rosters |
+
+### 7-Day Weekly Editor
+
+- Network Rail week runs **Saturday to Friday**
+- Check "Rest" checkbox to mark non-working days
+- Rest days don't contribute to fatigue calculations
+- Visual distinction: working days in green, rest days in grey
+- Working/rest day counts shown in summary
+
+### Save & Update Patterns
+
+| Action | Description |
+|--------|-------------|
+| **Save as New Pattern** | Create a new shift pattern and assign to a project |
+| **Update Pattern** | Save changes back to the loaded pattern |
+
+When saving a new pattern:
+1. Enter a pattern name (e.g., "Day Shift Mon-Fri")
+2. Select the target project
+3. Choose duty type (Possession, Non-Possession, etc.)
+4. Toggle night shift if applicable
+5. Click "Save Pattern"
+
+### Role Presets
+
+Pre-configured workload/attention values for common rail industry roles:
+
+| Role | Workload | Attention | Description |
+|------|----------|-----------|-------------|
+| COSS | 4 | 5 | Controller of Site Safety |
+| PICOP | 4 | 5 | Person In Charge Of Possession |
+| Lookout | 2 | 5 | High vigilance required |
+| Site Warden | 3 | 4 | Site access control |
+| Machine Operator | 4 | 4 | Heavy plant operation |
+| Skilled Operative | 3 | 3 | Experienced track worker |
+| Labourer | 3 | 2 | General duties |
+
+### Role Comparison
+
+Compare fatigue compliance across multiple roles for the same shift pattern:
+1. Click "Compare Roles"
+2. Select roles to compare
+3. View compliance status (pass/fail) for each role
+4. Identify which roles are suitable for the pattern
 
 ## License
 
