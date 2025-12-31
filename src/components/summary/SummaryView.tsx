@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-import { ChevronLeft, AlertTriangle, CheckCircle, Users, Clock, Calendar, BarChart, XCircle } from '@/components/ui/Icons';
-import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel } from '@/lib/types';
+import { useMemo, useState } from 'react';
+import { ChevronLeft, AlertTriangle, CheckCircle, Users, Clock, Calendar, BarChart, XCircle, ChevronDown, ChevronUp } from '@/components/ui/Icons';
+import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
 import { 
   checkProjectCompliance, 
   checkEmployeeCompliance,
@@ -151,6 +151,32 @@ export function SummaryView({
     }
   };
 
+  // Get all shift patterns for this project
+  const projectPatterns = useMemo(() =>
+    shiftPatterns.filter(sp => sp.projectId === project.id),
+    [shiftPatterns, project.id]
+  );
+
+  // State for expanding/collapsing shift patterns view when there are many
+  const [showAllPatterns, setShowAllPatterns] = useState(false);
+  const PATTERNS_COLLAPSED_LIMIT = 6;
+  const displayedPatterns = showAllPatterns ? projectPatterns : projectPatterns.slice(0, PATTERNS_COLLAPSED_LIMIT);
+
+  // Helper to get day schedule info
+  const getDaySchedule = (pattern: ShiftPatternCamel, dayKey: keyof WeeklySchedule): { active: boolean; hours: string } => {
+    const schedule = pattern.weeklySchedule?.[dayKey];
+    if (schedule?.startTime && schedule?.endTime) {
+      return { active: true, hours: `${schedule.startTime}-${schedule.endTime}` };
+    }
+    // Fall back to pattern-level times if no weekly schedule
+    if (!pattern.weeklySchedule && pattern.startTime && pattern.endTime) {
+      return { active: true, hours: `${pattern.startTime}-${pattern.endTime}` };
+    }
+    return { active: false, hours: '-' };
+  };
+
+  const dayKeys: (keyof WeeklySchedule)[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-violet-500">
@@ -227,6 +253,81 @@ export function SummaryView({
             </div>
           </div>
         </div>
+
+        {/* Shift Patterns Week View */}
+        {projectPatterns.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md mb-6">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-violet-500" />
+                Shift Patterns Schedule ({projectPatterns.length})
+              </h3>
+              {projectPatterns.length > PATTERNS_COLLAPSED_LIMIT && (
+                <button
+                  onClick={() => setShowAllPatterns(!showAllPatterns)}
+                  className="text-sm text-violet-600 hover:text-violet-700 flex items-center gap-1"
+                >
+                  {showAllPatterns ? (
+                    <>Show Less <ChevronUp className="w-4 h-4" /></>
+                  ) : (
+                    <>Show All ({projectPatterns.length}) <ChevronDown className="w-4 h-4" /></>
+                  )}
+                </button>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="text-left p-3 font-medium text-slate-700 border-b min-w-[180px]">Pattern</th>
+                    {dayKeys.map(day => (
+                      <th key={day} className="text-center p-3 font-medium text-slate-700 border-b w-[100px]">{day}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedPatterns.map((pattern) => (
+                    <tr key={pattern.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${pattern.isNight ? 'bg-purple-500' : 'bg-green-500'}`} />
+                          <div>
+                            <span className="font-medium text-slate-800">{pattern.name}</span>
+                            <span className="text-xs text-slate-500 ml-2">{pattern.dutyType}</span>
+                          </div>
+                        </div>
+                      </td>
+                      {dayKeys.map(day => {
+                        const { active, hours } = getDaySchedule(pattern, day);
+                        return (
+                          <td key={day} className={`text-center p-3 ${active ? 'text-slate-800' : 'text-slate-300'}`}>
+                            {active ? (
+                              <span className={`px-2 py-1 rounded text-xs font-mono ${pattern.isNight ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
+                                {hours}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {projectPatterns.length > PATTERNS_COLLAPSED_LIMIT && !showAllPatterns && (
+              <div className="p-3 text-center border-t border-slate-100">
+                <button
+                  onClick={() => setShowAllPatterns(true)}
+                  className="text-sm text-violet-600 hover:text-violet-700"
+                >
+                  + {projectPatterns.length - PATTERNS_COLLAPSED_LIMIT} more patterns
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {complianceResult.violations.length > 0 && (
           <div className="bg-white rounded-lg shadow-md mb-6">

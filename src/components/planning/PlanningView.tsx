@@ -259,25 +259,30 @@ export function PlanningView({
     }
 
     // Valid cell - create assignments normally
+    console.log('✅ Creating assignments for', employeesToAssign.length, 'employees');
     for (const employee of employeesToAssign) {
       const existing = projectAssignments.find(
         a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
       );
-      
+
       if (!existing) {
         try {
+          console.log('📝 Creating assignment for', employee.name, 'on', date, 'pattern:', shiftPatternId);
           await onCreateAssignment({
             employeeId: employee.id,
             projectId: project.id,
             shiftPatternId,
             date,
           });
+          console.log('✅ Assignment created successfully');
         } catch (err) {
-          console.error('Error creating assignment:', err);
+          console.error('❌ Error creating assignment:', err);
         }
+      } else {
+        console.log('⏭️ Assignment already exists for', employee.name, 'on', date);
       }
     }
-    
+
     clearSelection();
     draggedEmployeeRef.current = null;
   };
