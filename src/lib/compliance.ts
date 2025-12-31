@@ -73,14 +73,19 @@ export interface EmployeeComplianceStatus {
 
 /**
  * Get shift duration for a specific date
+ * Supports custom times on assignments (for ad-hoc shifts)
  */
-function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string): number {
+function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string, assignment?: AssignmentCamel): number {
   let startTime: string | undefined;
   let endTime: string | undefined;
-  
-  if (pattern.weeklySchedule) {
+
+  // First check for custom times on the assignment (ad-hoc shifts)
+  if (assignment?.customStartTime && assignment?.customEndTime) {
+    startTime = assignment.customStartTime;
+    endTime = assignment.customEndTime;
+  } else if (pattern.weeklySchedule) {
     const dayOfWeek = new Date(dateStr).getDay();
-    const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = 
+    const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
       ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayKey = dayNames[dayOfWeek];
     const daySchedule = pattern.weeklySchedule[dayKey];
@@ -89,14 +94,14 @@ function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string): number {
       endTime = daySchedule.endTime;
     }
   }
-  
+
   if (!startTime || !endTime) {
     startTime = pattern.startTime;
     endTime = pattern.endTime;
   }
-  
+
   if (!startTime || !endTime) return 0;
-  
+
   const start = parseTimeToHours(startTime);
   const end = parseTimeToHours(endTime);
   return calculateDutyLength(start, end);
@@ -104,14 +109,19 @@ function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string): number {
 
 /**
  * Get shift times for a specific date
+ * Supports custom times on assignments (for ad-hoc shifts)
  */
-function getShiftTimes(pattern: ShiftPatternCamel, dateStr: string): { start: string; end: string } | null {
+function getShiftTimes(pattern: ShiftPatternCamel, dateStr: string, assignment?: AssignmentCamel): { start: string; end: string } | null {
   let startTime: string | undefined;
   let endTime: string | undefined;
-  
-  if (pattern.weeklySchedule) {
+
+  // First check for custom times on the assignment (ad-hoc shifts)
+  if (assignment?.customStartTime && assignment?.customEndTime) {
+    startTime = assignment.customStartTime;
+    endTime = assignment.customEndTime;
+  } else if (pattern.weeklySchedule) {
     const dayOfWeek = new Date(dateStr).getDay();
-    const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = 
+    const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
       ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayKey = dayNames[dayOfWeek];
     const daySchedule = pattern.weeklySchedule[dayKey];
@@ -120,65 +130,69 @@ function getShiftTimes(pattern: ShiftPatternCamel, dateStr: string): { start: st
       endTime = daySchedule.endTime;
     }
   }
-  
+
   if (!startTime || !endTime) {
     startTime = pattern.startTime;
     endTime = pattern.endTime;
   }
-  
+
   if (!startTime || !endTime) return null;
-  
+
   return { start: startTime, end: endTime };
 }
 
 /**
  * Check if a shift is a night shift
+ * Supports custom times on assignments (for ad-hoc shifts)
  */
-function isNightShift(pattern: ShiftPatternCamel, dateStr: string): boolean {
+function isNightShift(pattern: ShiftPatternCamel, dateStr: string, assignment?: AssignmentCamel): boolean {
   // If explicitly marked as night, use that
   if (pattern.isNight) return true;
-  
-  const times = getShiftTimes(pattern, dateStr);
+
+  const times = getShiftTimes(pattern, dateStr, assignment);
   if (!times) return false;
-  
+
   const startHour = parseTimeToHours(times.start);
   const endHour = parseTimeToHours(times.end);
-  
+
   // Night if starts after 8pm or ends before 6am
-  return startHour >= COMPLIANCE_LIMITS.NIGHT_START_HOUR || 
+  return startHour >= COMPLIANCE_LIMITS.NIGHT_START_HOUR ||
          endHour <= COMPLIANCE_LIMITS.NIGHT_END_HOUR ||
          endHour < startHour; // Overnight shift
 }
 
 /**
  * Calculate rest period between two shifts in hours
+ * Supports custom times on assignments (for ad-hoc shifts)
  */
 function calculateRestBetweenShifts(
   prevPattern: ShiftPatternCamel,
   prevDate: string,
   nextPattern: ShiftPatternCamel,
-  nextDate: string
+  nextDate: string,
+  prevAssignment?: AssignmentCamel,
+  nextAssignment?: AssignmentCamel
 ): number {
-  const prevTimes = getShiftTimes(prevPattern, prevDate);
-  const nextTimes = getShiftTimes(nextPattern, nextDate);
-  
+  const prevTimes = getShiftTimes(prevPattern, prevDate, prevAssignment);
+  const nextTimes = getShiftTimes(nextPattern, nextDate, nextAssignment);
+
   if (!prevTimes || !nextTimes) return 24; // Assume OK if we can't calculate
-  
+
   const prevEndHour = parseTimeToHours(prevTimes.end);
   const nextStartHour = parseTimeToHours(nextTimes.start);
-  
+
   const prevDateObj = new Date(prevDate);
   const nextDateObj = new Date(nextDate);
   const daysDiff = Math.floor((nextDateObj.getTime() - prevDateObj.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   // Calculate hours between end of prev and start of next
   let restHours = (daysDiff * 24) + nextStartHour - prevEndHour;
-  
+
   // Handle overnight shifts (end time < start time means next day)
   if (prevEndHour < parseTimeToHours(prevTimes.start)) {
     restHours -= 24; // Prev shift ended next day
   }
-  
+
   return restHours;
 }
 
@@ -193,13 +207,14 @@ export function checkMaxShiftLength(
   patternMap: Map<string, ShiftPatternCamel>
 ): ComplianceViolation[] {
   const violations: ComplianceViolation[] = [];
-  
+
   assignments.forEach(assignment => {
     const pattern = patternMap.get(assignment.shiftPatternId);
     if (!pattern) return;
-    
-    const duration = getShiftDuration(pattern, assignment.date);
-    
+
+    // Pass assignment to support custom times
+    const duration = getShiftDuration(pattern, assignment.date, assignment);
+
     if (duration > COMPLIANCE_LIMITS.MAX_SHIFT_HOURS) {
       violations.push({
         type: 'MAX_SHIFT_LENGTH',
@@ -212,7 +227,7 @@ export function checkMaxShiftLength(
       });
     }
   });
-  
+
   return violations;
 }
 
@@ -225,23 +240,24 @@ export function checkRestPeriods(
   patternMap: Map<string, ShiftPatternCamel>
 ): ComplianceViolation[] {
   const violations: ComplianceViolation[] = [];
-  
+
   // Sort by date
-  const sorted = [...assignments].sort((a, b) => 
+  const sorted = [...assignments].sort((a, b) =>
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
-  
+
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const curr = sorted[i];
-    
+
     const prevPattern = patternMap.get(prev.shiftPatternId);
     const currPattern = patternMap.get(curr.shiftPatternId);
-    
+
     if (!prevPattern || !currPattern) continue;
-    
-    const restHours = calculateRestBetweenShifts(prevPattern, prev.date, currPattern, curr.date);
-    
+
+    // Pass assignments to support custom times
+    const restHours = calculateRestBetweenShifts(prevPattern, prev.date, currPattern, curr.date, prev, curr);
+
     if (restHours < COMPLIANCE_LIMITS.MIN_REST_HOURS && restHours >= 0) {
       violations.push({
         type: 'INSUFFICIENT_REST',
@@ -255,7 +271,7 @@ export function checkRestPeriods(
       });
     }
   }
-  
+
   return violations;
 }
 
@@ -282,11 +298,11 @@ export function checkMultipleShiftsSameDay(
       // Check if it's a day-to-night transition (more serious)
       const hasDayShift = dayAssignments.some(a => {
         const p = patternMap.get(a.shiftPatternId);
-        return p && !isNightShift(p, date);
+        return p && !isNightShift(p, date, a);
       });
       const hasNightShift = dayAssignments.some(a => {
         const p = patternMap.get(a.shiftPatternId);
-        return p && isNightShift(p, date);
+        return p && isNightShift(p, date, a);
       });
       
       if (hasDayShift && hasNightShift) {
@@ -352,7 +368,8 @@ export function checkWeeklyHours(
       if (aDate >= windowStart && aDate <= windowEnd) {
         const pattern = patternMap.get(a.shiftPatternId);
         if (pattern) {
-          totalHours += getShiftDuration(pattern, a.date);
+          // Pass assignment to support custom times
+          totalHours += getShiftDuration(pattern, a.date, a);
           windowDates.push(a.date);
         }
       }
@@ -459,7 +476,8 @@ export function checkConsecutiveNights(
   const nightDates = assignments
     .filter(a => {
       const p = patternMap.get(a.shiftPatternId);
-      return p && isNightShift(p, a.date);
+      // Pass assignment to support custom times
+      return p && isNightShift(p, a.date, a);
     })
     .map(a => a.date)
     .sort();
@@ -626,7 +644,9 @@ export function validateNewAssignment(
   shiftPatternId: string,
   date: string,
   existingAssignments: AssignmentCamel[],
-  shiftPatterns: ShiftPatternCamel[]
+  shiftPatterns: ShiftPatternCamel[],
+  customStartTime?: string,
+  customEndTime?: string
 ): ComplianceViolation[] {
   // Create temporary assignment
   const tempAssignment: AssignmentCamel = {
@@ -636,23 +656,26 @@ export function validateNewAssignment(
     shiftPatternId,
     date,
     organisationId: '',
+    customStartTime,
+    customEndTime,
   };
-  
+
   // Get all employee assignments including the new one
   const allAssignments = [
     ...existingAssignments.filter(a => a.employeeId === employeeId),
     tempAssignment,
   ];
-  
+
   const patternMap = new Map(shiftPatterns.map(p => [p.id, p]));
-  
+
   // Run relevant checks
   const violations: ComplianceViolation[] = [];
-  
+
   // Check max shift length for the new assignment
   const pattern = patternMap.get(shiftPatternId);
   if (pattern) {
-    const duration = getShiftDuration(pattern, date);
+    // Pass assignment to support custom times
+    const duration = getShiftDuration(pattern, date, tempAssignment);
     if (duration > COMPLIANCE_LIMITS.MAX_SHIFT_HOURS) {
       violations.push({
         type: 'MAX_SHIFT_LENGTH',

@@ -595,19 +595,13 @@ export function TimelineView({
                                 onCellDrop(e, pattern.id, date, isPartOfPattern);
                               }}
                             >
-                              <div className="flex items-center justify-between gap-0.5">
-                                <div className="whitespace-nowrap">
-                                  <span className="font-medium">
-                                    {assignment.employeeName}
-                                  </span>
-                                  {assignment.timeDisplay && (
-                                    <span className={`text-[8px] ml-1 ${isSelected ? 'opacity-75' : 'opacity-75'}`}>
-                                      {assignment.timeDisplay}
-                                    </span>
-                                  )}
-                                </div>
+                              <div className="relative flex items-center">
+                                <span className="font-medium truncate">
+                                  {assignment.employeeName}
+                                </span>
+                                {/* Edit/Delete buttons - overlay on hover, obscuring name */}
                                 {!isCopyMode && (
-                                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                  <div className="absolute inset-0 flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-current/20 to-transparent">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
