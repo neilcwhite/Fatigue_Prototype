@@ -471,7 +471,8 @@ export function checkConsecutiveNights(
   patternMap: Map<string, ShiftPatternCamel>
 ): ComplianceViolation[] {
   const violations: ComplianceViolation[] = [];
-  
+  const addedViolationDates = new Set<string>(); // Track dates we've already flagged
+
   // Get night shift dates
   const nightDates = assignments
     .filter(a => {
@@ -481,73 +482,66 @@ export function checkConsecutiveNights(
     })
     .map(a => a.date)
     .sort();
-  
+
   if (nightDates.length < 2) return violations;
-  
+
   // Remove duplicates and sort
   const uniqueNightDates = [...new Set(nightDates)].sort();
-  
+
   let consecutiveCount = 1;
-  let streakStart = uniqueNightDates[0];
-  
+  let streakDates: string[] = [uniqueNightDates[0]];
+
   for (let i = 1; i < uniqueNightDates.length; i++) {
     const prevDate = new Date(uniqueNightDates[i - 1]);
     const currDate = new Date(uniqueNightDates[i]);
     const daysDiff = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysDiff === 1) {
       consecutiveCount++;
-    } else {
-      // Check streak
-      if (consecutiveCount > COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS) {
-        violations.push({
-          type: 'MAX_CONSECUTIVE_NIGHTS',
-          severity: 'error',
-          employeeId,
-          date: streakStart,
-          message: `${consecutiveCount} consecutive night shifts (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS})`,
-          value: consecutiveCount,
-          limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS,
-        });
-      } else if (consecutiveCount > COMPLIANCE_LIMITS.CONSECUTIVE_NIGHTS_WARNING) {
-        violations.push({
-          type: 'CONSECUTIVE_NIGHTS_WARNING',
-          severity: 'warning',
-          employeeId,
-          date: streakStart,
-          message: `${consecutiveCount} consecutive night shifts - consider rest period`,
-          value: consecutiveCount,
-          limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS,
-        });
+      streakDates.push(uniqueNightDates[i]);
+
+      // Flag violation on the specific day when threshold is exceeded
+      // Warning on 5th night (CONSECUTIVE_NIGHTS_WARNING + 1), Error on 8th night (MAX_CONSECUTIVE_NIGHTS + 1)
+      if (consecutiveCount === COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS + 1) {
+        // Exceeded max - flag this day as an error
+        const violationDate = uniqueNightDates[i];
+        if (!addedViolationDates.has(violationDate)) {
+          violations.push({
+            type: 'MAX_CONSECUTIVE_NIGHTS',
+            severity: 'error',
+            employeeId,
+            date: violationDate,
+            message: `${consecutiveCount} consecutive night shifts (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS})`,
+            value: consecutiveCount,
+            limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS,
+            relatedDates: [...streakDates],
+          });
+          addedViolationDates.add(violationDate);
+        }
+      } else if (consecutiveCount === COMPLIANCE_LIMITS.CONSECUTIVE_NIGHTS_WARNING + 1) {
+        // Reached warning threshold - flag this day as a warning
+        const violationDate = uniqueNightDates[i];
+        if (!addedViolationDates.has(violationDate)) {
+          violations.push({
+            type: 'CONSECUTIVE_NIGHTS_WARNING',
+            severity: 'warning',
+            employeeId,
+            date: violationDate,
+            message: `${consecutiveCount} consecutive night shifts - consider rest period`,
+            value: consecutiveCount,
+            limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS,
+            relatedDates: [...streakDates],
+          });
+          addedViolationDates.add(violationDate);
+        }
       }
+    } else {
+      // Streak broken, reset
       consecutiveCount = 1;
-      streakStart = uniqueNightDates[i];
+      streakDates = [uniqueNightDates[i]];
     }
   }
-  
-  // Check final streak
-  if (consecutiveCount > COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS) {
-    violations.push({
-      type: 'MAX_CONSECUTIVE_NIGHTS',
-      severity: 'error',
-      employeeId,
-      date: streakStart,
-      message: `${consecutiveCount} consecutive night shifts (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS})`,
-      value: consecutiveCount,
-      limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS,
-    });
-  } else if (consecutiveCount > COMPLIANCE_LIMITS.CONSECUTIVE_NIGHTS_WARNING) {
-    violations.push({
-      type: 'CONSECUTIVE_NIGHTS_WARNING',
-      severity: 'warning',
-      employeeId,
-      date: streakStart,
-      message: `${consecutiveCount} consecutive night shifts - consider rest period`,
-      value: consecutiveCount,
-      limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS,
-    });
-  }
-  
+
   return violations;
 }
 
