@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2,
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence } from '@/lib/fatigue';
 import type { ShiftDefinition, FatigueResult } from '@/lib/types';
-import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
+import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
 import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel } from '@/lib/types';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 
@@ -37,6 +37,7 @@ export function PersonView({
   // Period selection
   const [selectedYear, setSelectedYear] = useState(2025);
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(0);
+  const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
 
   const networkRailPeriods = useMemo(() => generateNetworkRailPeriods(selectedYear), [selectedYear]);
   const availableYears = getAvailableYears();
@@ -226,6 +227,40 @@ export function PersonView({
     } else if (selectedYear < availableYears[availableYears.length - 1]) {
       setSelectedYear(selectedYear + 1);
       setSelectedPeriodIdx(0);
+    }
+  };
+
+  // Navigate to violation date
+  const handleViolationClick = (violation: ComplianceViolation) => {
+    const violationDate = violation.date;
+
+    // Find which period contains this date
+    const period = findPeriodForDate(violationDate);
+    if (!period) return;
+
+    // Set the year if different
+    if (period.year !== selectedYear) {
+      setSelectedYear(period.year);
+    }
+
+    // Find the period index for this year
+    const yearPeriods = generateNetworkRailPeriods(period.year);
+    const periodIdx = yearPeriods.findIndex(p => p.period === period.period);
+
+    if (periodIdx !== -1) {
+      setSelectedPeriodIdx(periodIdx);
+    }
+
+    // Highlight the violation date
+    setHighlightedDate(violationDate);
+
+    // Clear highlight after 3 seconds
+    setTimeout(() => setHighlightedDate(null), 3000);
+
+    // Scroll to calendar section
+    const calendarSection = document.getElementById('schedule-calendar');
+    if (calendarSection) {
+      calendarSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -543,32 +578,34 @@ export function PersonView({
             </div>
             <div className="p-4 space-y-4 max-h-64 overflow-y-auto">
               {compliance.violations.map((violation, idx) => (
-                <div
+                <button
                   key={idx}
-                  className={`p-3 rounded-lg ${violation.severity === 'error' ? 'bg-red-50 border-l-4 border-red-500' : 'bg-amber-50 border-l-4 border-amber-500'}`}
+                  onClick={() => handleViolationClick(violation)}
+                  className={`w-full text-left p-3 rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] ${violation.severity === 'error' ? 'bg-red-50 border-l-4 border-red-500 hover:bg-red-100' : 'bg-amber-50 border-l-4 border-amber-500 hover:bg-amber-100'}`}
                 >
                   <div className="flex items-start gap-2">
                     {violation.severity === 'error' ? <XCircle className="w-4 h-4 text-red-500 mt-0.5" /> : <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />}
-                    <div>
+                    <div className="flex-1">
                       <p className={`font-medium text-sm ${violation.severity === 'error' ? 'text-red-900' : 'text-amber-900'}`}>
                         {getViolationIcon(violation.type)} {getViolationTitle(violation.type)}
                       </p>
                       <p className={`text-xs mt-0.5 ${violation.severity === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
                         {violation.message}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                         {new Date(violation.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        <span className="text-blue-500 ml-1">→ Click to view</span>
                       </p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         )}
 
         {/* Schedule Calendar Grid */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div id="schedule-calendar" className="bg-white rounded-lg shadow-md scroll-mt-4">
           <div className="p-4 border-b border-slate-200 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-500" />
             <h3 className="font-semibold text-slate-800">Schedule - {currentPeriod?.name}</h3>
@@ -597,23 +634,27 @@ export function PersonView({
                     ? Math.max(...dateAssignmentIndices.map(i => fatigueAnalysis.results[i]?.riskIndex || 0))
                     : null;
 
+                  const isHighlighted = highlightedDate === date;
+
                   return (
                     <div
                       key={date}
-                      className={`min-h-[100px] p-2 rounded-lg border transition-colors ${
-                        hasViolation
-                          ? 'bg-red-100 border-red-400'
-                          : dateAssignments.length > 0
-                            ? dateFRI && dateFRI >= 1.2
-                              ? 'bg-red-50 border-red-300'
-                              : dateFRI && dateFRI >= 1.1
-                                ? 'bg-amber-50 border-amber-300'
-                                : 'bg-green-50 border-green-300'
-                            : isWeekend
-                              ? 'bg-slate-100 border-slate-200'
-                              : isToday
-                                ? 'bg-blue-50 border-blue-300'
-                                : 'bg-white border-slate-200'
+                      className={`min-h-[100px] p-2 rounded-lg border transition-all ${
+                        isHighlighted
+                          ? 'ring-4 ring-blue-500 ring-offset-2 animate-pulse bg-blue-100 border-blue-500 scale-105 z-10'
+                          : hasViolation
+                            ? 'bg-red-100 border-red-400'
+                            : dateAssignments.length > 0
+                              ? dateFRI && dateFRI >= 1.2
+                                ? 'bg-red-50 border-red-300'
+                                : dateFRI && dateFRI >= 1.1
+                                  ? 'bg-amber-50 border-amber-300'
+                                  : 'bg-green-50 border-green-300'
+                              : isWeekend
+                                ? 'bg-slate-100 border-slate-200'
+                                : isToday
+                                  ? 'bg-blue-50 border-blue-300'
+                                  : 'bg-white border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
