@@ -48,11 +48,11 @@ export function useAuth(): UseAuthReturn {
         throw new Error('Supabase not configured');
       }
 
-      // Get the current session token for authenticated requests
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token || supabaseKey;
+      // Use the anon key directly - we already know the user is authenticated
+      // Avoid calling getSession() which may be hanging
+      const accessToken = supabaseKey;
 
-      console.log('loadProfile: using direct fetch with token');
+      console.log('loadProfile: using direct fetch with anon key');
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
