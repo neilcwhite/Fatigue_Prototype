@@ -121,6 +121,22 @@ export function TimelineView({
     return getDateCellViolations(employeeId, date, violations);
   };
 
+  // Check if employee has any future violations (from given date onwards)
+  const hasFutureViolations = (employeeId: number, fromDate: string): { hasWarning: boolean; hasError: boolean } => {
+    const violations = complianceByEmployee.get(employeeId) || [];
+    const fromDateObj = new Date(fromDate);
+
+    const futureViolations = violations.filter(v => {
+      const violationDate = new Date(v.date);
+      return violationDate >= fromDateObj;
+    });
+
+    return {
+      hasWarning: futureViolations.some(v => v.severity === 'warning'),
+      hasError: futureViolations.some(v => v.severity === 'error'),
+    };
+  };
+
   // Check if shift pattern has hours for a given day
   const shiftPatternHasHoursForDay = (pattern: ShiftPatternCamel, dateStr: string): boolean => {
     if (pattern.id.endsWith('-custom')) {
@@ -331,21 +347,42 @@ export function TimelineView({
   };
 
   // Get tile color based on violations and selection
-  const getTileStyle = (violations: ComplianceViolation[], isSelected: boolean) => {
+  // - violations: violations on THIS specific date (fill color)
+  // - futureViolations: whether employee has any violations from this date onwards (border)
+  const getTileStyle = (
+    violations: ComplianceViolation[],
+    isSelected: boolean,
+    futureViolations?: { hasWarning: boolean; hasError: boolean }
+  ) => {
     if (isSelected) {
       return 'bg-blue-500 text-white border-blue-600 border-2 ring-2 ring-blue-300';
     }
 
+    // Current date has a violation - change fill color
     const hasError = violations.some(v => v.severity === 'error');
     const hasWarning = violations.some(v => v.severity === 'warning');
 
+    // Future violations - change border color (but not fill unless this date is a violation)
+    const hasFutureError = futureViolations?.hasError || false;
+    const hasFutureWarning = futureViolations?.hasWarning || false;
+
+    // Fill color based on THIS date's violations
+    let fillClass = 'bg-green-100 text-green-800';
     if (hasError) {
-      return 'bg-red-100 text-red-800 border-red-400 border-2';
+      fillClass = 'bg-red-100 text-red-800';
+    } else if (hasWarning) {
+      fillClass = 'bg-amber-100 text-amber-800';
     }
-    if (hasWarning) {
-      return 'bg-amber-100 text-amber-800 border-amber-400 border-2';
+
+    // Border based on future violations (shows upcoming issues)
+    let borderClass = 'border border-green-300';
+    if (hasError || hasFutureError) {
+      borderClass = 'border-2 border-red-400';
+    } else if (hasWarning || hasFutureWarning) {
+      borderClass = 'border-2 border-amber-400';
     }
-    return 'bg-green-100 text-green-800 border border-green-300';
+
+    return `${fillClass} ${borderClass}`;
   };
 
   // Get just the background color for the hover buttons overlay
@@ -584,9 +621,13 @@ export function TimelineView({
                           const hasError = assignment.violations.some(v => v.severity === 'error');
                           const hasWarning = assignment.violations.some(v => v.severity === 'warning');
 
-                          // Handle chip click - navigate to employee page if violations, otherwise select
+                          // Check for future violations (from this date onwards)
+                          const futureViolations = hasFutureViolations(assignment.employeeId, date);
+                          const hasFutureIssues = futureViolations.hasError || futureViolations.hasWarning;
+
+                          // Handle chip click - navigate to employee page if any violations (current or future)
                           const handleChipClick = (e: React.MouseEvent) => {
-                            if (hasViolations && onNavigateToPerson && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                            if ((hasViolations || hasFutureIssues) && onNavigateToPerson && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
                               e.stopPropagation();
                               onNavigateToPerson(assignment.employeeId);
                             } else {
@@ -598,13 +639,15 @@ export function TimelineView({
                             <div
                               key={assignment.id}
                               onClick={handleChipClick}
-                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, isSelected)}`}
+                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, isSelected, futureViolations)}`}
                               title={
                                 hasViolations
                                   ? `${assignment.employeeName}${assignment.timeDisplay ? `\n${assignment.timeDisplay}` : ''}\n\n${getViolationTooltip(assignment.violations)}\n\nClick to view employee and resolve issues`
-                                  : assignment.timeDisplay
-                                    ? `${assignment.employeeName}\n${assignment.timeDisplay}`
-                                    : `${assignment.employeeName}\n\nClick to select, Ctrl+click for multi-select`
+                                  : hasFutureIssues
+                                    ? `${assignment.employeeName}${assignment.timeDisplay ? `\n${assignment.timeDisplay}` : ''}\n\n⚠️ Upcoming compliance issue - click to view`
+                                    : assignment.timeDisplay
+                                      ? `${assignment.employeeName}\n${assignment.timeDisplay}`
+                                      : `${assignment.employeeName}\n\nClick to select, Ctrl+click for multi-select`
                               }
                               onDragOver={(e) => {
                                 if (!isCopyMode) {

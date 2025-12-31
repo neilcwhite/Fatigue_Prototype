@@ -714,14 +714,15 @@ export function validateNewAssignment(
 
 /**
  * Get violations for a specific date cell (for visual highlighting)
+ * Only shows violations on the actual violation date, not on related dates
+ * (e.g., consecutive nights warning only shows on the 5th night, not the first 4)
  */
 export function getDateCellViolations(
   employeeId: number,
   date: string,
   violations: ComplianceViolation[]
 ): ComplianceViolation[] {
-  return violations.filter(v => 
-    v.employeeId === employeeId && 
-    (v.date === date || v.relatedDates?.includes(date))
+  return violations.filter(v =>
+    v.employeeId === employeeId && v.date === date
   );
 }
