@@ -12,7 +12,9 @@ import { SummaryView } from '@/components/summary/SummaryView';
 import { FatigueView } from '@/components/fatigue/FatigueView';
 import { ProjectModal } from '@/components/modals/ProjectModal';
 import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
+import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
 import { Spinner } from '@/components/ui/Icons';
+import type { ShiftPatternCamel } from '@/lib/types';
 
 type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
 
@@ -23,6 +25,7 @@ export default function Home() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showShiftPatternModal, setShowShiftPatternModal] = useState(false);
+  const [editingShiftPattern, setEditingShiftPattern] = useState<ShiftPatternCamel | null>(null);
 
   // Debug logging
   console.log('Page render:', { authLoading, hasUser: !!user, hasProfile: !!profile, orgId: profile?.organisationId });
@@ -44,6 +47,7 @@ export default function Home() {
     updateTeam,
     deleteTeam,
     createShiftPattern,
+    updateShiftPattern,
   } = useAppData(profile?.organisationId || null);
 
   // Auth loading state
@@ -233,6 +237,7 @@ export default function Home() {
           onSelectProject={(id) => setSelectedProject(id)}
           onNavigateToPerson={handleNavigateToPerson}
           onNavigateToPlanning={handleSelectProject}
+          onEditShiftPattern={(pattern) => setEditingShiftPattern(pattern)}
         />
       )}
 
@@ -304,6 +309,18 @@ export default function Home() {
           projectId={selectedProject}
           onClose={() => setShowShiftPatternModal(false)}
           onSave={handleCreateShiftPattern}
+        />
+      )}
+
+      {/* Shift Pattern Edit Modal */}
+      {editingShiftPattern && (
+        <ShiftPatternEditModal
+          pattern={editingShiftPattern}
+          onClose={() => setEditingShiftPattern(null)}
+          onSave={async (id, data) => {
+            await updateShiftPattern(id, data);
+            setEditingShiftPattern(null);
+          }}
         />
       )}
     </>

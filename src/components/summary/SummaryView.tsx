@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, AlertTriangle, CheckCircle, Users, Clock, Calendar, BarChart, XCircle, ChevronDown, ChevronUp } from '@/components/ui/Icons';
+import { ChevronLeft, AlertTriangle, CheckCircle, Users, Clock, Calendar, BarChart, XCircle, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
 import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
 import { 
   checkProjectCompliance, 
@@ -22,6 +22,7 @@ interface SummaryViewProps {
   onSelectProject: (id: number) => void;
   onNavigateToPerson: (employeeId: number) => void;
   onNavigateToPlanning: (projectId: number) => void;
+  onEditShiftPattern?: (pattern: ShiftPatternCamel) => void;
 }
 
 function getShiftDuration(pattern: ShiftPatternCamel, date: string): number {
@@ -64,6 +65,7 @@ export function SummaryView({
   onSelectProject,
   onNavigateToPerson,
   onNavigateToPlanning,
+  onEditShiftPattern,
 }: SummaryViewProps) {
   const projectAssignments = useMemo(() => 
     assignments.filter(a => a.projectId === project.id),
@@ -276,41 +278,59 @@ export function SummaryView({
               )}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-fixed">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="text-left p-3 font-medium text-slate-700 border-b min-w-[180px]">Pattern</th>
+                    <th className="text-left p-3 font-medium text-slate-700 border-b w-[220px]">Pattern</th>
                     {dayKeys.map(day => (
-                      <th key={day} className="text-center p-3 font-medium text-slate-700 border-b w-[100px]">{day}</th>
+                      <th key={day} className="text-center p-3 font-medium text-slate-700 border-b w-[90px]">{day}</th>
                     ))}
+                    <th className="text-center p-3 font-medium text-slate-700 border-b w-[60px]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedPatterns.map((pattern) => (
-                    <tr key={pattern.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <tr key={pattern.id} className="border-b border-slate-100 hover:bg-slate-50 group">
                       <td className="p-3">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${pattern.isNight ? 'bg-purple-500' : 'bg-green-500'}`} />
-                          <div>
-                            <span className="font-medium text-slate-800">{pattern.name}</span>
-                            <span className="text-xs text-slate-500 ml-2">{pattern.dutyType}</span>
+                          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${pattern.isNight ? 'bg-purple-500' : 'bg-green-500'}`} />
+                          <div className="min-w-0">
+                            <span className="font-medium text-slate-800 block truncate">{pattern.name}</span>
+                            <span className="text-xs text-slate-500">{pattern.dutyType}</span>
                           </div>
                         </div>
                       </td>
                       {dayKeys.map(day => {
                         const { active, hours } = getDaySchedule(pattern, day);
                         return (
-                          <td key={day} className={`text-center p-3 ${active ? 'text-slate-800' : 'text-slate-300'}`}>
+                          <td key={day} className="text-center p-2">
                             {active ? (
-                              <span className={`px-2 py-1 rounded text-xs font-mono ${pattern.isNight ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
-                                {hours}
-                              </span>
+                              <div className={`inline-flex flex-col items-center justify-center w-full py-1.5 px-1 rounded ${pattern.isNight ? 'bg-purple-50' : 'bg-green-50'}`}>
+                                <span className={`text-xs font-medium ${pattern.isNight ? 'text-purple-700' : 'text-green-700'}`}>
+                                  {hours.split('-')[0]}
+                                </span>
+                                <span className={`text-[10px] ${pattern.isNight ? 'text-purple-400' : 'text-green-400'}`}>to</span>
+                                <span className={`text-xs font-medium ${pattern.isNight ? 'text-purple-700' : 'text-green-700'}`}>
+                                  {hours.split('-')[1]}
+                                </span>
+                              </div>
                             ) : (
                               <span className="text-slate-300">-</span>
                             )}
                           </td>
                         );
                       })}
+                      <td className="text-center p-2">
+                        {onEditShiftPattern && (
+                          <button
+                            onClick={() => onEditShiftPattern(pattern)}
+                            className="p-1.5 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Edit shift pattern"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
