@@ -38,25 +38,29 @@ export function useAuth(): UseAuthReturn {
     console.log('loadProfile: starting for user:', userId, 'email:', userEmail);
 
     try {
-      console.log('loadProfile: querying user_profiles table...');
+      console.log('loadProfile: querying user_profiles table (without join)...');
 
-      // Add timeout to prevent hanging
-      const queryPromise = supabase
+      // Query without join first - the join might be causing issues
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
-        .select('*, organisations(name)')
+        .select('*')
         .eq('id', userId)
         .single();
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Profile query timed out after 10 seconds')), 10000);
-      });
+      console.log('loadProfile: query completed, profileData:', profileData ? 'found' : 'not found');
 
-      const { data: profileData, error: profileError } = await Promise.race([
-        queryPromise,
-        timeoutPromise
-      ]) as any;
-
-      console.log('loadProfile: query completed');
+      // Fetch organisation name separately if we have a profile
+      let organisationName: string | undefined;
+      if (profileData?.organisation_id) {
+        console.log('loadProfile: fetching organisation name...');
+        const { data: orgData } = await supabase
+          .from('organisations')
+          .select('name')
+          .eq('id', profileData.organisation_id)
+          .single();
+        organisationName = orgData?.name;
+        console.log('loadProfile: organisation name:', organisationName);
+      }
 
       console.log('loadProfile: result:', {
         hasData: !!profileData,
@@ -89,7 +93,7 @@ export function useAuth(): UseAuthReturn {
               role: 'admin',
               organisation_id: orgId,
             })
-            .select('*, organisations(name)')
+            .select('*')
             .single();
 
           if (insertError) {
@@ -106,7 +110,7 @@ export function useAuth(): UseAuthReturn {
               fullName: newProfile.full_name,
               role: newProfile.role,
               organisationId: newProfile.organisation_id,
-              organisationName: newProfile.organisations?.name,
+              organisationName: 'My Organisation',
             });
           }
         } else {
@@ -122,7 +126,7 @@ export function useAuth(): UseAuthReturn {
           fullName: profileData.full_name,
           role: profileData.role,
           organisationId: profileData.organisation_id,
-          organisationName: profileData.organisations?.name,
+          organisationName: organisationName,
         });
       }
     } catch (err: any) {
