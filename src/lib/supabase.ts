@@ -9,10 +9,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Debug logging
-console.log('Supabase config:', { 
-  hasUrl: !!supabaseUrl, 
+console.log('Supabase config:', {
+  hasUrl: !!supabaseUrl,
   hasKey: !!supabaseKey,
-  urlPrefix: supabaseUrl.substring(0, 20) 
+  urlPrefix: supabaseUrl.substring(0, 20)
 });
 
 // Validate configuration
@@ -20,10 +20,18 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('Supabase environment variables not set');
 }
 
-// Create Supabase client
-export const supabase: SupabaseClient | null = 
-  supabaseUrl && supabaseKey 
-    ? createClient(supabaseUrl, supabaseKey)
+// Create Supabase client with proper auth persistence settings
+export const supabase: SupabaseClient | null =
+  supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          persistSession: true,
+          storageKey: 'fatigue-management-auth',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+        },
+      })
     : null;
 
 // ==================== AUTH HELPERS ====================

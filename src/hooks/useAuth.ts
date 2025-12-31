@@ -30,29 +30,51 @@ export function useAuth(): UseAuthReturn {
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async (userId: string, userEmail: string): Promise<void> => {
-    if (!supabase) return;
+    if (!supabase) {
+      console.log('loadProfile: supabase not configured');
+      return;
+    }
 
-    console.log('loadProfile: starting for user:', userId);
+    console.log('loadProfile: starting for user:', userId, 'email:', userEmail);
 
     try {
+      // First verify we have an active session
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('loadProfile: current session valid:', !!sessionData.session);
+
+      if (!sessionData.session) {
+        console.log('loadProfile: no active session, cannot load profile');
+        return;
+      }
+
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*, organisations(name)')
         .eq('id', userId)
         .single();
 
-      console.log('loadProfile: result:', { profileData, error: profileError });
+      console.log('loadProfile: result:', {
+        hasData: !!profileData,
+        errorMessage: profileError?.message,
+        errorCode: profileError?.code,
+        errorHint: profileError?.hint
+      });
 
       if (profileError) {
         // No profile found - create one
         if (profileError.code === 'PGRST116') {
-          console.log('loadProfile: no profile, creating...');
+          console.log('loadProfile: no profile exists, creating new one...');
           const orgId = crypto.randomUUID();
-          
-          await supabase.from('organisations').insert({
+
+          const { error: orgError } = await supabase.from('organisations').insert({
             id: orgId,
             name: 'My Organisation',
           });
+
+          if (orgError) {
+            console.error('loadProfile: failed to create organisation:', orgError);
+            throw orgError;
+          }
 
           const { data: newProfile, error: insertError } = await supabase
             .from('user_profiles')
@@ -65,8 +87,13 @@ export function useAuth(): UseAuthReturn {
             .select('*, organisations(name)')
             .single();
 
-          if (insertError) throw insertError;
-          
+          if (insertError) {
+            console.error('loadProfile: failed to create profile:', insertError);
+            throw insertError;
+          }
+
+          console.log('loadProfile: created new profile successfully');
+
           if (newProfile) {
             setProfile({
               id: newProfile.id,
@@ -78,9 +105,12 @@ export function useAuth(): UseAuthReturn {
             });
           }
         } else {
+          // Some other error - could be RLS policy issue
+          console.error('loadProfile: unexpected error:', profileError);
           throw profileError;
         }
       } else if (profileData) {
+        console.log('loadProfile: profile found, setting state');
         setProfile({
           id: profileData.id,
           email: profileData.email,
