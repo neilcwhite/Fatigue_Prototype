@@ -38,14 +38,26 @@ export function useAuth(): UseAuthReturn {
     console.log('loadProfile: starting for user:', userId, 'email:', userEmail);
 
     try {
-      console.log('loadProfile: querying user_profiles table (without join)...');
+      console.log('loadProfile: querying user_profiles table...');
+      console.log('loadProfile: supabase client exists:', !!supabase);
 
-      // Query without join first - the join might be causing issues
-      const { data: profileData, error: profileError } = await supabase
+      // Use Promise.race with a timeout to prevent infinite hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Query timed out after 8 seconds')), 8000);
+      });
+
+      const queryPromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single();
+
+      console.log('loadProfile: query initiated, waiting for response...');
+
+      const result = await Promise.race([queryPromise, timeoutPromise]) as { data: any; error: any };
+      const { data: profileData, error: profileError } = result;
+
+      console.log('loadProfile: query responded!');
 
       console.log('loadProfile: query completed, profileData:', profileData ? 'found' : 'not found');
 
@@ -131,7 +143,23 @@ export function useAuth(): UseAuthReturn {
       }
     } catch (err: any) {
       console.error('loadProfile error:', err);
-      setError(err.message);
+
+      // If query timed out, create a temporary fallback profile so the app can still be used
+      if (err.message?.includes('timed out')) {
+        console.log('loadProfile: Query timed out, creating fallback profile');
+        // Create a temporary org and profile - the app can still function
+        const tempOrgId = crypto.randomUUID();
+        setProfile({
+          id: userId,
+          email: userEmail,
+          role: 'admin',
+          organisationId: tempOrgId,
+          organisationName: 'My Organisation (Offline)',
+        });
+        setError('Database connection slow - using offline mode');
+      } else {
+        setError(err.message);
+      }
     }
   }, []);
 
