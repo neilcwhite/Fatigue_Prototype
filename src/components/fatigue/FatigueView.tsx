@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart } from '@/components/ui/Icons';
+import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users } from '@/components/ui/Icons';
 import {
   calculateFatigueSequence,
   getRiskLevel,
@@ -10,7 +10,7 @@ import {
   parseTimeToHours,
   calculateDutyLength,
 } from '@/lib/fatigue';
-import type { ShiftDefinition, FatigueResult } from '@/lib/types';
+import type { ShiftDefinition, Project, Employee, ShiftPatternCamel, AssignmentCamel } from '@/lib/types';
 import { FatigueChart } from './FatigueChart';
 
 interface Shift extends ShiftDefinition {
@@ -28,6 +28,11 @@ interface FatigueViewProps {
   user: any;
   onSignOut: () => void;
   onBack: () => void;
+  // Data from the app
+  projects?: Project[];
+  employees?: Employee[];
+  shiftPatterns?: ShiftPatternCamel[];
+  assignments?: AssignmentCamel[];
 }
 
 // Extended templates including the original simple ones
@@ -116,6 +121,10 @@ export function FatigueView({
   user,
   onSignOut,
   onBack,
+  projects = [],
+  employees = [],
+  shiftPatterns = [],
+  assignments = [],
 }: FatigueViewProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -124,6 +133,10 @@ export function FatigueView({
   const [showChart, setShowChart] = useState(true);
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Project and employee selection for loading rosters
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
 
   // Role and day-of-week settings
   const [selectedRole, setSelectedRole] = useState<RoleKey>('custom');
@@ -149,6 +162,74 @@ export function FatigueView({
     continuousWork: DEFAULT_FATIGUE_PARAMS.continuousWork,
     breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
   });
+
+  // Get employees for the selected project (those with assignments)
+  const projectEmployees = useMemo(() => {
+    if (!selectedProjectId) return [];
+    const employeeIds = new Set(
+      assignments
+        .filter(a => a.projectId === selectedProjectId)
+        .map(a => a.employeeId)
+    );
+    return employees.filter(e => employeeIds.has(e.id));
+  }, [selectedProjectId, assignments, employees]);
+
+  // Get selected project and employee data
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+
+  // Load roster from project/employee assignments
+  const handleLoadRoster = () => {
+    if (!selectedProjectId || !selectedEmployeeId) return;
+
+    // Get assignments for this employee on this project
+    const employeeAssignments = assignments
+      .filter(a => a.projectId === selectedProjectId && a.employeeId === selectedEmployeeId)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (employeeAssignments.length === 0) {
+      alert('No assignments found for this employee on this project.');
+      return;
+    }
+
+    // Find the earliest date to calculate day numbers
+    const dates = employeeAssignments.map(a => new Date(a.date));
+    const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+
+    // Set the start day of week based on the earliest assignment
+    const dayOfWeekIndex = earliestDate.getDay(); // 0=Sun, 1=Mon, etc.
+    const startDayMap: Record<number, number> = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
+    setStartDayOfWeek(startDayMap[dayOfWeekIndex]);
+
+    // Convert assignments to shifts
+    const loadedShifts: Shift[] = employeeAssignments.map((assignment, index) => {
+      const pattern = shiftPatterns.find(p => p.id === assignment.shiftPatternId);
+      const assignmentDate = new Date(assignment.date);
+      const dayNumber = Math.floor((assignmentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+      // Get times from custom times or pattern
+      const startTime = assignment.customStartTime || pattern?.startTime || '08:00';
+      const endTime = assignment.customEndTime || pattern?.endTime || '17:00';
+
+      // Get fatigue params from pattern if available
+      const commuteTime = pattern?.commuteTime || params.commuteTime;
+
+      return {
+        id: Date.now() + index,
+        day: dayNumber,
+        startTime,
+        endTime,
+        commuteIn: Math.floor(commuteTime / 2),
+        commuteOut: Math.ceil(commuteTime / 2),
+        workload: pattern?.workload || params.workload,
+        attention: pattern?.attention || params.attention,
+        breakFreq: pattern?.breakFrequency || params.breakFrequency,
+        breakLen: pattern?.breakLength || params.breakLength,
+      };
+    });
+
+    setShifts(loadedShifts);
+  };
 
   // Calculate results using full HSE RR446 algorithm
   const results = useMemo(() => {
@@ -650,9 +731,68 @@ export function FatigueView({
                   </div>
                 </div>
 
+                {/* Load from Roster */}
+                {projects.length > 0 && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <label className="text-sm font-medium text-blue-800 mb-2 block flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Load from Existing Roster
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <label className="text-xs text-blue-700 mb-1 block">Project</label>
+                        <select
+                          value={selectedProjectId || ''}
+                          onChange={(e) => {
+                            const projectId = e.target.value ? parseInt(e.target.value) : null;
+                            setSelectedProjectId(projectId);
+                            setSelectedEmployeeId(null); // Reset employee when project changes
+                          }}
+                          className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                        >
+                          <option value="">Select project...</option>
+                          {projects.map(project => (
+                            <option key={project.id} value={project.id}>
+                              {project.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700 mb-1 block">Employee</label>
+                        <select
+                          value={selectedEmployeeId || ''}
+                          onChange={(e) => setSelectedEmployeeId(e.target.value ? parseInt(e.target.value) : null)}
+                          className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                          disabled={!selectedProjectId}
+                        >
+                          <option value="">Select employee...</option>
+                          {projectEmployees.map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLoadRoster}
+                      disabled={!selectedProjectId || !selectedEmployeeId}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      Load Roster
+                    </button>
+                    {selectedProject && selectedEmployee && (
+                      <p className="text-xs text-blue-600 mt-2">
+                        Loading roster for {selectedEmployee.name} on {selectedProject.name}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Templates */}
                 <div className="mb-4">
-                  <label className="text-sm font-medium text-slate-700 mb-2 block">Load Template</label>
+                  <label className="text-sm font-medium text-slate-700 mb-2 block">Or Load Template</label>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(TEMPLATES).map(([key, template]) => (
                       <button

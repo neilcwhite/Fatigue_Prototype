@@ -246,6 +246,10 @@ export default function Home() {
           user={user}
           onSignOut={signOut}
           onBack={handleBackToDashboard}
+          projects={projects}
+          employees={employees}
+          shiftPatterns={shiftPatterns}
+          assignments={assignments}
         />
       )}
 
