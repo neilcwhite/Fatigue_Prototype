@@ -39,12 +39,24 @@ export function useAuth(): UseAuthReturn {
 
     try {
       console.log('loadProfile: querying user_profiles table...');
-      console.log('loadProfile: supabase client exists:', !!supabase);
 
-      // Create an AbortController for proper timeout handling
+      // Try direct fetch to Supabase REST API as a workaround for client library issues
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase not configured');
+      }
+
+      // Get the current session token for authenticated requests
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || supabaseKey;
+
+      console.log('loadProfile: using direct fetch with token');
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log('loadProfile: Aborting query due to timeout');
+        console.log('loadProfile: Aborting fetch due to timeout');
         controller.abort();
       }, 8000);
 
@@ -52,23 +64,42 @@ export function useAuth(): UseAuthReturn {
       let profileError: any = null;
 
       try {
-        console.log('loadProfile: query initiated, waiting for response...');
+        console.log('loadProfile: fetching from REST API...');
 
-        // Use maybeSingle() which doesn't throw on no results
-        const result = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', userId)
-          .abortSignal(controller.signal)
-          .maybeSingle();
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=*`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            signal: controller.signal,
+          }
+        );
 
         clearTimeout(timeoutId);
-        profileData = result.data;
-        profileError = result.error;
+        console.log('loadProfile: fetch responded, status:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('loadProfile: fetch error:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('loadProfile: data received, count:', data?.length);
+
+        // REST API returns an array, get first item
+        profileData = data?.[0] || null;
+        profileError = null;
+
         console.log('loadProfile: query responded!');
       } catch (fetchErr: any) {
         clearTimeout(timeoutId);
-        if (fetchErr.name === 'AbortError' || fetchErr.message?.includes('aborted')) {
+        if (fetchErr.name === 'AbortError') {
           throw new Error('Query timed out after 8 seconds');
         }
         throw fetchErr;
