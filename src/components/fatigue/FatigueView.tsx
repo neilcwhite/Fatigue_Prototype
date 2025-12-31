@@ -614,6 +614,42 @@ export function FatigueView({
               </div>
 
               <div className="p-4">
+                {/* Role Preset & Start Day Selector */}
+                <div className="mb-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-1 block">Role Preset</label>
+                    <select
+                      value={selectedRole}
+                      onChange={(e) => handleApplyRolePreset(e.target.value as RoleKey)}
+                      className="w-full border rounded px-3 py-2 text-sm text-slate-900 bg-white"
+                    >
+                      {Object.entries(ROLE_PRESETS).map(([key, role]) => (
+                        <option key={key} value={key} title={role.description}>
+                          {role.name} ({role.workload}/{role.attention})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">{ROLE_PRESETS[selectedRole].description}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 mb-1 block">Day 1 is</label>
+                    <select
+                      value={startDayOfWeek}
+                      onChange={(e) => setStartDayOfWeek(parseInt(e.target.value))}
+                      className="w-full border rounded px-3 py-2 text-sm text-slate-900 bg-white"
+                    >
+                      <option value={1}>Monday</option>
+                      <option value={2}>Tuesday</option>
+                      <option value={3}>Wednesday</option>
+                      <option value={4}>Thursday</option>
+                      <option value={5}>Friday</option>
+                      <option value={6}>Saturday</option>
+                      <option value={7}>Sunday</option>
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">Set the start day of your roster</p>
+                  </div>
+                </div>
+
                 {/* Templates */}
                 <div className="mb-4">
                   <label className="text-sm font-medium text-slate-700 mb-2 block">Load Template</label>
@@ -647,8 +683,22 @@ export function FatigueView({
                   </button>
                 </div>
 
+                {/* Shifts List - Header Row */}
+                {shifts.length > 0 && (
+                  <div className="grid grid-cols-[60px_50px_70px_90px_90px_70px_36px_36px] gap-1 px-3 py-2 bg-slate-200 rounded-t-lg text-xs font-medium text-slate-600 items-center">
+                    <span>Day</span>
+                    <span>DoW</span>
+                    <span className="text-center">Travel In</span>
+                    <span className="text-center">Start</span>
+                    <span className="text-center">Finish</span>
+                    <span className="text-center">Travel Out</span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                )}
+
                 {/* Shifts List with Per-Day Parameters */}
-                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                <div className="space-y-0 max-h-[500px] overflow-y-auto">
                   {shifts.length === 0 ? (
                     <p className="text-slate-500 text-center py-8">
                       Add shifts or load a template to calculate fatigue risk
@@ -657,95 +707,93 @@ export function FatigueView({
                     [...shifts].sort((a, b) => a.day - b.day).map(shift => {
                       const isExpanded = expandedShiftParams === shift.id;
                       return (
-                        <div key={shift.id} className="border rounded-lg bg-slate-50 overflow-hidden">
-                          {/* Main Row */}
-                          <div className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-slate-500 w-8">Day</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="28"
-                                  value={shift.day}
-                                  onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
-                                  className="w-14 border rounded px-2 py-1 text-sm text-slate-900 bg-white text-center"
-                                  title="Day number"
-                                />
-                              </div>
+                        <div key={shift.id} className="border-x border-b first:border-t bg-slate-50 overflow-hidden first:rounded-t-lg last:rounded-b-lg">
+                          {/* Main Row - Grid Layout */}
+                          <div className="grid grid-cols-[60px_50px_70px_90px_90px_70px_36px_36px] gap-1 p-2 items-center">
+                            {/* Day Number */}
+                            <input
+                              type="number"
+                              min="1"
+                              max="28"
+                              value={shift.day}
+                              onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
+                              className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white text-center"
+                              title="Day number"
+                            />
+
+                            {/* Day of Week */}
+                            <span className="text-xs font-medium text-slate-600 bg-slate-200 px-1.5 py-1.5 rounded text-center">
+                              {getDayOfWeek(shift.day, startDayOfWeek)}
+                            </span>
+
+                            {/* Travel In */}
+                            <div className="relative">
                               <input
-                                type="time"
-                                value={shift.startTime}
-                                onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
-                                className="border rounded px-2 py-1 text-sm text-slate-900 bg-white w-24"
+                                type="number"
+                                min="0"
+                                max="180"
+                                value={shift.commuteIn ?? 30}
+                                onChange={(e) => handleUpdateShift(shift.id, 'commuteIn', parseInt(e.target.value) || 0)}
+                                className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-blue-50 text-center"
+                                title="Travel time to work (mins)"
                               />
-                              <span className="text-slate-400 text-xs">to</span>
+                            </div>
+
+                            {/* Start Time */}
+                            <input
+                              type="time"
+                              value={shift.startTime}
+                              onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
+                              className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                              title="Shift start time"
+                            />
+
+                            {/* End Time */}
+                            <input
+                              type="time"
+                              value={shift.endTime}
+                              onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
+                              className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                              title="Shift end time"
+                            />
+
+                            {/* Travel Out */}
+                            <div className="relative">
                               <input
-                                type="time"
-                                value={shift.endTime}
-                                onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
-                                className="border rounded px-2 py-1 text-sm text-slate-900 bg-white w-24"
+                                type="number"
+                                min="0"
+                                max="180"
+                                value={shift.commuteOut ?? 30}
+                                onChange={(e) => handleUpdateShift(shift.id, 'commuteOut', parseInt(e.target.value) || 0)}
+                                className="w-full border border-purple-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-purple-50 text-center"
+                                title="Travel time from work (mins)"
                               />
-                              {/* Commute summary inline */}
-                              <div className="flex items-center gap-1 ml-2 text-xs text-slate-500">
-                                <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded" title="Commute to work">
-                                  {shift.commuteIn ?? 30}m in
-                                </span>
-                                <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded" title="Commute from work">
-                                  {shift.commuteOut ?? 30}m out
-                                </span>
-                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setExpandedShiftParams(isExpanded ? null : shift.id)}
-                                className={`p-1.5 rounded transition-colors ${isExpanded ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}
-                                title="Edit day parameters"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleRemoveShift(shift.id)}
-                                className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+
+                            {/* Settings Button */}
+                            <button
+                              onClick={() => setExpandedShiftParams(isExpanded ? null : shift.id)}
+                              className={`p-1.5 rounded transition-colors ${isExpanded ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}
+                              title="Edit day parameters"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => handleRemoveShift(shift.id)}
+                              className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded"
+                              title="Remove shift"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
 
                           {/* Expanded Per-Day Parameters */}
                           {isExpanded && (
                             <div className="px-3 pb-3 pt-0 border-t border-slate-200 bg-white">
                               <div className="pt-3 space-y-3">
-                                <p className="text-xs text-slate-500 font-medium">Day {shift.day} Fatigue Parameters</p>
-
-                                {/* Commute In/Out */}
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1">Commute IN (mins)</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="180"
-                                      value={shift.commuteIn ?? 30}
-                                      onChange={(e) => handleUpdateShift(shift.id, 'commuteIn', parseInt(e.target.value) || 0)}
-                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                                    />
-                                    <p className="text-[10px] text-slate-400 mt-0.5">Travel TO work this morning</p>
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1">Commute OUT (mins)</label>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="180"
-                                      value={shift.commuteOut ?? 30}
-                                      onChange={(e) => handleUpdateShift(shift.id, 'commuteOut', parseInt(e.target.value) || 0)}
-                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                                    />
-                                    <p className="text-[10px] text-slate-400 mt-0.5">Travel FROM work this evening</p>
-                                  </div>
-                                </div>
+                                <p className="text-xs text-slate-500 font-medium">Day {shift.day} ({getDayOfWeek(shift.day, startDayOfWeek)}) Fatigue Parameters</p>
 
                                 {/* Workload / Attention */}
                                 <div className="grid grid-cols-2 gap-3">
@@ -1023,6 +1071,95 @@ export function FatigueView({
                     </div>
                   )}
 
+                  {/* Role Comparison Toggle */}
+                  <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">Compare Multiple Roles</p>
+                        <p className="text-xs text-slate-500">Check compliance for different worker types on the same pattern</p>
+                      </div>
+                      <button
+                        onClick={() => setCompareRoles(!compareRoles)}
+                        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                          compareRoles ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                      >
+                        {compareRoles ? 'Comparing...' : 'Compare Roles'}
+                      </button>
+                    </div>
+
+                    {/* Role Selection for Comparison */}
+                    {compareRoles && (
+                      <div className="mt-3 pt-3 border-t border-slate-200">
+                        <p className="text-xs text-slate-600 mb-2">Select roles to compare:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(ROLE_PRESETS).filter(([key]) => key !== 'custom').map(([key, role]) => {
+                            const roleKey = key as RoleKey;
+                            const isSelected = selectedRolesForCompare.includes(roleKey);
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => toggleCompareRole(roleKey)}
+                                className={`px-2 py-1 text-xs rounded transition-colors ${
+                                  isSelected
+                                    ? 'bg-violet-600 text-white'
+                                    : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
+                                }`}
+                                title={role.description}
+                              >
+                                {role.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Role Comparison Results */}
+                  {compareRoles && roleComparisonResults && roleComparisonResults.length > 0 && (
+                    <div className="mb-6 p-4 bg-violet-50 rounded-lg border border-violet-200">
+                      <h4 className="text-sm font-semibold text-violet-900 mb-3">Role Compliance Summary</h4>
+                      <div className="space-y-2">
+                        {roleComparisonResults.map(result => (
+                          <div
+                            key={result.roleKey}
+                            className={`p-3 rounded-lg flex items-center justify-between ${
+                              result.isCompliant
+                                ? 'bg-green-100 border border-green-300'
+                                : 'bg-red-100 border border-red-300'
+                            }`}
+                          >
+                            <div>
+                              <span className={`font-medium ${result.isCompliant ? 'text-green-800' : 'text-red-800'}`}>
+                                {result.roleName}
+                              </span>
+                              <span className="text-xs ml-2 opacity-75">
+                                (W:{result.workload} A:{result.attention})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right text-xs">
+                                <p className={result.isCompliant ? 'text-green-700' : 'text-red-700'}>
+                                  Peak: {result.maxRisk} • Avg: {result.avgRisk}
+                                </p>
+                                {result.highRiskDays > 0 && (
+                                  <p className="text-red-600">{result.highRiskDays} high-risk day(s)</p>
+                                )}
+                              </div>
+                              <span className={`text-lg ${result.isCompliant ? 'text-green-600' : 'text-red-600'}`}>
+                                {result.isCompliant ? '✓' : '✗'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-violet-700 mt-3">
+                        Compliance = Peak FRI {'<'} 1.2 (below critical threshold)
+                      </p>
+                    </div>
+                  )}
+
                   {/* Summary Cards */}
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.avgRisk).level)}`}>
@@ -1091,6 +1228,7 @@ export function FatigueView({
                               )}
                               <div>
                                 <span className="font-medium">Day {calc.day}</span>
+                                <span className="text-xs ml-1.5 opacity-75 bg-white/30 px-1.5 py-0.5 rounded">{calc.dayOfWeek}</span>
                                 <span className="text-sm ml-2 opacity-75">
                                   {calc.startTime} - {calc.endTime}
                                 </span>
