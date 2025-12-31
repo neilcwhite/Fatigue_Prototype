@@ -508,7 +508,9 @@ export function TimelineView({
                       }`}
                       onClick={(e) => handleCellClick(e, date, isPartOfPattern)}
                       onDragOver={(e) => {
-                        if (isPartOfPattern && !isCopyMode) {
+                        // Allow dragOver on all cells (not just valid ones) so drop event fires
+                        // This enables the custom time modal for invalid cells
+                        if (!isCopyMode) {
                           onCellDragOver(e);
                         }
                       }}
@@ -517,12 +519,8 @@ export function TimelineView({
                           e.preventDefault();
                           return;
                         }
-                        if (isPartOfPattern) {
-                          onCellDrop(e, pattern.id, date);
-                        } else {
-                          e.preventDefault();
-                          onCellDrop(e, pattern.id, date, false);
-                        }
+                        // Pass isPartOfPattern as the isValidCell parameter
+                        onCellDrop(e, pattern.id, date, isPartOfPattern);
                       }}
                       title={
                         isCopyMode
@@ -567,7 +565,7 @@ export function TimelineView({
                                     : `${assignment.employeeName}\n\nClick to select, Ctrl+click for multi-select`
                               }
                               onDragOver={(e) => {
-                                if (isPartOfPattern && !isCopyMode) {
+                                if (!isCopyMode) {
                                   onCellDragOver(e);
                                 }
                               }}
@@ -576,12 +574,7 @@ export function TimelineView({
                                   e.preventDefault();
                                   return;
                                 }
-                                if (isPartOfPattern) {
-                                  onCellDrop(e, pattern.id, date);
-                                } else {
-                                  e.preventDefault();
-                                  onCellDrop(e, pattern.id, date, false);
-                                }
+                                onCellDrop(e, pattern.id, date, isPartOfPattern);
                               }}
                             >
                               <div className="flex items-center justify-between gap-0.5">
