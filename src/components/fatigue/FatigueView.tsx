@@ -10,7 +10,7 @@ import {
   parseTimeToHours,
   calculateDutyLength,
 } from '@/lib/fatigue';
-import type { ShiftDefinition, Project, Employee, ShiftPatternCamel, AssignmentCamel } from '@/lib/types';
+import type { ShiftDefinition, ProjectCamel, EmployeeCamel, ShiftPatternCamel, AssignmentCamel } from '@/lib/types';
 import { FatigueChart } from './FatigueChart';
 
 interface Shift extends ShiftDefinition {
@@ -29,8 +29,8 @@ interface FatigueViewProps {
   onSignOut: () => void;
   onBack: () => void;
   // Data from the app
-  projects?: Project[];
-  employees?: Employee[];
+  projects?: ProjectCamel[];
+  employees?: EmployeeCamel[];
   shiftPatterns?: ShiftPatternCamel[];
   assignments?: AssignmentCamel[];
 }
