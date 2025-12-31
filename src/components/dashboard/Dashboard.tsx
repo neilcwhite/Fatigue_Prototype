@@ -1,19 +1,20 @@
 'use client';
 
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
-import { 
-  Calendar, 
-  Users, 
-  Plus, 
-  CheckCircle, 
+import {
+  Calendar,
+  Users,
+  Plus,
+  CheckCircle,
   ErrorTriangle,
-  BarChart 
+  BarChart
 } from '@/components/ui/Icons';
-import type { 
-  ProjectCamel, 
-  EmployeeCamel, 
-  AssignmentCamel, 
-  ShiftPatternCamel 
+import { checkProjectCompliance } from '@/lib/compliance';
+import type {
+  ProjectCamel,
+  EmployeeCamel,
+  AssignmentCamel,
+  ShiftPatternCamel
 } from '@/lib/types';
 
 interface ProjectStats {
@@ -57,14 +58,13 @@ export function Dashboard({
   const getProjectStats = (projectId: number): ProjectStats => {
     const projectAssignments = assignments.filter(a => a.projectId === projectId);
     const projectPatterns = shiftPatterns.filter(sp => sp.projectId === projectId);
-    
+
     let totalHours = 0;
     const employeeIds = new Set<number>();
-    const violations: string[] = [];
 
     projectAssignments.forEach(assignment => {
       employeeIds.add(assignment.employeeId);
-      
+
       const pattern = projectPatterns.find(p => p.id === assignment.shiftPatternId);
       if (pattern?.startTime && pattern?.endTime) {
         const start = parseFloat(pattern.startTime.replace(':', '.'));
@@ -75,8 +75,9 @@ export function Dashboard({
       }
     });
 
-    // TODO: Add proper compliance checking
-    // For now, just return empty violations
+    // Run proper compliance checking
+    const complianceResult = checkProjectCompliance(projectId, assignments, shiftPatterns);
+    const violations = complianceResult.violations.map(v => v.message);
 
     return {
       totalHours: Math.round(totalHours),
@@ -133,15 +134,15 @@ export function Dashboard({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-600">Shift Patterns:</span>
-                    <span className="font-semibold">{stats.shiftPatternCount}</span>
+                    <span className="font-semibold text-slate-800">{stats.shiftPatternCount}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Total Hours:</span>
-                    <span className="font-semibold">{stats.totalHours.toLocaleString()}h</span>
+                    <span className="font-semibold text-slate-800">{stats.totalHours.toLocaleString()}h</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Employees:</span>
-                    <span className="font-semibold">{stats.employeeCount}</span>
+                    <span className="font-semibold text-slate-800">{stats.employeeCount}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600">Compliance:</span>

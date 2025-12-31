@@ -55,14 +55,18 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     error: null,
   });
 
-  const loadAllData = useCallback(async () => {
+  const loadAllData = useCallback(async (isInitialLoad = false) => {
     if (!supabase || !organisationId) {
       setData(prev => ({ ...prev, loading: false }));
       return;
     }
 
     try {
-      setData(prev => ({ ...prev, loading: true, error: null }));
+      // Only show loading spinner on initial load, not on refreshes
+      // This prevents the PlanningView from being unmounted/remounted
+      if (isInitialLoad) {
+        setData(prev => ({ ...prev, loading: true, error: null }));
+      }
 
       console.log('useAppData: loading data for org:', organisationId);
       
@@ -158,7 +162,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   // Initial load
   useEffect(() => {
-    loadAllData();
+    loadAllData(true); // Pass true for initial load to show spinner
   }, [loadAllData]);
 
   // Set up realtime subscriptions
