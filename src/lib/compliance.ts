@@ -599,25 +599,34 @@ export function getEmployeeComplianceStatus(
 
 /**
  * Run compliance checks for all employees in a project
+ * IMPORTANT: This checks ALL assignments for employees who work on this project,
+ * not just assignments within this project. This ensures cross-project violations
+ * (e.g., working day shift on Project A then night shift on Project B) are detected.
  */
 export function checkProjectCompliance(
   projectId: number,
   assignments: AssignmentCamel[],
   shiftPatterns: ShiftPatternCamel[]
 ): ComplianceResult {
+  // Get employees who have assignments on THIS project
   const projectAssignments = assignments.filter(a => a.projectId === projectId);
   const employeeIds = [...new Set(projectAssignments.map(a => a.employeeId))];
-  
+
   const allViolations: ComplianceViolation[] = [];
-  
+
+  // For each employee on this project, check ALL their assignments (cross-project)
   employeeIds.forEach(empId => {
-    const result = checkEmployeeCompliance(empId, projectAssignments, shiftPatterns);
+    // Pass ALL assignments, not just project-filtered ones
+    // This ensures we catch violations like:
+    // - Day shift on Project A + Night shift on Project B = insufficient rest
+    // - 72+ hours across multiple projects in a week
+    const result = checkEmployeeCompliance(empId, assignments, shiftPatterns);
     allViolations.push(...result.violations);
   });
-  
+
   const errors = allViolations.filter(v => v.severity === 'error');
   const warnings = allViolations.filter(v => v.severity === 'warning');
-  
+
   return {
     isCompliant: errors.length === 0,
     hasErrors: errors.length > 0,
