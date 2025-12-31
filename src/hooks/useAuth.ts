@@ -107,16 +107,29 @@ export function useAuth(): UseAuthReturn {
 
       console.log('loadProfile: query completed, profileData:', profileData ? 'found' : 'not found');
 
-      // Fetch organisation name separately if we have a profile
+      // Fetch organisation name separately if we have a profile - using direct fetch
       let organisationName: string | undefined;
       if (profileData?.organisation_id) {
-        console.log('loadProfile: fetching organisation name...');
-        const { data: orgData } = await supabase
-          .from('organisations')
-          .select('name')
-          .eq('id', profileData.organisation_id)
-          .single();
-        organisationName = orgData?.name;
+        console.log('loadProfile: fetching organisation name via REST API...');
+        try {
+          const orgResponse = await fetch(
+            `${supabaseUrl}/rest/v1/organisations?id=eq.${profileData.organisation_id}&select=name`,
+            {
+              method: 'GET',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          if (orgResponse.ok) {
+            const orgData = await orgResponse.json();
+            organisationName = orgData?.[0]?.name;
+          }
+        } catch (orgErr) {
+          console.error('loadProfile: failed to fetch org name:', orgErr);
+        }
         console.log('loadProfile: organisation name:', organisationName);
       }
 

@@ -323,10 +323,15 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
-    if (!supabase) throw new Error('Not configured');
-
     console.log('updateShiftPattern: starting update for id:', id);
     console.log('updateShiftPattern: data:', updateData);
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase not configured');
+    }
 
     const updatePayload = {
       name: updateData.name,
@@ -345,13 +350,36 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
     console.log('updateShiftPattern: payload:', updatePayload);
 
-    const { error, data } = await supabase.from('shift_patterns').update(updatePayload).eq('id', id).select();
+    // Use direct REST API fetch to avoid Supabase client hanging issues
+    try {
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/shift_patterns?id=eq.${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify(updatePayload),
+        }
+      );
 
-    console.log('updateShiftPattern: result:', { error, data });
+      console.log('updateShiftPattern: fetch responded, status:', response.status);
 
-    if (error) {
-      console.error('updateShiftPattern: error:', error);
-      throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('updateShiftPattern: fetch error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('updateShiftPattern: result:', { data });
+
+    } catch (err: any) {
+      console.error('updateShiftPattern: error:', err);
+      throw err;
     }
 
     console.log('updateShiftPattern: reloading data...');
