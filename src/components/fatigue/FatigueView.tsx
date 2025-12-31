@@ -87,6 +87,31 @@ const TEMPLATES = {
   },
 };
 
+// Role-based fatigue presets (workload, attention)
+// Based on typical rail industry safety-critical roles
+const ROLE_PRESETS = {
+  custom: { name: 'Custom', workload: 2, attention: 2, description: 'Set your own values' },
+  coss: { name: 'COSS', workload: 4, attention: 5, description: 'Controller of Site Safety - highest responsibility' },
+  picop: { name: 'PICOP', workload: 4, attention: 5, description: 'Person In Charge Of Possession' },
+  lookout: { name: 'Lookout', workload: 2, attention: 5, description: 'High vigilance required' },
+  siteWarden: { name: 'Site Warden', workload: 3, attention: 4, description: 'Site access control' },
+  machineOp: { name: 'Machine Operator', workload: 4, attention: 4, description: 'Heavy plant operation' },
+  banksman: { name: 'Banksman', workload: 3, attention: 4, description: 'Plant movement guidance' },
+  skilledOp: { name: 'Skilled Operative', workload: 3, attention: 3, description: 'Experienced track worker' },
+  labourer: { name: 'Labourer', workload: 3, attention: 2, description: 'General duties' },
+  trainee: { name: 'Trainee/Learner', workload: 2, attention: 2, description: 'Under supervision' },
+} as const;
+
+type RoleKey = keyof typeof ROLE_PRESETS;
+
+// Helper to get day of week from day number (assumes Day 1 = Monday)
+const getDayOfWeek = (dayNum: number, startDay: number = 1): string => {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  // startDay: 1=Mon, 2=Tue, etc.
+  const index = ((startDay - 1) + (dayNum - 1)) % 7;
+  return days[index];
+};
+
 export function FatigueView({
   user,
   onSignOut,
@@ -99,6 +124,12 @@ export function FatigueView({
   const [showChart, setShowChart] = useState(true);
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Role and day-of-week settings
+  const [selectedRole, setSelectedRole] = useState<RoleKey>('custom');
+  const [startDayOfWeek, setStartDayOfWeek] = useState<number>(1); // 1=Mon, 2=Tue, etc.
+  const [compareRoles, setCompareRoles] = useState(false);
+  const [selectedRolesForCompare, setSelectedRolesForCompare] = useState<RoleKey[]>(['coss', 'lookout', 'labourer']);
 
   // Fatigue parameters - explicitly typed to allow mutable number values
   const [params, setParams] = useState<{
@@ -124,10 +155,17 @@ export function FatigueView({
     if (shifts.length === 0) return null;
 
     const sortedShifts = [...shifts].sort((a, b) => a.day - b.day);
+    // Include per-shift fatigue parameters in the shift definitions
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
       day: s.day,
       startTime: s.startTime,
       endTime: s.endTime,
+      commuteIn: s.commuteIn,
+      commuteOut: s.commuteOut,
+      workload: s.workload,
+      attention: s.attention,
+      breakFreq: s.breakFreq,
+      breakLen: s.breakLen,
     }));
 
     const calculations = calculateFatigueSequence(shiftDefinitions, params);
@@ -146,6 +184,7 @@ export function FatigueView({
         startTime: shift.startTime,
         endTime: shift.endTime,
         dutyLength: Math.round(dutyLength * 10) / 10,
+        dayOfWeek: getDayOfWeek(shift.day, startDayOfWeek),
       };
     });
 
@@ -172,7 +211,58 @@ export function FatigueView({
         avgJobBreaks: Math.round(avgJobBreaks * 1000) / 1000,
       },
     };
-  }, [shifts, params]);
+  }, [shifts, params, startDayOfWeek]);
+
+  // Calculate role comparison results
+  const roleComparisonResults = useMemo(() => {
+    if (!compareRoles || shifts.length === 0) return null;
+
+    const sortedShifts = [...shifts].sort((a, b) => a.day - b.day);
+
+    // Calculate for each selected role
+    const roleResults = selectedRolesForCompare.map(roleKey => {
+      const role = ROLE_PRESETS[roleKey];
+
+      // Build shift definitions using the role's workload/attention but keeping per-shift commute
+      const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
+        day: s.day,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        commuteIn: s.commuteIn,
+        commuteOut: s.commuteOut,
+        workload: role.workload,
+        attention: role.attention,
+        breakFreq: s.breakFreq,
+        breakLen: s.breakLen,
+      }));
+
+      const roleParams = {
+        ...params,
+        workload: role.workload,
+        attention: role.attention,
+      };
+
+      const calculations = calculateFatigueSequence(shiftDefinitions, roleParams);
+      const maxRisk = Math.max(...calculations.map(c => c.riskIndex));
+      const avgRisk = calculations.reduce((a, c) => a + c.riskIndex, 0) / calculations.length;
+      const highRiskDays = calculations.filter(c => c.riskIndex >= 1.1).length;
+      const isCompliant = maxRisk < 1.2; // Below "critical" threshold
+
+      return {
+        roleKey,
+        roleName: role.name,
+        workload: role.workload,
+        attention: role.attention,
+        calculations,
+        maxRisk: Math.round(maxRisk * 1000) / 1000,
+        avgRisk: Math.round(avgRisk * 1000) / 1000,
+        highRiskDays,
+        isCompliant,
+      };
+    });
+
+    return roleResults;
+  }, [compareRoles, shifts, selectedRolesForCompare, params]);
 
   const handleAddShift = () => {
     const lastDay = shifts.length > 0 ? Math.max(...shifts.map(s => s.day)) : 0;
