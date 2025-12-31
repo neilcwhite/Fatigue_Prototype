@@ -102,9 +102,9 @@ export function PersonView({
     };
   }, [periodAssignments, shiftPatterns, currentPeriod]);
 
-  // Build set of assignment IDs that are involved in violations
-  const violationAssignmentIds = useMemo(() => {
-    const ids = new Set<number>();
+  // Build map of assignment IDs to their violation severity (error takes precedence over warning)
+  const violationAssignmentSeverity = useMemo(() => {
+    const severityMap = new Map<number, 'error' | 'warning'>();
 
     compliance.violations.forEach(violation => {
       let violationAssignments: AssignmentCamel[] = [];
@@ -140,11 +140,22 @@ export function PersonView({
         violationAssignments = empAssignments.filter(a => a.date === violation.date);
       }
 
-      violationAssignments.forEach(a => ids.add(a.id));
+      violationAssignments.forEach(a => {
+        const existingSeverity = severityMap.get(a.id);
+        // Error takes precedence over warning
+        if (!existingSeverity || (existingSeverity === 'warning' && violation.severity === 'error')) {
+          severityMap.set(a.id, violation.severity);
+        }
+      });
     });
 
-    return ids;
+    return severityMap;
   }, [compliance.violations, empAssignments]);
+
+  // Keep a simple set for backward compatibility checks
+  const violationAssignmentIds = useMemo(() => {
+    return new Set(violationAssignmentSeverity.keys());
+  }, [violationAssignmentSeverity]);
 
   // Generate 28 days for current period
   const calendarDates = useMemo(() => {
@@ -626,7 +637,15 @@ export function PersonView({
                 {calendarDates.slice(weekIdx * 7, (weekIdx + 1) * 7).map((date, dayIdx) => {
                   const { day, date: dateNum, month, isWeekend, isToday } = formatDateHeader(date);
                   const dateAssignments = periodAssignments.filter(a => a.date === date);
-                  const hasViolation = dateAssignments.some(a => violationAssignmentIds.has(a.id));
+
+                  // Get the worst violation severity for this date (error > warning)
+                  const dateViolationSeverity = dateAssignments.reduce<'error' | 'warning' | null>((worst, a) => {
+                    const severity = violationAssignmentSeverity.get(a.id);
+                    if (!severity) return worst;
+                    if (severity === 'error') return 'error';
+                    if (!worst) return severity;
+                    return worst;
+                  }, null);
 
                   // Get fatigue data for this date
                   const dateAssignmentIndices = periodAssignments.map((a, idx) => a.date === date ? idx : -1).filter(i => i !== -1);
@@ -642,19 +661,21 @@ export function PersonView({
                       className={`min-h-[100px] p-2 rounded-lg border transition-all ${
                         isHighlighted
                           ? 'ring-4 ring-blue-500 ring-offset-2 animate-pulse bg-blue-100 border-blue-500 scale-105 z-10'
-                          : hasViolation
+                          : dateViolationSeverity === 'error'
                             ? 'bg-red-100 border-red-400'
-                            : dateAssignments.length > 0
-                              ? dateFRI && dateFRI >= 1.2
-                                ? 'bg-red-50 border-red-300'
-                                : dateFRI && dateFRI >= 1.1
-                                  ? 'bg-amber-50 border-amber-300'
-                                  : 'bg-green-50 border-green-300'
-                              : isWeekend
-                                ? 'bg-slate-100 border-slate-200'
-                                : isToday
-                                  ? 'bg-blue-50 border-blue-300'
-                                  : 'bg-white border-slate-200'
+                            : dateViolationSeverity === 'warning'
+                              ? 'bg-amber-100 border-amber-400'
+                              : dateAssignments.length > 0
+                                ? dateFRI && dateFRI >= 1.2
+                                  ? 'bg-red-50 border-red-300'
+                                  : dateFRI && dateFRI >= 1.1
+                                    ? 'bg-amber-50 border-amber-300'
+                                    : 'bg-green-50 border-green-300'
+                                : isWeekend
+                                  ? 'bg-slate-100 border-slate-200'
+                                  : isToday
+                                    ? 'bg-blue-50 border-blue-300'
+                                    : 'bg-white border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -674,17 +695,19 @@ export function PersonView({
                         <div className="space-y-1">
                           {dateAssignments.map(assignment => {
                             const { pattern, project } = getAssignmentInfo(assignment);
-                            const isViolationShift = violationAssignmentIds.has(assignment.id);
+                            const shiftViolationSeverity = violationAssignmentSeverity.get(assignment.id);
 
                             return (
                               <div
                                 key={assignment.id}
                                 className={`relative rounded p-1 text-[9px] ${
-                                  isViolationShift
+                                  shiftViolationSeverity === 'error'
                                     ? 'bg-red-200 border border-red-400'
-                                    : pattern?.isNight
-                                      ? 'bg-purple-100 border border-purple-300'
-                                      : 'bg-blue-100 border border-blue-300'
+                                    : shiftViolationSeverity === 'warning'
+                                      ? 'bg-amber-200 border border-amber-400'
+                                      : pattern?.isNight
+                                        ? 'bg-purple-100 border border-purple-300'
+                                        : 'bg-blue-100 border border-blue-300'
                                 }`}
                               >
                                 <button
@@ -723,7 +746,7 @@ export function PersonView({
               <div className="space-y-2">
                 {periodAssignments.map((assignment, idx) => {
                   const { pattern, project } = getAssignmentInfo(assignment);
-                  const isViolation = violationAssignmentIds.has(assignment.id);
+                  const assignmentViolationSeverity = violationAssignmentSeverity.get(assignment.id);
                   const d = new Date(assignment.date);
                   const fri = fatigueAnalysis?.results[idx]?.riskIndex;
 
@@ -731,17 +754,19 @@ export function PersonView({
                     <div
                       key={assignment.id}
                       className={`flex items-center justify-between p-3 rounded-lg ${
-                        isViolation
+                        assignmentViolationSeverity === 'error'
                           ? 'bg-red-50 border-2 border-red-300'
-                          : fri && fri >= 1.2
-                            ? 'bg-red-50 border border-red-200'
-                            : fri && fri >= 1.1
-                              ? 'bg-amber-50 border border-amber-200'
-                              : 'bg-slate-50'
+                          : assignmentViolationSeverity === 'warning'
+                            ? 'bg-amber-50 border-2 border-amber-300'
+                            : fri && fri >= 1.2
+                              ? 'bg-red-50 border border-red-200'
+                              : fri && fri >= 1.1
+                                ? 'bg-amber-50 border border-amber-200'
+                                : 'bg-slate-50'
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`text-center min-w-[60px] ${isViolation ? 'text-red-700' : ''}`}>
+                        <div className={`text-center min-w-[60px] ${assignmentViolationSeverity === 'error' ? 'text-red-700' : assignmentViolationSeverity === 'warning' ? 'text-amber-700' : ''}`}>
                           <div className="text-xs text-slate-500">{d.toLocaleDateString('en-GB', { month: 'short' })}</div>
                           <div className="text-xl font-bold">{d.getDate()}</div>
                           <div className="text-xs">{d.toLocaleDateString('en-GB', { weekday: 'short' })}</div>
@@ -750,7 +775,8 @@ export function PersonView({
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-slate-800">{pattern?.name || 'Unknown'}</span>
                             {pattern?.isNight && <span className="text-purple-600">🌙</span>}
-                            {isViolation && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                            {assignmentViolationSeverity === 'error' && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                            {assignmentViolationSeverity === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
                           </div>
                           <div className="text-sm text-slate-600">{project?.name || 'Unknown Project'}</div>
                           <div className="text-xs text-slate-500">
