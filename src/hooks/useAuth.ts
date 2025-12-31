@@ -39,19 +39,37 @@ export function useAuth(): UseAuthReturn {
 
     try {
       // First verify we have an active session
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('loadProfile: current session valid:', !!sessionData.session);
+      console.log('loadProfile: checking session...');
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log('loadProfile: session check result:', {
+        hasSession: !!sessionData.session,
+        sessionError: sessionError?.message
+      });
 
       if (!sessionData.session) {
         console.log('loadProfile: no active session, cannot load profile');
         return;
       }
 
-      const { data: profileData, error: profileError } = await supabase
+      console.log('loadProfile: querying user_profiles table...');
+
+      // Add timeout to prevent hanging
+      const queryPromise = supabase
         .from('user_profiles')
         .select('*, organisations(name)')
         .eq('id', userId)
         .single();
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile query timed out after 10 seconds')), 10000);
+      });
+
+      const { data: profileData, error: profileError } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('loadProfile: query completed');
 
       console.log('loadProfile: result:', {
         hasData: !!profileData,
@@ -133,37 +151,72 @@ export function useAuth(): UseAuthReturn {
     }
 
     console.log('useAuth: initializing...');
+    let isMounted = true;
+    let profileLoadedForUser: string | null = null;
 
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
-        console.log('useAuth: session:', !!session);
-        if (session?.user) {
-          setUser(session.user);
-          await loadProfile(session.user.id, session.user.email || '');
+    const handleSession = async (session: any, source: string) => {
+      if (!isMounted) return;
+
+      if (session?.user) {
+        // Skip if we already loaded profile for this user
+        if (profileLoadedForUser === session.user.id) {
+          console.log(`${source}: profile already loaded for user, skipping`);
+          if (isMounted) setLoading(false);
+          return;
         }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('useAuth: getSession error:', err);
-        setError(err.message);
-        setLoading(false);
-      });
 
+        console.log(`${source}: setting user:`, session.user.id);
+        setUser(session.user);
+
+        try {
+          profileLoadedForUser = session.user.id;
+          await loadProfile(session.user.id, session.user.email || '');
+          console.log(`${source}: profile load complete`);
+        } catch (err) {
+          console.error(`${source}: profile load failed:`, err);
+          profileLoadedForUser = null; // Reset so we can retry
+        }
+      } else {
+        console.log(`${source}: no session, clearing user/profile`);
+        setUser(null);
+        setProfile(null);
+        profileLoadedForUser = null;
+      }
+
+      if (isMounted) setLoading(false);
+    };
+
+    // Listen for auth state changes first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('onAuthStateChange:', _event);
-        if (session?.user) {
-          setUser(session.user);
-          await loadProfile(session.user.id, session.user.email || '');
-        } else {
-          setUser(null);
-          setProfile(null);
-        }
-        setLoading(false);
+        console.log('onAuthStateChange:', _event, 'hasSession:', !!session);
+        await handleSession(session, 'onAuthStateChange');
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Then get initial session (onAuthStateChange will also fire for INITIAL_SESSION)
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        console.log('getSession: result hasSession:', !!session);
+        // Only handle if onAuthStateChange hasn't already handled it
+        if (!profileLoadedForUser && session?.user) {
+          await handleSession(session, 'getSession');
+        } else if (!session) {
+          if (isMounted) setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('getSession error:', err);
+        if (isMounted) {
+          setError(err.message);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [loadProfile]);
 
   const signIn = async (email: string, password: string) => {

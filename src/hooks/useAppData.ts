@@ -325,7 +325,10 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
     if (!supabase) throw new Error('Not configured');
 
-    const { error } = await supabase.from('shift_patterns').update({
+    console.log('updateShiftPattern: starting update for id:', id);
+    console.log('updateShiftPattern: data:', updateData);
+
+    const updatePayload = {
       name: updateData.name,
       start_time: updateData.startTime,
       end_time: updateData.endTime,
@@ -338,10 +341,22 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       commute_time: updateData.commuteTime,
       break_frequency: updateData.breakFrequency,
       break_length: updateData.breakLength,
-    }).eq('id', id);
+    };
 
-    if (error) throw error;
+    console.log('updateShiftPattern: payload:', updatePayload);
+
+    const { error, data } = await supabase.from('shift_patterns').update(updatePayload).eq('id', id).select();
+
+    console.log('updateShiftPattern: result:', { error, data });
+
+    if (error) {
+      console.error('updateShiftPattern: error:', error);
+      throw error;
+    }
+
+    console.log('updateShiftPattern: reloading data...');
     await loadAllData();
+    console.log('updateShiftPattern: complete');
   };
 
   const deleteShiftPattern = async (id: string) => {
