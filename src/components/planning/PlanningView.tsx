@@ -142,7 +142,7 @@ export function PlanningView({
           name: 'Custom (Ad-hoc)',
           startTime: null as any,  // No fixed time - each assignment has custom times
           endTime: null as any,
-          dutyType: 'Other',
+          dutyType: 'Non-Possession',  // Use valid duty type for ad-hoc work
           isNight: false,
           weeklySchedule: undefined,
         });
