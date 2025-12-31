@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { Edit2, Trash2, Copy, X, Check } from '@/components/ui/Icons';
+import { Edit2, Trash2, Copy, X, Check, AlertTriangle, AlertCircle } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
 import type {
   ProjectCamel,
@@ -580,16 +580,30 @@ export function TimelineView({
                         .map((assignment) => {
                           const isSelected = selectedAssignmentIds.has(assignment.id);
 
+                          const hasViolations = assignment.violations.length > 0;
+                          const hasError = assignment.violations.some(v => v.severity === 'error');
+                          const hasWarning = assignment.violations.some(v => v.severity === 'warning');
+
+                          // Handle chip click - navigate to employee page if violations, otherwise select
+                          const handleChipClick = (e: React.MouseEvent) => {
+                            if (hasViolations && onNavigateToPerson && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+                              e.stopPropagation();
+                              onNavigateToPerson(assignment.employeeId);
+                            } else {
+                              handleTileClick(e, assignment.original);
+                            }
+                          };
+
                           return (
                             <div
                               key={assignment.id}
-                              onClick={(e) => handleTileClick(e, assignment.original)}
+                              onClick={handleChipClick}
                               className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, isSelected)}`}
                               title={
-                                assignment.timeDisplay
-                                  ? `${assignment.employeeName}\n${assignment.timeDisplay}${assignment.violations.length > 0 ? `\n\n${getViolationTooltip(assignment.violations)}` : ''}`
-                                  : assignment.violations.length > 0
-                                    ? `${assignment.employeeName}\n\n${getViolationTooltip(assignment.violations)}`
+                                hasViolations
+                                  ? `${assignment.employeeName}${assignment.timeDisplay ? `\n${assignment.timeDisplay}` : ''}\n\n${getViolationTooltip(assignment.violations)}\n\nClick to view employee and resolve issues`
+                                  : assignment.timeDisplay
+                                    ? `${assignment.employeeName}\n${assignment.timeDisplay}`
                                     : `${assignment.employeeName}\n\nClick to select, Ctrl+click for multi-select`
                               }
                               onDragOver={(e) => {
@@ -606,6 +620,16 @@ export function TimelineView({
                               }}
                             >
                               <div className="relative flex items-center">
+                                {/* Violation icon */}
+                                {hasViolations && (
+                                  <span className="flex-shrink-0 mr-0.5">
+                                    {hasError ? (
+                                      <AlertCircle className="w-3 h-3 text-red-600" />
+                                    ) : hasWarning ? (
+                                      <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                    ) : null}
+                                  </span>
+                                )}
                                 <span className="font-medium truncate">
                                   {assignment.employeeName}
                                 </span>
