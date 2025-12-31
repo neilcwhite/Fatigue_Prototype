@@ -34,9 +34,27 @@ export function PersonView({
   onSelectEmployee,
   onDeleteAssignment,
 }: PersonViewProps) {
-  // Period selection
-  const [selectedYear, setSelectedYear] = useState(2025);
-  const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(0);
+  // Calculate initial year and period based on today's date
+  const initialPeriodInfo = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const currentPeriod = findPeriodForDate(today);
+
+    if (currentPeriod) {
+      const periods = generateNetworkRailPeriods(currentPeriod.year);
+      const periodIdx = periods.findIndex(p => p.period === currentPeriod.period);
+      return {
+        year: currentPeriod.year,
+        periodIdx: periodIdx !== -1 ? periodIdx : 0
+      };
+    }
+
+    // Fallback to current calendar year, period 0
+    return { year: new Date().getFullYear(), periodIdx: 0 };
+  }, []);
+
+  // Period selection - initialized to current period
+  const [selectedYear, setSelectedYear] = useState(initialPeriodInfo.year);
+  const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(initialPeriodInfo.periodIdx);
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
 
   const networkRailPeriods = useMemo(() => generateNetworkRailPeriods(selectedYear), [selectedYear]);
