@@ -349,34 +349,70 @@ export function SummaryView({
           </div>
         )}
 
+        {/* Compliance Issues - Clickable to navigate to person */}
         {complianceResult.violations.length > 0 && (
           <div className="bg-white rounded-lg shadow-md mb-6">
             <div className="p-4 border-b border-slate-200 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
               <h3 className="font-semibold text-slate-800">Compliance Issues ({complianceResult.violations.length})</h3>
+              <span className="text-xs text-slate-500 ml-2">Click any issue to view in calendar</span>
             </div>
-            <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
+            <div className="p-4 space-y-4 max-h-[500px] overflow-y-auto">
               {Object.entries(violationsByEmployee).map(([empId, empViolations]) => {
-                const empName = employees.find(e => e.id === Number(empId))?.name || 'Unknown';
+                const emp = employees.find(e => e.id === Number(empId));
+                const empName = emp?.name || 'Unknown';
+                const empRole = emp?.role || '';
                 const hasErrors = empViolations.some(v => v.severity === 'error');
-                
+
                 return (
-                  <div key={empId} className={`p-4 rounded-lg ${hasErrors ? 'border-l-4 border-red-500 bg-red-50' : 'border-l-4 border-amber-500 bg-amber-50'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`font-semibold cursor-pointer hover:underline ${hasErrors ? 'text-red-900' : 'text-amber-900'}`} onClick={() => onNavigateToPerson(Number(empId))}>
-                        {empName}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded ${hasErrors ? 'bg-red-200 text-red-800' : 'bg-amber-200 text-amber-800'}`}>
-                        {empViolations.length} issue{empViolations.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {empViolations.map((violation, idx) => (
-                        <div key={idx} className={`text-sm ${violation.severity === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
-                          <span className="mr-1">{getViolationIcon(violation.type)}</span>
-                          {violation.message}
-                          {violation.date && <span className="text-slate-500 ml-1">({violation.date})</span>}
+                  <div key={empId} className={`rounded-lg overflow-hidden ${hasErrors ? 'border-l-4 border-red-500' : 'border-l-4 border-amber-500'}`}>
+                    {/* Employee Header - Clickable */}
+                    <button
+                      onClick={() => onNavigateToPerson(Number(empId))}
+                      className={`w-full text-left p-3 flex items-center justify-between transition-colors ${hasErrors ? 'bg-red-100 hover:bg-red-200' : 'bg-amber-100 hover:bg-amber-200'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {hasErrors ? <XCircle className="w-5 h-5 text-red-600" /> : <AlertTriangle className="w-5 h-5 text-amber-600" />}
+                        <div>
+                          <span className={`font-semibold ${hasErrors ? 'text-red-900' : 'text-amber-900'}`}>
+                            {empName}
+                          </span>
+                          {empRole && <span className="text-xs text-slate-600 ml-2">({empRole})</span>}
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-1 rounded ${hasErrors ? 'bg-red-200 text-red-800' : 'bg-amber-200 text-amber-800'}`}>
+                          {empViolations.length} issue{empViolations.length !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-xs text-blue-600">View →</span>
+                      </div>
+                    </button>
+
+                    {/* Individual Violations - Each Clickable */}
+                    <div className={`${hasErrors ? 'bg-red-50' : 'bg-amber-50'}`}>
+                      {empViolations.map((violation, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => onNavigateToPerson(Number(empId))}
+                          className={`w-full text-left p-3 border-t transition-all hover:shadow-inner ${
+                            hasErrors
+                              ? 'border-red-200 hover:bg-red-100'
+                              : 'border-amber-200 hover:bg-amber-100'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg">{getViolationIcon(violation.type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium ${violation.severity === 'error' ? 'text-red-800' : 'text-amber-800'}`}>
+                                {violation.message}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                {violation.date && new Date(violation.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                <span className="text-blue-500 ml-1">→ Click to view in calendar</span>
+                              </p>
+                            </div>
+                          </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -386,96 +422,18 @@ export function SummaryView({
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="p-4 border-b border-slate-200">
-              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                <BarChart className="w-5 h-5" />
-                Shift Pattern Breakdown
-              </h3>
-            </div>
-            <div className="p-4">
-              {Object.keys(stats.shiftBreakdown).length === 0 ? (
-                <p className="text-slate-500 text-center py-4">No shift patterns assigned</p>
-              ) : (
-                <div className="space-y-3">
-                  {Object.entries(stats.shiftBreakdown).map(([name, data]) => (
-                    <div key={name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${data.isNight ? 'bg-purple-500' : 'bg-green-500'}`} />
-                        <div>
-                          <p className="font-medium text-slate-800">{name}</p>
-                          <p className="text-xs text-slate-500">{data.count} shifts</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-slate-800">{Math.round(data.hours)}h</p>
-                        <p className="text-xs text-slate-500">{stats.totalHours > 0 ? Math.round(data.hours / stats.totalHours * 100) : 0}%</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* No Issues Message */}
+        {complianceResult.violations.length === 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="w-8 h-8 text-green-500" />
+              <div>
+                <h3 className="font-semibold text-green-800">All Clear!</h3>
+                <p className="text-sm text-green-700">No compliance issues detected for this project.</p>
+              </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-md">
-            <div className="p-4 border-b border-slate-200">
-              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Employee Hours
-              </h3>
-            </div>
-            <div className="p-4 max-h-96 overflow-y-auto">
-              {stats.employeeBreakdown.length === 0 ? (
-                <p className="text-slate-500 text-center py-4">No employees assigned</p>
-              ) : (
-                <div className="space-y-2">
-                  {stats.employeeBreakdown.map(emp => (
-                    <div key={emp.id} className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${emp.complianceStatus === 'error' ? 'bg-red-50 hover:bg-red-100 border border-red-200' : emp.complianceStatus === 'warning' ? 'bg-amber-50 hover:bg-amber-100 border border-amber-200' : 'bg-slate-50 hover:bg-slate-100'}`} onClick={() => onNavigateToPerson(emp.id)}>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-slate-800">{emp.name}</p>
-                          {emp.complianceStatus === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
-                          {emp.complianceStatus === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
-                        </div>
-                        <p className="text-xs text-slate-500">{emp.role} - {emp.shifts} shifts</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-slate-800">{emp.hours}h</p>
-                        <p className="text-xs text-slate-500">{emp.shifts > 0 ? Math.round(emp.hours / emp.shifts * 10) / 10 : 0}h avg</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md mt-6">
-          <div className="p-4 border-b border-slate-200">
-            <h3 className="font-semibold text-slate-800">Project Details</h3>
-          </div>
-          <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-slate-500">Location</p>
-              <p className="font-medium text-slate-900">{project.location || 'Not specified'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Type</p>
-              <p className="font-medium text-slate-900">{project.type || 'Not specified'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Start Date</p>
-              <p className="font-medium text-slate-900">{project.startDate || 'Not set'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">End Date</p>
-              <p className="font-medium text-slate-900">{project.endDate || 'Not set'}</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
