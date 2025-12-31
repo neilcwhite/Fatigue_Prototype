@@ -300,12 +300,16 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     // Use provided ID or generate one
     const id = patternData.id || `${patternData.projectId}-${Date.now()}`;
 
+    // Convert empty strings to null for time fields (database expects null, not "")
+    const startTime = patternData.startTime || null;
+    const endTime = patternData.endTime || null;
+
     const { error } = await supabase.from('shift_patterns').insert({
       id,
       project_id: patternData.projectId,
       name: patternData.name,
-      start_time: patternData.startTime,
-      end_time: patternData.endTime,
+      start_time: startTime,
+      end_time: endTime,
       weekly_schedule: patternData.weeklySchedule,
       duty_type: patternData.dutyType,
       is_night: patternData.isNight,

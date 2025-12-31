@@ -140,8 +140,8 @@ export function PlanningView({
           id: customPatternId,  // Use specific ID so we can find it later
           projectId: project.id,
           name: 'Custom (Ad-hoc)',
-          startTime: '',
-          endTime: '',
+          startTime: null as any,  // No fixed time - each assignment has custom times
+          endTime: null as any,
           dutyType: 'Other',
           isNight: false,
           weeklySchedule: undefined,
