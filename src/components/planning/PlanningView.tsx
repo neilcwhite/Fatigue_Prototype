@@ -38,7 +38,7 @@ interface PlanningViewProps {
   onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onDeleteAssignment: (id: number) => Promise<void>;
   onCreateShiftPattern?: () => void;
-  onCreateShiftPatternDirect?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
+  onCreateShiftPatternDirect?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'> & { id?: string }) => Promise<void>;
   onNavigateToPerson?: (employeeId: number) => void;
 }
 
@@ -144,8 +144,8 @@ export function PlanningView({
           endTime: '',
           dutyType: 'Other',
           isNight: false,
-          weeklySchedule: null,
-        } as any);  // Cast to any since base type doesn't have id
+          weeklySchedule: undefined,
+        });
         console.log('✅ Custom pattern created successfully');
       } catch (err) {
         console.error('❌ Error creating custom pattern:', err);
