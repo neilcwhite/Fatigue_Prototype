@@ -38,19 +38,6 @@ export function useAuth(): UseAuthReturn {
     console.log('loadProfile: starting for user:', userId, 'email:', userEmail);
 
     try {
-      // First verify we have an active session
-      console.log('loadProfile: checking session...');
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      console.log('loadProfile: session check result:', {
-        hasSession: !!sessionData.session,
-        sessionError: sessionError?.message
-      });
-
-      if (!sessionData.session) {
-        console.log('loadProfile: no active session, cannot load profile');
-        return;
-      }
-
       console.log('loadProfile: querying user_profiles table...');
 
       // Add timeout to prevent hanging
