@@ -41,23 +41,38 @@ export function useAuth(): UseAuthReturn {
       console.log('loadProfile: querying user_profiles table...');
       console.log('loadProfile: supabase client exists:', !!supabase);
 
-      // Use Promise.race with a timeout to prevent infinite hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Query timed out after 8 seconds')), 8000);
-      });
+      // Create an AbortController for proper timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('loadProfile: Aborting query due to timeout');
+        controller.abort();
+      }, 8000);
 
-      const queryPromise = supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      let profileData: any = null;
+      let profileError: any = null;
 
-      console.log('loadProfile: query initiated, waiting for response...');
+      try {
+        console.log('loadProfile: query initiated, waiting for response...');
 
-      const result = await Promise.race([queryPromise, timeoutPromise]) as { data: any; error: any };
-      const { data: profileData, error: profileError } = result;
+        // Use maybeSingle() which doesn't throw on no results
+        const result = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', userId)
+          .abortSignal(controller.signal)
+          .maybeSingle();
 
-      console.log('loadProfile: query responded!');
+        clearTimeout(timeoutId);
+        profileData = result.data;
+        profileError = result.error;
+        console.log('loadProfile: query responded!');
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr.name === 'AbortError' || fetchErr.message?.includes('aborted')) {
+          throw new Error('Query timed out after 8 seconds');
+        }
+        throw fetchErr;
+      }
 
       console.log('loadProfile: query completed, profileData:', profileData ? 'found' : 'not found');
 
@@ -82,55 +97,56 @@ export function useAuth(): UseAuthReturn {
       });
 
       if (profileError) {
-        // No profile found - create one
-        if (profileError.code === 'PGRST116') {
-          console.log('loadProfile: no profile exists, creating new one...');
-          const orgId = crypto.randomUUID();
+        // Some error occurred
+        console.error('loadProfile: unexpected error:', profileError);
+        throw profileError;
+      }
 
-          const { error: orgError } = await supabase.from('organisations').insert({
-            id: orgId,
-            name: 'My Organisation',
-          });
+      // No profile found - create one (maybeSingle returns null when no row)
+      if (!profileData) {
+        console.log('loadProfile: no profile exists, creating new one...');
+        const orgId = crypto.randomUUID();
 
-          if (orgError) {
-            console.error('loadProfile: failed to create organisation:', orgError);
-            throw orgError;
-          }
+        const { error: orgError } = await supabase.from('organisations').insert({
+          id: orgId,
+          name: 'My Organisation',
+        });
 
-          const { data: newProfile, error: insertError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: userId,
-              email: userEmail,
-              role: 'admin',
-              organisation_id: orgId,
-            })
-            .select('*')
-            .single();
-
-          if (insertError) {
-            console.error('loadProfile: failed to create profile:', insertError);
-            throw insertError;
-          }
-
-          console.log('loadProfile: created new profile successfully');
-
-          if (newProfile) {
-            setProfile({
-              id: newProfile.id,
-              email: newProfile.email,
-              fullName: newProfile.full_name,
-              role: newProfile.role,
-              organisationId: newProfile.organisation_id,
-              organisationName: 'My Organisation',
-            });
-          }
-        } else {
-          // Some other error - could be RLS policy issue
-          console.error('loadProfile: unexpected error:', profileError);
-          throw profileError;
+        if (orgError) {
+          console.error('loadProfile: failed to create organisation:', orgError);
+          throw orgError;
         }
-      } else if (profileData) {
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: userId,
+            email: userEmail,
+            role: 'admin',
+            organisation_id: orgId,
+          })
+          .select('*')
+          .single();
+
+        if (insertError) {
+          console.error('loadProfile: failed to create profile:', insertError);
+          throw insertError;
+        }
+
+        console.log('loadProfile: created new profile successfully');
+
+        if (newProfile) {
+          setProfile({
+            id: newProfile.id,
+            email: newProfile.email,
+            fullName: newProfile.full_name,
+            role: newProfile.role,
+            organisationId: newProfile.organisation_id,
+            organisationName: 'My Organisation',
+          });
+        }
+      } else {
+        // Profile found - use it
         console.log('loadProfile: profile found, setting state');
         setProfile({
           id: profileData.id,
