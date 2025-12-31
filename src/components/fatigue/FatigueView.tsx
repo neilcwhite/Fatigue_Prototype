@@ -134,8 +134,9 @@ export function FatigueView({
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Project and employee selection for loading rosters
+  // Project, shift pattern, and employee selection for loading rosters
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
 
   // Role and day-of-week settings
@@ -163,72 +164,133 @@ export function FatigueView({
     breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
   });
 
-  // Get employees for the selected project (those with assignments)
-  const projectEmployees = useMemo(() => {
+  // Get shift patterns for the selected project
+  const projectPatterns = useMemo(() => {
     if (!selectedProjectId) return [];
+    return shiftPatterns.filter(p => p.projectId === selectedProjectId);
+  }, [selectedProjectId, shiftPatterns]);
+
+  // Get employees assigned to the selected shift pattern
+  const patternEmployees = useMemo(() => {
+    if (!selectedProjectId || !selectedPatternId) return [];
     const employeeIds = new Set(
       assignments
-        .filter(a => a.projectId === selectedProjectId)
+        .filter(a => a.projectId === selectedProjectId && a.shiftPatternId === selectedPatternId)
         .map(a => a.employeeId)
     );
     return employees.filter(e => employeeIds.has(e.id));
-  }, [selectedProjectId, assignments, employees]);
+  }, [selectedProjectId, selectedPatternId, assignments, employees]);
 
-  // Get selected project and employee data
+  // Get selected data
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedPattern = shiftPatterns.find(p => p.id === selectedPatternId);
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
-  // Load roster from project/employee assignments
-  const handleLoadRoster = () => {
-    if (!selectedProjectId || !selectedEmployeeId) return;
+  // Load shift pattern as roster (converts weekly schedule to shifts)
+  const handleLoadPattern = () => {
+    if (!selectedPatternId || !selectedPattern) return;
 
-    // Get assignments for this employee on this project
-    const employeeAssignments = assignments
-      .filter(a => a.projectId === selectedProjectId && a.employeeId === selectedEmployeeId)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Build shifts from the pattern's weekly schedule or default times
+    const loadedShifts: Shift[] = [];
 
-    if (employeeAssignments.length === 0) {
-      alert('No assignments found for this employee on this project.');
-      return;
+    if (selectedPattern.weeklySchedule) {
+      // Use the weekly schedule if defined
+      const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+      const schedule = selectedPattern.weeklySchedule;
+
+      Object.entries(schedule).forEach(([dayName, daySchedule]) => {
+        if (daySchedule && daySchedule.startTime && daySchedule.endTime) {
+          const dayNum = dayMap[dayName] || 1;
+          loadedShifts.push({
+            id: Date.now() + dayNum,
+            day: dayNum,
+            startTime: daySchedule.startTime,
+            endTime: daySchedule.endTime,
+            commuteIn: daySchedule.commuteIn ?? Math.floor((selectedPattern.commuteTime || params.commuteTime) / 2),
+            commuteOut: daySchedule.commuteOut ?? Math.ceil((selectedPattern.commuteTime || params.commuteTime) / 2),
+            workload: daySchedule.workload ?? selectedPattern.workload ?? params.workload,
+            attention: daySchedule.attention ?? selectedPattern.attention ?? params.attention,
+            breakFreq: daySchedule.breakFreq ?? selectedPattern.breakFrequency ?? params.breakFrequency,
+            breakLen: daySchedule.breakLen ?? selectedPattern.breakLength ?? params.breakLength,
+          });
+        }
+      });
+    } else if (selectedPattern.startTime && selectedPattern.endTime) {
+      // No weekly schedule - create a simple 5-day pattern from pattern times
+      for (let day = 1; day <= 5; day++) {
+        loadedShifts.push({
+          id: Date.now() + day,
+          day,
+          startTime: selectedPattern.startTime,
+          endTime: selectedPattern.endTime,
+          commuteIn: Math.floor((selectedPattern.commuteTime || params.commuteTime) / 2),
+          commuteOut: Math.ceil((selectedPattern.commuteTime || params.commuteTime) / 2),
+          workload: selectedPattern.workload ?? params.workload,
+          attention: selectedPattern.attention ?? params.attention,
+          breakFreq: selectedPattern.breakFrequency ?? params.breakFrequency,
+          breakLen: selectedPattern.breakLength ?? params.breakLength,
+        });
+      }
     }
 
-    // Find the earliest date to calculate day numbers
-    const dates = employeeAssignments.map(a => new Date(a.date));
-    const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+    // Sort by day number
+    loadedShifts.sort((a, b) => a.day - b.day);
 
-    // Set the start day of week based on the earliest assignment
-    const dayOfWeekIndex = earliestDate.getDay(); // 0=Sun, 1=Mon, etc.
-    const startDayMap: Record<number, number> = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
-    setStartDayOfWeek(startDayMap[dayOfWeekIndex]);
-
-    // Convert assignments to shifts
-    const loadedShifts: Shift[] = employeeAssignments.map((assignment, index) => {
-      const pattern = shiftPatterns.find(p => p.id === assignment.shiftPatternId);
-      const assignmentDate = new Date(assignment.date);
-      const dayNumber = Math.floor((assignmentDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-      // Get times from custom times or pattern
-      const startTime = assignment.customStartTime || pattern?.startTime || '08:00';
-      const endTime = assignment.customEndTime || pattern?.endTime || '17:00';
-
-      // Get fatigue params from pattern if available
-      const commuteTime = pattern?.commuteTime || params.commuteTime;
-
-      return {
-        id: Date.now() + index,
-        day: dayNumber,
-        startTime,
-        endTime,
-        commuteIn: Math.floor(commuteTime / 2),
-        commuteOut: Math.ceil(commuteTime / 2),
-        workload: pattern?.workload || params.workload,
-        attention: pattern?.attention || params.attention,
-        breakFreq: pattern?.breakFrequency || params.breakFrequency,
-        breakLen: pattern?.breakLength || params.breakLength,
-      };
-    });
-
+    // Set start day to Monday by default for patterns
+    setStartDayOfWeek(1);
     setShifts(loadedShifts);
+  };
+
+  // Apply employee's role workload/attention to the current shifts
+  const handleApplyEmployeeRole = () => {
+    if (!selectedEmployeeId || !selectedEmployee) return;
+
+    // Look up employee's role to get typical workload/attention
+    // For now, we'll use the employee's role name to match a preset if possible
+    const employeeRole = selectedEmployee.role?.toLowerCase() || '';
+
+    // Try to match to a role preset
+    let workload = params.workload;
+    let attention = params.attention;
+
+    if (employeeRole.includes('coss')) {
+      workload = ROLE_PRESETS.coss.workload;
+      attention = ROLE_PRESETS.coss.attention;
+    } else if (employeeRole.includes('picop')) {
+      workload = ROLE_PRESETS.picop.workload;
+      attention = ROLE_PRESETS.picop.attention;
+    } else if (employeeRole.includes('lookout')) {
+      workload = ROLE_PRESETS.lookout.workload;
+      attention = ROLE_PRESETS.lookout.attention;
+    } else if (employeeRole.includes('warden')) {
+      workload = ROLE_PRESETS.siteWarden.workload;
+      attention = ROLE_PRESETS.siteWarden.attention;
+    } else if (employeeRole.includes('machine') || employeeRole.includes('operator')) {
+      workload = ROLE_PRESETS.machineOp.workload;
+      attention = ROLE_PRESETS.machineOp.attention;
+    } else if (employeeRole.includes('banksman')) {
+      workload = ROLE_PRESETS.banksman.workload;
+      attention = ROLE_PRESETS.banksman.attention;
+    } else if (employeeRole.includes('skilled')) {
+      workload = ROLE_PRESETS.skilledOp.workload;
+      attention = ROLE_PRESETS.skilledOp.attention;
+    } else if (employeeRole.includes('labourer') || employeeRole.includes('labor')) {
+      workload = ROLE_PRESETS.labourer.workload;
+      attention = ROLE_PRESETS.labourer.attention;
+    } else if (employeeRole.includes('trainee') || employeeRole.includes('learner')) {
+      workload = ROLE_PRESETS.trainee.workload;
+      attention = ROLE_PRESETS.trainee.attention;
+    }
+
+    // Update all shifts with the employee's workload/attention
+    setShifts(shifts.map(s => ({
+      ...s,
+      workload,
+      attention,
+    })));
+
+    // Update global params too
+    setParams(prev => ({ ...prev, workload, attention }));
   };
 
   // Calculate results using full HSE RR446 algorithm
@@ -731,60 +793,110 @@ export function FatigueView({
                   </div>
                 </div>
 
-                {/* Load from Roster */}
+                {/* Load from Project Shift Patterns */}
                 {projects.length > 0 && (
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <label className="text-sm font-medium text-blue-800 mb-2 block flex items-center gap-2">
                       <Users className="w-4 h-4" />
-                      Load from Existing Roster
+                      Load from Project
                     </label>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div>
-                        <label className="text-xs text-blue-700 mb-1 block">Project</label>
+
+                    {/* Step 1: Select Project */}
+                    <div className="mb-3">
+                      <label className="text-xs text-blue-700 mb-1 block">1. Select Project</label>
+                      <select
+                        value={selectedProjectId || ''}
+                        onChange={(e) => {
+                          const projectId = e.target.value ? parseInt(e.target.value) : null;
+                          setSelectedProjectId(projectId);
+                          setSelectedPatternId(null);
+                          setSelectedEmployeeId(null);
+                        }}
+                        className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
+                      >
+                        <option value="">Select project...</option>
+                        {projects.map(project => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Step 2: Select Shift Pattern */}
+                    {selectedProjectId && (
+                      <div className="mb-3">
+                        <label className="text-xs text-blue-700 mb-1 block">2. Select Shift Pattern</label>
                         <select
-                          value={selectedProjectId || ''}
+                          value={selectedPatternId || ''}
                           onChange={(e) => {
-                            const projectId = e.target.value ? parseInt(e.target.value) : null;
-                            setSelectedProjectId(projectId);
-                            setSelectedEmployeeId(null); // Reset employee when project changes
+                            setSelectedPatternId(e.target.value || null);
+                            setSelectedEmployeeId(null);
                           }}
                           className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
                         >
-                          <option value="">Select project...</option>
-                          {projects.map(project => (
-                            <option key={project.id} value={project.id}>
-                              {project.name}
+                          <option value="">Select shift pattern...</option>
+                          {projectPatterns.map(pattern => (
+                            <option key={pattern.id} value={pattern.id}>
+                              {pattern.name} {pattern.isNight ? '(Night)' : '(Day)'} - {pattern.startTime || '??'}–{pattern.endTime || '??'}
                             </option>
                           ))}
                         </select>
+                        {projectPatterns.length === 0 && (
+                          <p className="text-xs text-amber-600 mt-1">No shift patterns defined for this project</p>
+                        )}
                       </div>
-                      <div>
-                        <label className="text-xs text-blue-700 mb-1 block">Employee</label>
+                    )}
+
+                    {/* Load Pattern Button */}
+                    {selectedPatternId && (
+                      <button
+                        onClick={handleLoadPattern}
+                        className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium mb-3"
+                      >
+                        Load Shift Pattern
+                      </button>
+                    )}
+
+                    {/* Step 3: Optional - Check Individual Compliance */}
+                    {selectedPatternId && shifts.length > 0 && (
+                      <div className="pt-3 border-t border-blue-200">
+                        <label className="text-xs text-blue-700 mb-1 block">3. Check Individual Compliance (Optional)</label>
+                        <p className="text-xs text-blue-600 mb-2">Select a person to apply their role's workload/attention</p>
                         <select
                           value={selectedEmployeeId || ''}
                           onChange={(e) => setSelectedEmployeeId(e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                          disabled={!selectedProjectId}
+                          className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white mb-2"
                         >
                           <option value="">Select employee...</option>
-                          {projectEmployees.map(emp => (
+                          {patternEmployees.map(emp => (
                             <option key={emp.id} value={emp.id}>
-                              {emp.name}
+                              {emp.name} {emp.role ? `(${emp.role})` : ''}
                             </option>
                           ))}
                         </select>
+                        {patternEmployees.length === 0 && (
+                          <p className="text-xs text-amber-600 mb-2">No employees assigned to this pattern</p>
+                        )}
+                        {selectedEmployeeId && (
+                          <button
+                            onClick={handleApplyEmployeeRole}
+                            className="w-full px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm font-medium"
+                          >
+                            Apply {selectedEmployee?.name}'s Role
+                          </button>
+                        )}
                       </div>
-                    </div>
-                    <button
-                      onClick={handleLoadRoster}
-                      disabled={!selectedProjectId || !selectedEmployeeId}
-                      className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-sm font-medium"
-                    >
-                      Load Roster
-                    </button>
-                    {selectedProject && selectedEmployee && (
+                    )}
+
+                    {/* Status message */}
+                    {selectedPattern && (
                       <p className="text-xs text-blue-600 mt-2">
-                        Loading roster for {selectedEmployee.name} on {selectedProject.name}
+                        {shifts.length > 0
+                          ? `Loaded: ${selectedPattern.name} (${shifts.length} shifts)`
+                          : `Selected: ${selectedPattern.name}`
+                        }
+                        {selectedEmployee && ` • Checking for: ${selectedEmployee.name}`}
                       </p>
                     )}
                   </div>
