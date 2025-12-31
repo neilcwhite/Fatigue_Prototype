@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart } from '@/components/ui/Icons';
+import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
-import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence } from '@/lib/fatigue';
+import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 import type { ShiftDefinition, FatigueResult } from '@/lib/types';
 import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
 import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel } from '@/lib/types';
@@ -20,6 +20,7 @@ interface PersonViewProps {
   projects: ProjectCamel[];
   onSelectEmployee: (id: number) => void;
   onDeleteAssignment: (id: number) => Promise<void>;
+  onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
 }
 
 export function PersonView({
@@ -33,6 +34,7 @@ export function PersonView({
   projects,
   onSelectEmployee,
   onDeleteAssignment,
+  onUpdateShiftPattern,
 }: PersonViewProps) {
   // Calculate initial year and period based on today's date
   const initialPeriodInfo = useMemo(() => {
@@ -56,6 +58,17 @@ export function PersonView({
   const [selectedYear, setSelectedYear] = useState(initialPeriodInfo.year);
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(initialPeriodInfo.periodIdx);
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
+
+  // Fatigue parameters UI state
+  const [showFatigueParams, setShowFatigueParams] = useState(false);
+  const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
+  const [editingParams, setEditingParams] = useState<{
+    workload: number;
+    attention: number;
+    commuteTime: number;
+    breakFrequency: number;
+    breakLength: number;
+  } | null>(null);
 
   const networkRailPeriods = useMemo(() => generateNetworkRailPeriods(selectedYear), [selectedYear]);
   const availableYears = getAvailableYears();
@@ -86,7 +99,7 @@ export function PersonView({
   const fatigueAnalysis = useMemo(() => {
     if (periodAssignments.length === 0) return null;
 
-    // Convert assignments to ShiftDefinitions
+    // Convert assignments to ShiftDefinitions with pattern-specific fatigue parameters
     const shifts: ShiftDefinition[] = periodAssignments.map((a, idx) => {
       const pattern = shiftPatterns.find(p => p.id === a.shiftPatternId);
       const startTime = a.customStartTime || pattern?.startTime || '08:00';
@@ -101,6 +114,13 @@ export function PersonView({
         day: dayNumber,
         startTime,
         endTime,
+        // Include pattern-specific fatigue parameters
+        workload: pattern?.workload,
+        attention: pattern?.attention,
+        commuteIn: pattern?.commuteTime ? Math.floor(pattern.commuteTime / 2) : undefined,
+        commuteOut: pattern?.commuteTime ? Math.ceil(pattern.commuteTime / 2) : undefined,
+        breakFreq: pattern?.breakFrequency,
+        breakLen: pattern?.breakLength,
       };
     });
 
@@ -119,6 +139,16 @@ export function PersonView({
       elevatedShifts,
     };
   }, [periodAssignments, shiftPatterns, currentPeriod]);
+
+  // Get unique shift patterns used in this period with their fatigue parameters
+  const periodPatterns = useMemo(() => {
+    const patternIds = [...new Set(periodAssignments.map(a => a.shiftPatternId))];
+    return patternIds.map(id => {
+      const pattern = shiftPatterns.find(p => p.id === id);
+      const assignmentCount = periodAssignments.filter(a => a.shiftPatternId === id).length;
+      return pattern ? { ...pattern, assignmentCount } : null;
+    }).filter(Boolean) as (ShiftPatternCamel & { assignmentCount: number })[];
+  }, [periodAssignments, shiftPatterns]);
 
   // Build map of assignment IDs to their violation severity (error takes precedence over warning)
   const violationAssignmentSeverity = useMemo(() => {
@@ -389,6 +419,46 @@ export function PersonView({
     return 'Low';
   };
 
+  // Start editing fatigue parameters for a pattern
+  const handleStartEdit = (pattern: ShiftPatternCamel) => {
+    setEditingPatternId(pattern.id);
+    setEditingParams({
+      workload: pattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload,
+      attention: pattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention,
+      commuteTime: pattern.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime,
+      breakFrequency: pattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency,
+      breakLength: pattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength,
+    });
+  };
+
+  // Save edited fatigue parameters
+  const handleSaveParams = async () => {
+    if (!editingPatternId || !editingParams || !onUpdateShiftPattern) return;
+    try {
+      await onUpdateShiftPattern(editingPatternId, {
+        workload: editingParams.workload,
+        attention: editingParams.attention,
+        commuteTime: editingParams.commuteTime,
+        breakFrequency: editingParams.breakFrequency,
+        breakLength: editingParams.breakLength,
+      });
+      setEditingPatternId(null);
+      setEditingParams(null);
+    } catch (err) {
+      console.error('Failed to update pattern:', err);
+      alert('Failed to save parameters');
+    }
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingPatternId(null);
+    setEditingParams(null);
+  };
+
+  // Check if a value is using default
+  const isDefault = (value: number | undefined, defaultValue: number) => value === undefined || value === defaultValue;
+
   return (
     <div className="min-h-screen bg-slate-100">
       {/* Header */}
@@ -479,57 +549,57 @@ export function PersonView({
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-5 gap-4">
-          <div className={`bg-white rounded-lg shadow p-4 ${compliance.hasErrors ? 'border-l-4 border-red-500' : compliance.hasWarnings ? 'border-l-4 border-amber-500' : 'border-l-4 border-green-500'}`}>
-            <p className="text-sm text-slate-600">Compliance</p>
-            <div className="flex items-center gap-2 mt-1">
-              {compliance.hasErrors ? <XCircle className="w-5 h-5 text-red-500" /> : compliance.hasWarnings ? <AlertTriangle className="w-5 h-5 text-amber-500" /> : <CheckCircle className="w-5 h-5 text-green-500" />}
-              <span className={`text-xl font-bold ${compliance.hasErrors ? 'text-red-600' : compliance.hasWarnings ? 'text-amber-600' : 'text-green-600'}`}>
+        <div className="grid grid-cols-5 gap-3">
+          <div className={`bg-white rounded-lg shadow p-3 ${compliance.hasErrors ? 'border-l-4 border-red-500' : compliance.hasWarnings ? 'border-l-4 border-amber-500' : 'border-l-4 border-green-500'}`}>
+            <p className="text-xs text-slate-600">Compliance</p>
+            <div className="flex items-center gap-2">
+              {compliance.hasErrors ? <XCircle className="w-4 h-4 text-red-500" /> : compliance.hasWarnings ? <AlertTriangle className="w-4 h-4 text-amber-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
+              <span className={`text-lg font-bold ${compliance.hasErrors ? 'text-red-600' : compliance.hasWarnings ? 'text-amber-600' : 'text-green-600'}`}>
                 {compliance.violations.length}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Issues</p>
+            <p className="text-[10px] text-slate-500">Issues</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-slate-600">Period Shifts</p>
-            <p className="text-2xl font-bold text-slate-900">{stats.totalShifts}</p>
-            <p className="text-xs text-slate-500 mt-1">{stats.nightShifts} nights</p>
+          <div className="bg-white rounded-lg shadow p-3">
+            <p className="text-xs text-slate-600">Period Shifts</p>
+            <p className="text-lg font-bold text-slate-900">{stats.totalShifts}</p>
+            <p className="text-[10px] text-slate-500">{stats.nightShifts} nights</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-slate-600">Period Hours</p>
-            <p className="text-2xl font-bold text-slate-900">{stats.totalHours}h</p>
-            <p className="text-xs text-slate-500 mt-1">{stats.totalShifts > 0 ? Math.round(stats.totalHours / stats.totalShifts * 10) / 10 : 0}h avg</p>
+          <div className="bg-white rounded-lg shadow p-3">
+            <p className="text-xs text-slate-600">Period Hours</p>
+            <p className="text-lg font-bold text-slate-900">{stats.totalHours}h</p>
+            <p className="text-[10px] text-slate-500">{stats.totalShifts > 0 ? Math.round(stats.totalHours / stats.totalShifts * 10) / 10 : 0}h avg</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-slate-600">Projects</p>
-            <p className="text-2xl font-bold text-slate-900">{stats.uniqueProjects}</p>
+          <div className="bg-white rounded-lg shadow p-3">
+            <p className="text-xs text-slate-600">Projects</p>
+            <p className="text-lg font-bold text-slate-900">{stats.uniqueProjects}</p>
           </div>
 
           {/* Fatigue Risk Card */}
-          <div className={`bg-white rounded-lg shadow p-4 ${
+          <div className={`bg-white rounded-lg shadow p-3 ${
             fatigueAnalysis?.maxFRI && fatigueAnalysis.maxFRI >= 1.2
               ? 'border-l-4 border-red-500'
               : fatigueAnalysis?.maxFRI && fatigueAnalysis.maxFRI >= 1.1
                 ? 'border-l-4 border-amber-500'
                 : 'border-l-4 border-green-500'
           }`}>
-            <p className="text-sm text-slate-600">Max Fatigue Risk</p>
+            <p className="text-xs text-slate-600">Max Fatigue Risk</p>
             {fatigueAnalysis ? (
               <>
-                <p className={`text-2xl font-bold ${fatigueAnalysis.maxFRI >= 1.2 ? 'text-red-600' : fatigueAnalysis.maxFRI >= 1.1 ? 'text-amber-600' : 'text-green-600'}`}>
+                <p className={`text-lg font-bold ${fatigueAnalysis.maxFRI >= 1.2 ? 'text-red-600' : fatigueAnalysis.maxFRI >= 1.1 ? 'text-amber-600' : 'text-green-600'}`}>
                   {fatigueAnalysis.maxFRI.toFixed(2)}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-[10px] text-slate-500">
                   {getFRILevel(fatigueAnalysis.maxFRI)} ({fatigueAnalysis.criticalShifts} critical)
                 </p>
               </>
             ) : (
-              <p className="text-xl font-bold text-slate-400">N/A</p>
+              <p className="text-lg font-bold text-slate-400">N/A</p>
             )}
           </div>
         </div>
@@ -537,39 +607,39 @@ export function PersonView({
         {/* Fatigue Analysis Section */}
         {fatigueAnalysis && fatigueAnalysis.results.length > 0 && (
           <div className="bg-white rounded-lg shadow-md">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <div className="p-3 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <BarChart className="w-5 h-5 text-purple-500" />
-                <h3 className="font-semibold text-slate-800">Fatigue Risk Analysis (HSE RR446)</h3>
+                <BarChart className="w-4 h-4 text-purple-500" />
+                <h3 className="font-semibold text-slate-800 text-sm">Fatigue Risk Analysis (HSE RR446)</h3>
               </div>
-              <div className="flex items-center gap-4 text-xs">
-                <span className="px-2 py-1 rounded bg-green-100 text-green-700">Low &lt;1.0</span>
-                <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-700">Moderate 1.0-1.1</span>
-                <span className="px-2 py-1 rounded bg-amber-100 text-amber-700">Elevated 1.1-1.2</span>
-                <span className="px-2 py-1 rounded bg-red-100 text-red-700">Critical &ge;1.2</span>
+              <div className="flex items-center gap-2 text-[10px]">
+                <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">Low &lt;1.0</span>
+                <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">Mod 1.0-1.1</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Elev 1.1-1.2</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Crit &ge;1.2</span>
               </div>
             </div>
-            <div className="p-4">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div className="bg-slate-50 rounded p-3">
-                  <p className="text-xs text-slate-500">Average FRI</p>
-                  <p className={`text-lg font-bold ${getFRIColor(fatigueAnalysis.avgFRI).split(' ')[0]}`}>
+            <div className="p-3">
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                <div className="bg-slate-50 rounded p-2">
+                  <p className="text-[10px] text-slate-500">Average FRI</p>
+                  <p className={`text-base font-bold ${getFRIColor(fatigueAnalysis.avgFRI).split(' ')[0]}`}>
                     {fatigueAnalysis.avgFRI.toFixed(3)}
                   </p>
                 </div>
-                <div className="bg-slate-50 rounded p-3">
-                  <p className="text-xs text-slate-500">Maximum FRI</p>
-                  <p className={`text-lg font-bold ${getFRIColor(fatigueAnalysis.maxFRI).split(' ')[0]}`}>
+                <div className="bg-slate-50 rounded p-2">
+                  <p className="text-[10px] text-slate-500">Maximum FRI</p>
+                  <p className={`text-base font-bold ${getFRIColor(fatigueAnalysis.maxFRI).split(' ')[0]}`}>
                     {fatigueAnalysis.maxFRI.toFixed(3)}
                   </p>
                 </div>
-                <div className="bg-slate-50 rounded p-3">
-                  <p className="text-xs text-slate-500">Elevated Shifts</p>
-                  <p className="text-lg font-bold text-amber-600">{fatigueAnalysis.elevatedShifts}</p>
+                <div className="bg-slate-50 rounded p-2">
+                  <p className="text-[10px] text-slate-500">Elevated Shifts</p>
+                  <p className="text-base font-bold text-amber-600">{fatigueAnalysis.elevatedShifts}</p>
                 </div>
-                <div className="bg-slate-50 rounded p-3">
-                  <p className="text-xs text-slate-500">Critical Shifts</p>
-                  <p className="text-lg font-bold text-red-600">{fatigueAnalysis.criticalShifts}</p>
+                <div className="bg-slate-50 rounded p-2">
+                  <p className="text-[10px] text-slate-500">Critical Shifts</p>
+                  <p className="text-base font-bold text-red-600">{fatigueAnalysis.criticalShifts}</p>
                 </div>
               </div>
 
@@ -594,6 +664,154 @@ export function PersonView({
                   );
                 })}
               </div>
+
+              {/* Shift Pattern Fatigue Parameters - Collapsible */}
+              {periodPatterns.length > 0 && (
+                <div className="mt-4 border-t border-slate-200 pt-4">
+                  <button
+                    onClick={() => setShowFatigueParams(!showFatigueParams)}
+                    className="flex items-center justify-between w-full text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm font-medium text-slate-700">Shift Pattern Parameters</span>
+                      <span className="text-xs text-slate-500">({periodPatterns.length} pattern{periodPatterns.length > 1 ? 's' : ''})</span>
+                    </div>
+                    {showFatigueParams ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+
+                  {showFatigueParams && (
+                    <div className="mt-3 space-y-2">
+                      {periodPatterns.map((pattern) => (
+                        <div key={pattern.id} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                          {editingPatternId === pattern.id && editingParams ? (
+                            // Edit mode
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-slate-800">{pattern.name}</span>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={handleSaveParams}
+                                    className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    className="px-2 py-1 text-xs bg-slate-300 text-slate-700 rounded hover:bg-slate-400"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-5 gap-2">
+                                <div>
+                                  <label className="text-[10px] text-slate-500 block">Workload</label>
+                                  <select
+                                    value={editingParams.workload}
+                                    onChange={(e) => setEditingParams({ ...editingParams, workload: parseInt(e.target.value) })}
+                                    className="w-full border rounded px-1.5 py-1 text-xs bg-white text-slate-900"
+                                  >
+                                    {[1, 2, 3, 4, 5].map(n => (
+                                      <option key={n} value={n}>{n}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-slate-500 block">Attention</label>
+                                  <select
+                                    value={editingParams.attention}
+                                    onChange={(e) => setEditingParams({ ...editingParams, attention: parseInt(e.target.value) })}
+                                    className="w-full border rounded px-1.5 py-1 text-xs bg-white text-slate-900"
+                                  >
+                                    {[1, 2, 3, 4, 5].map(n => (
+                                      <option key={n} value={n}>{n}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-slate-500 block">Commute (min)</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="180"
+                                    value={editingParams.commuteTime}
+                                    onChange={(e) => setEditingParams({ ...editingParams, commuteTime: parseInt(e.target.value) || 0 })}
+                                    className="w-full border rounded px-1.5 py-1 text-xs bg-white text-slate-900"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-slate-500 block">Break Freq</label>
+                                  <input
+                                    type="number"
+                                    min="30"
+                                    max="480"
+                                    value={editingParams.breakFrequency}
+                                    onChange={(e) => setEditingParams({ ...editingParams, breakFrequency: parseInt(e.target.value) || 180 })}
+                                    className="w-full border rounded px-1.5 py-1 text-xs bg-white text-slate-900"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-slate-500 block">Break Len</label>
+                                  <input
+                                    type="number"
+                                    min="5"
+                                    max="60"
+                                    value={editingParams.breakLength}
+                                    onChange={(e) => setEditingParams({ ...editingParams, breakLength: parseInt(e.target.value) || 30 })}
+                                    className="w-full border rounded px-1.5 py-1 text-xs bg-white text-slate-900"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            // Display mode
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-slate-800 text-sm">{pattern.name}</span>
+                                  {pattern.isNight && <span className="text-purple-600">🌙</span>}
+                                  <span className="text-[10px] text-slate-400">({pattern.assignmentCount} shift{pattern.assignmentCount > 1 ? 's' : ''})</span>
+                                </div>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-slate-600">
+                                  <span>
+                                    Workload: <strong>{pattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload}</strong>/5
+                                    {isDefault(pattern.workload, DEFAULT_FATIGUE_PARAMS.workload) && <span className="text-slate-400 ml-0.5">(def)</span>}
+                                  </span>
+                                  <span>
+                                    Attention: <strong>{pattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention}</strong>/5
+                                    {isDefault(pattern.attention, DEFAULT_FATIGUE_PARAMS.attention) && <span className="text-slate-400 ml-0.5">(def)</span>}
+                                  </span>
+                                  <span>
+                                    Commute: <strong>{pattern.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime}</strong>min
+                                    {isDefault(pattern.commuteTime, DEFAULT_FATIGUE_PARAMS.commuteTime) && <span className="text-slate-400 ml-0.5">(def)</span>}
+                                  </span>
+                                  <span>
+                                    Breaks: <strong>{pattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency}</strong>min / <strong>{pattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength}</strong>min
+                                  </span>
+                                </div>
+                              </div>
+                              {onUpdateShiftPattern && (
+                                <button
+                                  onClick={() => handleStartEdit(pattern)}
+                                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1"
+                                >
+                                  <Settings className="w-3 h-3" />
+                                  Edit
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -601,27 +819,27 @@ export function PersonView({
         {/* Compliance Violations Section */}
         {compliance.violations.length > 0 && (
           <div className="bg-white rounded-lg shadow-md">
-            <div className="p-4 border-b border-slate-200 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-              <h3 className="font-semibold text-slate-800">Compliance Violations ({compliance.violations.length})</h3>
+            <div className="p-3 border-b border-slate-200 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+              <h3 className="font-semibold text-slate-800 text-sm">Compliance Violations ({compliance.violations.length})</h3>
             </div>
-            <div className="p-4 space-y-4 max-h-64 overflow-y-auto">
+            <div className="p-3 space-y-2 max-h-48 overflow-y-auto">
               {compliance.violations.map((violation, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleViolationClick(violation)}
-                  className={`w-full text-left p-3 rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] ${violation.severity === 'error' ? 'bg-red-50 border-l-4 border-red-500 hover:bg-red-100' : 'bg-amber-50 border-l-4 border-amber-500 hover:bg-amber-100'}`}
+                  className={`w-full text-left p-2 rounded-lg cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] ${violation.severity === 'error' ? 'bg-red-50 border-l-4 border-red-500 hover:bg-red-100' : 'bg-amber-50 border-l-4 border-amber-500 hover:bg-amber-100'}`}
                 >
                   <div className="flex items-start gap-2">
-                    {violation.severity === 'error' ? <XCircle className="w-4 h-4 text-red-500 mt-0.5" /> : <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />}
+                    {violation.severity === 'error' ? <XCircle className="w-3 h-3 text-red-500 mt-0.5" /> : <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5" />}
                     <div className="flex-1">
-                      <p className={`font-medium text-sm ${violation.severity === 'error' ? 'text-red-900' : 'text-amber-900'}`}>
+                      <p className={`font-medium text-xs ${violation.severity === 'error' ? 'text-red-900' : 'text-amber-900'}`}>
                         {getViolationIcon(violation.type)} {getViolationTitle(violation.type)}
                       </p>
-                      <p className={`text-xs mt-0.5 ${violation.severity === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
+                      <p className={`text-[10px] ${violation.severity === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
                         {violation.message}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
                         {new Date(violation.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                         <span className="text-blue-500 ml-1">→ Click to view</span>
                       </p>
@@ -635,15 +853,15 @@ export function PersonView({
 
         {/* Schedule Calendar Grid */}
         <div id="schedule-calendar" className="bg-white rounded-lg shadow-md scroll-mt-4">
-          <div className="p-4 border-b border-slate-200 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-500" />
-            <h3 className="font-semibold text-slate-800">Schedule - {currentPeriod?.name}</h3>
+          <div className="p-3 border-b border-slate-200 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            <h3 className="font-semibold text-slate-800 text-sm">Schedule - {currentPeriod?.name}</h3>
           </div>
-          <div className="p-4 overflow-x-auto">
+          <div className="p-3 overflow-x-auto">
             {/* Week Headers */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div className="grid grid-cols-7 gap-1 mb-1">
               {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
-                <div key={day} className="text-center text-xs font-semibold text-slate-600 py-1">
+                <div key={day} className="text-center text-[10px] font-semibold text-slate-600 py-0.5">
                   {day}
                 </div>
               ))}
@@ -676,7 +894,7 @@ export function PersonView({
                   return (
                     <div
                       key={date}
-                      className={`min-h-[100px] p-2 rounded-lg border transition-all ${
+                      className={`min-h-[80px] p-1.5 rounded-lg border transition-all ${
                         isHighlighted
                           ? 'ring-4 ring-blue-500 ring-offset-2 animate-pulse bg-blue-100 border-blue-500 scale-105 z-10'
                           : dateViolationSeverity === 'error'
@@ -696,19 +914,19 @@ export function PersonView({
                                     : 'bg-white border-slate-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs font-semibold ${isToday ? 'text-blue-600' : 'text-slate-700'}`}>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className={`text-[10px] font-semibold ${isToday ? 'text-blue-600' : 'text-slate-700'}`}>
                           {dateNum}
                         </span>
                         {dateFRI !== null && (
-                          <span className={`text-[9px] px-1 rounded ${getFRIColor(dateFRI)}`}>
+                          <span className={`text-[8px] px-0.5 rounded ${getFRIColor(dateFRI)}`}>
                             {dateFRI.toFixed(2)}
                           </span>
                         )}
                       </div>
 
                       {dateAssignments.length === 0 ? (
-                        <div className="text-[10px] text-slate-400 text-center py-2">-</div>
+                        <div className="text-[9px] text-slate-400 text-center py-1">-</div>
                       ) : (
                         <div className="space-y-1">
                           {dateAssignments.map(assignment => {
@@ -720,12 +938,12 @@ export function PersonView({
                                 key={assignment.id}
                                 className={`relative rounded p-1 text-[9px] ${
                                   shiftViolationSeverity === 'error'
-                                    ? 'bg-red-200 border border-red-400'
+                                    ? 'bg-red-200 border border-red-400 text-red-900'
                                     : shiftViolationSeverity === 'warning'
-                                      ? 'bg-amber-200 border border-amber-400'
+                                      ? 'bg-amber-200 border border-amber-400 text-amber-900'
                                       : pattern?.isNight
-                                        ? 'bg-purple-100 border border-purple-300'
-                                        : 'bg-blue-100 border border-blue-300'
+                                        ? 'bg-purple-100 border border-purple-300 text-purple-900'
+                                        : 'bg-blue-100 border border-blue-300 text-blue-900'
                                 }`}
                               >
                                 <button
@@ -736,7 +954,7 @@ export function PersonView({
                                   <Trash2 className="w-2.5 h-2.5" />
                                 </button>
                                 <div className="font-medium truncate pr-3">{pattern?.name || '?'}</div>
-                                <div className="text-slate-500">
+                                <div className="opacity-75">
                                   {assignment.customStartTime || pattern?.startTime || '?'}-{assignment.customEndTime || pattern?.endTime || '?'}
                                 </div>
                               </div>
@@ -754,14 +972,14 @@ export function PersonView({
 
         {/* All Period Assignments List */}
         <div className="bg-white rounded-lg shadow-md">
-          <div className="p-4 border-b border-slate-200">
-            <h3 className="font-semibold text-slate-800">Period Assignments ({periodAssignments.length})</h3>
+          <div className="p-3 border-b border-slate-200">
+            <h3 className="font-semibold text-slate-800 text-sm">Period Assignments ({periodAssignments.length})</h3>
           </div>
-          <div className="p-4 max-h-96 overflow-y-auto">
+          <div className="p-3 max-h-64 overflow-y-auto">
             {periodAssignments.length === 0 ? (
-              <p className="text-slate-500 text-center py-4">No assignments in this period</p>
+              <p className="text-slate-500 text-center py-2 text-sm">No assignments in this period</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {periodAssignments.map((assignment, idx) => {
                   const { pattern, project } = getAssignmentInfo(assignment);
                   const assignmentViolationSeverity = violationAssignmentSeverity.get(assignment.id);
@@ -771,7 +989,7 @@ export function PersonView({
                   return (
                     <div
                       key={assignment.id}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
+                      className={`flex items-center justify-between p-2 rounded-lg ${
                         assignmentViolationSeverity === 'error'
                           ? 'bg-red-50 border-2 border-red-300'
                           : assignmentViolationSeverity === 'warning'
@@ -783,35 +1001,35 @@ export function PersonView({
                                 : 'bg-slate-50'
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`text-center min-w-[60px] ${assignmentViolationSeverity === 'error' ? 'text-red-700' : assignmentViolationSeverity === 'warning' ? 'text-amber-700' : ''}`}>
-                          <div className="text-xs text-slate-500">{d.toLocaleDateString('en-GB', { month: 'short' })}</div>
-                          <div className="text-xl font-bold">{d.getDate()}</div>
-                          <div className="text-xs">{d.toLocaleDateString('en-GB', { weekday: 'short' })}</div>
+                      <div className="flex items-center gap-3">
+                        <div className={`text-center min-w-[45px] ${assignmentViolationSeverity === 'error' ? 'text-red-700' : assignmentViolationSeverity === 'warning' ? 'text-amber-700' : ''}`}>
+                          <div className="text-[10px] text-slate-500">{d.toLocaleDateString('en-GB', { month: 'short' })}</div>
+                          <div className="text-lg font-bold">{d.getDate()}</div>
+                          <div className="text-[10px]">{d.toLocaleDateString('en-GB', { weekday: 'short' })}</div>
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-slate-800">{pattern?.name || 'Unknown'}</span>
-                            {pattern?.isNight && <span className="text-purple-600">🌙</span>}
-                            {assignmentViolationSeverity === 'error' && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                            {assignmentViolationSeverity === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                            <span className="font-medium text-slate-800 text-sm">{pattern?.name || 'Unknown'}</span>
+                            {pattern?.isNight && <span className="text-purple-600 text-sm">🌙</span>}
+                            {assignmentViolationSeverity === 'error' && <AlertTriangle className="w-3 h-3 text-red-500" />}
+                            {assignmentViolationSeverity === 'warning' && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                           </div>
-                          <div className="text-sm text-slate-600">{project?.name || 'Unknown Project'}</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-600">{project?.name || 'Unknown Project'}</div>
+                          <div className="text-[10px] text-slate-500">
                             {assignment.customStartTime || pattern?.startTime || '?'} - {assignment.customEndTime || pattern?.endTime || '?'}
                             <span className="mx-1">•</span>
                             {pattern?.dutyType}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
                         {fri !== undefined && (
-                          <div className={`px-2 py-1 rounded text-xs font-medium ${getFRIColor(fri)}`}>
+                          <div className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getFRIColor(fri)}`}>
                             FRI: {fri.toFixed(3)}
                           </div>
                         )}
-                        <button onClick={() => handleDelete(assignment)} className="text-red-500 hover:text-red-700 p-2" title="Delete">
-                          <Trash2 className="w-5 h-5" />
+                        <button onClick={() => handleDelete(assignment)} className="text-red-500 hover:text-red-700 p-1" title="Delete">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>

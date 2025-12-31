@@ -221,6 +221,7 @@ export default function Home() {
           projects={projects}
           onSelectEmployee={(id) => setSelectedEmployee(id)}
           onDeleteAssignment={deleteAssignment}
+          onUpdateShiftPattern={updateShiftPattern}
         />
       )}
 
