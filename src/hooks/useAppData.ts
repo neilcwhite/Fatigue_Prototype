@@ -68,8 +68,6 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         setData(prev => ({ ...prev, loading: true, error: null }));
       }
 
-      console.log('useAppData: loading data for org:', organisationId);
-      
       const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes] = await Promise.all([
         supabase.from('employees').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('projects').select('*').eq('organisation_id', organisationId).order('name'),
@@ -77,12 +75,6 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         supabase.from('shift_patterns').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('assignments').select('*').eq('organisation_id', organisationId).order('date'),
       ]);
-      
-      console.log('useAppData: data loaded', {
-        employees: employeesRes.data?.length,
-        projects: projectsRes.data?.length,
-        errors: { e: employeesRes.error, p: projectsRes.error }
-      });
 
       // Map snake_case to camelCase for compatibility with v76 code
       const employees: EmployeeCamel[] = (employeesRes.data || []).map(e => ({
@@ -150,12 +142,12 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         loading: false,
         error: null,
       });
-    } catch (err: any) {
-      console.error('Error loading data:', err);
-      setData(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: err.message || 'Failed to load data' 
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load data';
+      setData(prev => ({
+        ...prev,
+        loading: false,
+        error: message
       }));
     }
   }, [organisationId]);
@@ -331,9 +323,6 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
-    console.log('updateShiftPattern: starting update for id:', id);
-    console.log('updateShiftPattern: data:', updateData);
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -356,43 +345,27 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       break_length: updateData.breakLength,
     };
 
-    console.log('updateShiftPattern: payload:', updatePayload);
-
     // Use direct REST API fetch to avoid Supabase client hanging issues
-    try {
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/shift_patterns?id=eq.${id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
-          },
-          body: JSON.stringify(updatePayload),
-        }
-      );
-
-      console.log('updateShiftPattern: fetch responded, status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('updateShiftPattern: fetch error:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/shift_patterns?id=eq.${id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(updatePayload),
       }
+    );
 
-      const data = await response.json();
-      console.log('updateShiftPattern: result:', { data });
-
-    } catch (err: any) {
-      console.error('updateShiftPattern: error:', err);
-      throw err;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    console.log('updateShiftPattern: reloading data...');
     await loadAllData();
-    console.log('updateShiftPattern: complete');
   };
 
   const deleteShiftPattern = async (id: string) => {

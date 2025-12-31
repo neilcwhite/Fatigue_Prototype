@@ -37,8 +37,9 @@ export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
         endDate || undefined
       );
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create project');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create project';
+      setError(message);
     } finally {
       setSaving(false);
     }

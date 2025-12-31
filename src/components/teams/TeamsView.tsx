@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X } from '@/components/ui/Icons';
-import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel } from '@/lib/types';
+import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
 
 interface TeamsViewProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
   onBack: () => void;
   teams: TeamCamel[];
@@ -184,9 +184,9 @@ export function TeamsView({
 
       alert(`Successfully created ${created} assignments for ${memberIds.length} team members over ${dates.length} days`);
       setShowAssignModal(false);
-    } catch (err: any) {
-      console.error('Error creating assignments:', err);
-      setAssignError(err.message || 'Failed to create assignments');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create assignments';
+      setAssignError(message);
     } finally {
       setAssigning(false);
     }

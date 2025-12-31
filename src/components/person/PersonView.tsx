@@ -6,11 +6,12 @@ import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/complia
 import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 import type { ShiftDefinition, FatigueResult } from '@/lib/types';
 import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
-import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel } from '@/lib/types';
+import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel, SupabaseUser } from '@/lib/types';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
+import { getFRIColor, getFRILevel } from '@/lib/utils';
 
 interface PersonViewProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
   onBack: () => void;
   employee: EmployeeCamel;
@@ -416,20 +417,6 @@ export function PersonView({
       case 'MULTIPLE_SHIFTS_SAME_DAY': return 'Multiple Shifts Same Day';
       default: return 'Compliance Issue';
     }
-  };
-
-  const getFRIColor = (fri: number) => {
-    if (fri >= 1.2) return 'text-red-600 bg-red-100';
-    if (fri >= 1.1) return 'text-amber-600 bg-amber-100';
-    if (fri >= 1.0) return 'text-yellow-600 bg-yellow-100';
-    return 'text-green-600 bg-green-100';
-  };
-
-  const getFRILevel = (fri: number) => {
-    if (fri >= 1.2) return 'Critical';
-    if (fri >= 1.1) return 'Elevated';
-    if (fri >= 1.0) return 'Moderate';
-    return 'Low';
   };
 
   // Start editing fatigue parameters for a pattern

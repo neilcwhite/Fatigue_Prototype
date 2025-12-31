@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { Calendar, Spinner } from '@/components/ui/Icons';
 import { supabase } from '@/lib/supabase';
+import type { SupabaseUser } from '@/lib/types';
 
 interface AuthScreenProps {
-  onLogin: (user: any) => void;
+  onLogin: (user: SupabaseUser) => void;
 }
 
 export function AuthScreen({ onLogin }: AuthScreenProps) {
@@ -35,9 +36,9 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
         if (error) throw error;
         if (data.user) onLogin(data.user);
       }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Something went wrong.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong.';
+      setError(message);
     } finally {
       setLoading(false);
     }

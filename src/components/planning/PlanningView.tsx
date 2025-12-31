@@ -12,15 +12,16 @@ import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { exportToExcel, processImport, type ParsedAssignment } from '@/lib/importExport';
 import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
 import { getEmployeeComplianceStatus } from '@/lib/compliance';
-import type { 
-  ProjectCamel, 
-  EmployeeCamel, 
-  AssignmentCamel, 
-  ShiftPatternCamel 
+import type {
+  ProjectCamel,
+  EmployeeCamel,
+  AssignmentCamel,
+  ShiftPatternCamel,
+  SupabaseUser
 } from '@/lib/types';
 
 interface PlanningViewProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
   project: ProjectCamel;
   employees: EmployeeCamel[];
@@ -124,35 +125,22 @@ export function PlanningView({
 
   // Helper to ensure Custom pattern exists
   const ensureCustomPattern = async (): Promise<string> => {
-    console.log('📋 ensureCustomPattern: checking if custom pattern exists', customPatternId);
-    console.log('📋 customPattern found:', customPattern);
-
     if (customPattern) {
-      console.log('✅ Custom pattern already exists');
       return customPatternId;
     }
 
     // Create the Custom pattern if it doesn't exist
     if (onCreateShiftPatternDirect) {
-      console.log('🆕 Creating new Custom pattern...');
-      try {
-        await onCreateShiftPatternDirect({
-          id: customPatternId,  // Use specific ID so we can find it later
-          projectId: project.id,
-          name: 'Custom (Ad-hoc)',
-          startTime: null as any,  // No fixed time - each assignment has custom times
-          endTime: null as any,
-          dutyType: 'Non-Possession',  // Use valid duty type for ad-hoc work
-          isNight: false,
-          weeklySchedule: undefined,
-        });
-        console.log('✅ Custom pattern created successfully');
-      } catch (err) {
-        console.error('❌ Error creating custom pattern:', err);
-        throw err;
-      }
-    } else {
-      console.warn('⚠️ onCreateShiftPatternDirect not available');
+      await onCreateShiftPatternDirect({
+        id: customPatternId,  // Use specific ID so we can find it later
+        projectId: project.id,
+        name: 'Custom (Ad-hoc)',
+        startTime: null as unknown as string,  // No fixed time - each assignment has custom times
+        endTime: null as unknown as string,
+        dutyType: 'Non-Possession',  // Use valid duty type for ad-hoc work
+        isNight: false,
+        weeklySchedule: undefined,
+      });
     }
 
     return customPatternId;
@@ -225,15 +213,13 @@ export function PlanningView({
     const employeesToDrag = selectedEmployees.some(emp => emp.id === employee.id)
       ? selectedEmployees
       : [employee];
-    
+
     draggedEmployeeRef.current = employeesToDrag;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(employee.id));
-    console.log('✅ Drag started:', employeesToDrag.length, 'employee(s)', employeesToDrag.map(e => e.name).join(', '));
   };
-  
+
   const handleEmployeeDragEnd = () => {
-    console.log('🛑 Drag ended');
     // Don't clear ref here - let drop handle it
   };
   
@@ -245,14 +231,10 @@ export function PlanningView({
   const handleCellDrop = async (e: React.DragEvent, shiftPatternId: string, date: string, isValidCell: boolean = true) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log('📦 Drop event on:', shiftPatternId, date, 'isValidCell:', isValidCell);
-    console.log('📦 draggedEmployeeRef.current:', draggedEmployeeRef.current);
-    
+
     const employeesToAssign = draggedEmployeeRef.current;
-    
+
     if (!employeesToAssign || employeesToAssign.length === 0) {
-      console.log('❌ No employees to assign');
       draggedEmployeeRef.current = null;
       return;
     }
@@ -272,27 +254,18 @@ export function PlanningView({
     }
 
     // Valid cell - create assignments normally
-    console.log('✅ Creating assignments for', employeesToAssign.length, 'employees');
     for (const employee of employeesToAssign) {
       const existing = projectAssignments.find(
         a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
       );
 
       if (!existing) {
-        try {
-          console.log('📝 Creating assignment for', employee.name, 'on', date, 'pattern:', shiftPatternId);
-          await onCreateAssignment({
-            employeeId: employee.id,
-            projectId: project.id,
-            shiftPatternId,
-            date,
-          });
-          console.log('✅ Assignment created successfully');
-        } catch (err) {
-          console.error('❌ Error creating assignment:', err);
-        }
-      } else {
-        console.log('⏭️ Assignment already exists for', employee.name, 'on', date);
+        await onCreateAssignment({
+          employeeId: employee.id,
+          projectId: project.id,
+          shiftPatternId,
+          date,
+        });
       }
     }
 
@@ -302,47 +275,31 @@ export function PlanningView({
 
   // Handle custom time confirmation - assigns to Custom pattern, not original
   const handleCustomTimeConfirm = async (startTime: string, endTime: string) => {
-    console.log('🎯 handleCustomTimeConfirm called', { startTime, endTime });
     if (!customTimeModal) {
-      console.log('❌ No customTimeModal');
       return;
     }
 
     const { employees: emps, date } = customTimeModal;
-    console.log('📋 Creating custom assignments for', emps.length, 'employees on', date);
 
-    try {
-      // Ensure the Custom pattern exists and get its ID
-      const patternId = await ensureCustomPattern();
-      console.log('📋 Using pattern ID:', patternId);
+    // Ensure the Custom pattern exists and get its ID
+    const patternId = await ensureCustomPattern();
 
-      for (const employee of emps) {
-        // Check if already assigned to Custom pattern on this date
-        const existing = projectAssignments.find(
-          a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
-        );
+    for (const employee of emps) {
+      // Check if already assigned to Custom pattern on this date
+      const existing = projectAssignments.find(
+        a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
+      );
 
-        if (!existing) {
-          try {
-            console.log('📝 Creating assignment for', employee.name);
-            await onCreateAssignment({
-              employeeId: employee.id,
-              projectId: project.id,
-              shiftPatternId: patternId,
-              date,
-              customStartTime: startTime,
-              customEndTime: endTime,
-            });
-            console.log('✅ Assignment created for', employee.name);
-          } catch (err) {
-            console.error('❌ Error creating custom assignment:', err);
-          }
-        } else {
-          console.log('⏭️ Assignment already exists for', employee.name);
-        }
+      if (!existing) {
+        await onCreateAssignment({
+          employeeId: employee.id,
+          projectId: project.id,
+          shiftPatternId: patternId,
+          date,
+          customStartTime: startTime,
+          customEndTime: endTime,
+        });
       }
-    } catch (err) {
-      console.error('❌ Error in handleCustomTimeConfirm:', err);
     }
 
     setCustomTimeModal(null);
@@ -365,7 +322,7 @@ export function PlanningView({
 
   // Import handler
   const handleImportConfirm = async (parsedAssignments: ParsedAssignment[]) => {
-    const result = await processImport({
+    await processImport({
       parsedAssignments,
       employees,
       shiftPatterns: projectShiftPatterns,
@@ -374,12 +331,6 @@ export function PlanningView({
       onCreateAssignment,
       existingAssignments: projectAssignments,
     });
-
-    if (result.errors.length > 0) {
-      console.warn('Import completed with errors:', result.errors);
-    }
-
-    console.log(`Import complete: ${result.created} created, ${result.skipped} skipped, ${result.failed} failed`);
   };
   
   return (

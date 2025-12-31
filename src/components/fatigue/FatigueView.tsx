@@ -10,8 +10,9 @@ import {
   parseTimeToHours,
   calculateDutyLength,
 } from '@/lib/fatigue';
-import type { ShiftDefinition, ProjectCamel, EmployeeCamel, ShiftPatternCamel, AssignmentCamel } from '@/lib/types';
+import type { ShiftDefinition, ProjectCamel, EmployeeCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
 import { FatigueChart } from './FatigueChart';
+import { getRiskColor } from '@/lib/utils';
 
 interface Shift extends ShiftDefinition {
   id: number;
@@ -25,7 +26,7 @@ interface Shift extends ShiftDefinition {
 }
 
 interface FatigueViewProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
   onBack: () => void;
   // Data from the app
@@ -679,16 +680,6 @@ export function FatigueView({
       printWindow.document.write(printContent);
       printWindow.document.close();
       printWindow.print();
-    }
-  };
-
-  const getRiskColor = (level: string) => {
-    switch (level) {
-      case 'low': return 'bg-green-100 text-green-800 border-green-300';
-      case 'moderate': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'elevated': return 'bg-orange-100 text-orange-800 border-orange-300';
-      case 'critical': return 'bg-red-100 text-red-800 border-red-300';
-      default: return 'bg-slate-100 text-slate-800 border-slate-300';
     }
   };
 

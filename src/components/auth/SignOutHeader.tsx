@@ -1,9 +1,10 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
+import type { SupabaseUser } from '@/lib/types';
 
 interface SignOutHeaderProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
 }
 

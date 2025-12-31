@@ -14,7 +14,7 @@ import { ProjectModal } from '@/components/modals/ProjectModal';
 import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
 import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
 import { Spinner } from '@/components/ui/Icons';
-import type { ShiftPatternCamel } from '@/lib/types';
+import type { ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
 
 type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
 
@@ -26,9 +26,6 @@ export default function Home() {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showShiftPatternModal, setShowShiftPatternModal] = useState(false);
   const [editingShiftPattern, setEditingShiftPattern] = useState<ShiftPatternCamel | null>(null);
-
-  // Debug logging
-  console.log('Page render:', { authLoading, hasUser: !!user, hasProfile: !!profile, orgId: profile?.organisationId });
 
   // Load app data once we have an organisation
   const {
@@ -144,7 +141,7 @@ export default function Home() {
     endTime: string;
     dutyType: string;
     isNight: boolean;
-    weeklySchedule: any;
+    weeklySchedule?: WeeklySchedule;
     workload?: number;
     attention?: number;
     commuteTime?: number;

@@ -2,6 +2,9 @@
 // FATIGUE MANAGEMENT SYSTEM - TYPE DEFINITIONS
 // ============================================
 
+// Re-export Supabase User type for component props
+export type { User as SupabaseUser } from '@supabase/supabase-js';
+
 // ==================== DATABASE ENTITIES ====================
 
 export interface Employee {

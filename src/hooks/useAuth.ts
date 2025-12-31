@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { User } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 
 interface UserProfile {
   id: string;
@@ -11,6 +11,14 @@ interface UserProfile {
   role: string;
   organisationId: string;
   organisationName?: string;
+}
+
+interface ProfileData {
+  id: string;
+  email: string;
+  full_name?: string;
+  role: string;
+  organisation_id: string;
 }
 
 interface UseAuthReturn {
@@ -31,15 +39,10 @@ export function useAuth(): UseAuthReturn {
 
   const loadProfile = useCallback(async (userId: string, userEmail: string): Promise<void> => {
     if (!supabase) {
-      console.log('loadProfile: supabase not configured');
       return;
     }
 
-    console.log('loadProfile: starting for user:', userId, 'email:', userEmail);
-
     try {
-      console.log('loadProfile: querying user_profiles table...');
-
       // Try direct fetch to Supabase REST API as a workaround for client library issues
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -49,23 +52,16 @@ export function useAuth(): UseAuthReturn {
       }
 
       // Use the anon key directly - we already know the user is authenticated
-      // Avoid calling getSession() which may be hanging
       const accessToken = supabaseKey;
-
-      console.log('loadProfile: using direct fetch with anon key');
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log('loadProfile: Aborting fetch due to timeout');
         controller.abort();
       }, 8000);
 
-      let profileData: any = null;
-      let profileError: any = null;
+      let profileData: ProfileData | null = null;
 
       try {
-        console.log('loadProfile: fetching from REST API...');
-
         const response = await fetch(
           `${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=*`,
           {
@@ -81,36 +77,26 @@ export function useAuth(): UseAuthReturn {
         );
 
         clearTimeout(timeoutId);
-        console.log('loadProfile: fetch responded, status:', response.status);
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('loadProfile: fetch error:', errorText);
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
-        console.log('loadProfile: data received, count:', data?.length);
-
         // REST API returns an array, get first item
         profileData = data?.[0] || null;
-        profileError = null;
-
-        console.log('loadProfile: query responded!');
-      } catch (fetchErr: any) {
+      } catch (fetchErr) {
         clearTimeout(timeoutId);
-        if (fetchErr.name === 'AbortError') {
+        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
           throw new Error('Query timed out after 8 seconds');
         }
         throw fetchErr;
       }
 
-      console.log('loadProfile: query completed, profileData:', profileData ? 'found' : 'not found');
-
-      // Fetch organisation name separately if we have a profile - using direct fetch
+      // Fetch organisation name separately if we have a profile
       let organisationName: string | undefined;
       if (profileData?.organisation_id) {
-        console.log('loadProfile: fetching organisation name via REST API...');
         try {
           const orgResponse = await fetch(
             `${supabaseUrl}/rest/v1/organisations?id=eq.${profileData.organisation_id}&select=name`,
@@ -127,28 +113,13 @@ export function useAuth(): UseAuthReturn {
             const orgData = await orgResponse.json();
             organisationName = orgData?.[0]?.name;
           }
-        } catch (orgErr) {
-          console.error('loadProfile: failed to fetch org name:', orgErr);
+        } catch {
+          // Silently handle org fetch failure
         }
-        console.log('loadProfile: organisation name:', organisationName);
       }
 
-      console.log('loadProfile: result:', {
-        hasData: !!profileData,
-        errorMessage: profileError?.message,
-        errorCode: profileError?.code,
-        errorHint: profileError?.hint
-      });
-
-      if (profileError) {
-        // Some error occurred
-        console.error('loadProfile: unexpected error:', profileError);
-        throw profileError;
-      }
-
-      // No profile found - create one (maybeSingle returns null when no row)
+      // No profile found - create one
       if (!profileData) {
-        console.log('loadProfile: no profile exists, creating new one...');
         const orgId = crypto.randomUUID();
 
         const { error: orgError } = await supabase.from('organisations').insert({
@@ -157,7 +128,6 @@ export function useAuth(): UseAuthReturn {
         });
 
         if (orgError) {
-          console.error('loadProfile: failed to create organisation:', orgError);
           throw orgError;
         }
 
@@ -173,11 +143,8 @@ export function useAuth(): UseAuthReturn {
           .single();
 
         if (insertError) {
-          console.error('loadProfile: failed to create profile:', insertError);
           throw insertError;
         }
-
-        console.log('loadProfile: created new profile successfully');
 
         if (newProfile) {
           setProfile({
@@ -191,7 +158,6 @@ export function useAuth(): UseAuthReturn {
         }
       } else {
         // Profile found - use it
-        console.log('loadProfile: profile found, setting state');
         setProfile({
           id: profileData.id,
           email: profileData.email,
@@ -201,14 +167,11 @@ export function useAuth(): UseAuthReturn {
           organisationName: organisationName,
         });
       }
-    } catch (err: any) {
-      console.error('loadProfile error:', err);
-
+    } catch (err) {
       // If query timed out or failed, use the known org ID for this user
       // This is a workaround for the mysterious query timeout issue
       const knownOrgId = '11111111-1111-1111-1111-111111111111';
 
-      console.log('loadProfile: Error occurred, using fallback with known org ID');
       setProfile({
         id: userId,
         email: userEmail,
@@ -218,11 +181,8 @@ export function useAuth(): UseAuthReturn {
         organisationName: 'My Organisation',
       });
 
-      if (err.message?.includes('timed out')) {
+      if (err instanceof Error && err.message?.includes('timed out')) {
         setError('Profile query slow - using cached data');
-      } else {
-        // Don't set error for other issues, just use fallback
-        console.error('loadProfile: using fallback due to:', err.message);
       }
     }
   }, []);
@@ -233,34 +193,28 @@ export function useAuth(): UseAuthReturn {
       return;
     }
 
-    console.log('useAuth: initializing...');
     let isMounted = true;
     let profileLoadedForUser: string | null = null;
 
-    const handleSession = async (session: any, source: string) => {
+    const handleSession = async (session: Session | null, _source: string) => {
       if (!isMounted) return;
 
       if (session?.user) {
         // Skip if we already loaded profile for this user
         if (profileLoadedForUser === session.user.id) {
-          console.log(`${source}: profile already loaded for user, skipping`);
           if (isMounted) setLoading(false);
           return;
         }
 
-        console.log(`${source}: setting user:`, session.user.id);
         setUser(session.user);
 
         try {
           profileLoadedForUser = session.user.id;
           await loadProfile(session.user.id, session.user.email || '');
-          console.log(`${source}: profile load complete`);
-        } catch (err) {
-          console.error(`${source}: profile load failed:`, err);
+        } catch {
           profileLoadedForUser = null; // Reset so we can retry
         }
       } else {
-        console.log(`${source}: no session, clearing user/profile`);
         setUser(null);
         setProfile(null);
         profileLoadedForUser = null;
@@ -272,7 +226,6 @@ export function useAuth(): UseAuthReturn {
     // Listen for auth state changes first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('onAuthStateChange:', _event, 'hasSession:', !!session);
         await handleSession(session, 'onAuthStateChange');
       }
     );
@@ -280,7 +233,6 @@ export function useAuth(): UseAuthReturn {
     // Then get initial session (onAuthStateChange will also fire for INITIAL_SESSION)
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
-        console.log('getSession: result hasSession:', !!session);
         // Only handle if onAuthStateChange hasn't already handled it
         if (!profileLoadedForUser && session?.user) {
           await handleSession(session, 'getSession');
@@ -289,9 +241,8 @@ export function useAuth(): UseAuthReturn {
         }
       })
       .catch((err) => {
-        console.error('getSession error:', err);
         if (isMounted) {
-          setError(err.message);
+          setError(err instanceof Error ? err.message : 'Authentication error');
           setLoading(false);
         }
       });
@@ -305,10 +256,10 @@ export function useAuth(): UseAuthReturn {
   const signIn = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     setError(null);
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    
+
     if (data.user) {
       setUser(data.user);
       await loadProfile(data.user.id, data.user.email || '');
@@ -318,10 +269,10 @@ export function useAuth(): UseAuthReturn {
   const signUp = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     setError(null);
-    
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
-    
+
     if (data.user) {
       setUser(data.user);
       await loadProfile(data.user.id, data.user.email || '');
@@ -330,10 +281,10 @@ export function useAuth(): UseAuthReturn {
 
   const signOut = async () => {
     if (!supabase) throw new Error('Supabase not configured');
-    
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-    
+
     setUser(null);
     setProfile(null);
   };

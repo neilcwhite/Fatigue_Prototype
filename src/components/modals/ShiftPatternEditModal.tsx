@@ -109,8 +109,9 @@ export function ShiftPatternEditModal({
         breakFrequency,
         breakLength,
       });
-    } catch (err: any) {
-      setError(err.message || 'Failed to update shift pattern');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update shift pattern';
+      setError(message);
       setSaving(false);
     }
   };

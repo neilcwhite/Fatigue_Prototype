@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronLeft, AlertTriangle, CheckCircle, Users, Clock, Calendar, BarChart, XCircle, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
-import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
-import { 
-  checkProjectCompliance, 
+import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule, SupabaseUser } from '@/lib/types';
+import {
+  checkProjectCompliance,
   checkEmployeeCompliance,
-  type ComplianceViolation 
+  type ComplianceViolation
 } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength } from '@/lib/fatigue';
 
 interface SummaryViewProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
   onBack: () => void;
   project: ProjectCamel;

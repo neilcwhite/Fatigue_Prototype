@@ -292,8 +292,9 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
         breakLength: usePerDayParams ? undefined : breakLength,
       });
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to create shift pattern');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create shift pattern';
+      setError(message);
     } finally {
       setSaving(false);
     }

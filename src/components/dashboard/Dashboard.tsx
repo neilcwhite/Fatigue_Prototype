@@ -14,7 +14,8 @@ import type {
   ProjectCamel,
   EmployeeCamel,
   AssignmentCamel,
-  ShiftPatternCamel
+  ShiftPatternCamel,
+  SupabaseUser
 } from '@/lib/types';
 
 interface ProjectStats {
@@ -25,7 +26,7 @@ interface ProjectStats {
 }
 
 interface DashboardProps {
-  user: any;
+  user: SupabaseUser;
   onSignOut: () => void;
   projects: ProjectCamel[];
   employees: EmployeeCamel[];
