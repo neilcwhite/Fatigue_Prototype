@@ -363,9 +363,11 @@ export function FatigueView({
 
   // Calculate results using full HSE RR446 algorithm
   const results = useMemo(() => {
-    if (shifts.length === 0) return null;
+    // Filter out rest days - they don't contribute to fatigue
+    const workingShifts = shifts.filter(s => !s.isRestDay);
+    if (workingShifts.length === 0) return null;
 
-    const sortedShifts = [...shifts].sort((a, b) => a.day - b.day);
+    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
     // Include per-shift fatigue parameters in the shift definitions
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
       day: s.day,
@@ -426,9 +428,11 @@ export function FatigueView({
 
   // Calculate role comparison results
   const roleComparisonResults = useMemo(() => {
-    if (!compareRoles || shifts.length === 0) return null;
+    // Filter out rest days - they don't contribute to fatigue
+    const workingShifts = shifts.filter(s => !s.isRestDay);
+    if (!compareRoles || workingShifts.length === 0) return null;
 
-    const sortedShifts = [...shifts].sort((a, b) => a.day - b.day);
+    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
 
     // Calculate for each selected role
     const roleResults = selectedRolesForCompare.map(roleKey => {
