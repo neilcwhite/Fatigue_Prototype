@@ -233,6 +233,19 @@ export function PersonView({
     return dates;
   }, [currentPeriod]);
 
+  // Generate day headers based on the actual start day of the period
+  const calendarDayHeaders = useMemo(() => {
+    if (!currentPeriod) return ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const startDate = new Date(currentPeriod.startDate);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const headers: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const dayOfWeek = (startDate.getDay() + i) % 7;
+      headers.push(dayNames[dayOfWeek]);
+    }
+    return headers;
+  }, [currentPeriod]);
+
   // Calculate stats for the period
   const stats = useMemo(() => {
     const totalShifts = periodAssignments.length;
@@ -843,9 +856,9 @@ export function PersonView({
             <h3 className="font-semibold text-slate-800 text-sm">Schedule - {currentPeriod?.name}</h3>
           </div>
           <div className="p-3 overflow-x-auto">
-            {/* Week Headers */}
+            {/* Week Headers - dynamic based on period start day */}
             <div className="grid grid-cols-7 gap-1 mb-1">
-              {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+              {calendarDayHeaders.map(day => (
                 <div key={day} className="text-center text-[10px] font-semibold text-slate-600 py-0.5">
                   {day}
                 </div>
