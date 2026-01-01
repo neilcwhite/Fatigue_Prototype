@@ -47,8 +47,8 @@ export interface FatigueParams {
 // Default fatigue parameters
 export const DEFAULT_FATIGUE_PARAMS: FatigueParams = {
   commuteTime: 60,
-  workload: 2,
-  attention: 1,
+  workload: 3,
+  attention: 3,
   breakFrequency: 180,
   breakLength: 30,
   continuousWork: 180,

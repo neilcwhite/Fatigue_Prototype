@@ -184,8 +184,8 @@ Based on HSE Research Report RR446, the system calculates:
 
 | Parameter | Range | Default | Description |
 |-----------|-------|---------|-------------|
-| Workload | 1-5 | 2 | Physical/mental workload |
-| Attention | 1-5 | 1 | Required attention level |
+| Workload | 1-5 | 3 | Physical/mental workload (1=Light, 2=Moderate, 3=Average, 4=Heavy, 5=Very Heavy) |
+| Attention | 1-5 | 3 | Required attention level (1=Low, 2=Moderate, 3=Average, 4=High, 5=Very High) |
 | Commute Time | 0-180 min | 60 | Total daily commute |
 | Break Frequency | 30-480 min | 180 | Time between breaks |
 | Break Length | 5-60 min | 30 | Duration of breaks |

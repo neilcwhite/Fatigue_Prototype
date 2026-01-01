@@ -1094,7 +1094,7 @@ export function FatigueView({
                       </div>
 
                       {/* Header */}
-                      <div className="grid grid-cols-[45px_38px_50px_75px_75px_50px_42px_38px_38px_42px_38px_60px_60px] gap-1 text-xs font-medium text-slate-600 px-1">
+                      <div className="grid grid-cols-[45px_38px_50px_75px_75px_50px_50px_50px_50px_50px_45px_65px_65px] gap-2 text-xs font-medium text-slate-600 px-1">
                         <span>Day</span>
                         <span className="text-center">Rest</span>
                         <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
@@ -1104,7 +1104,7 @@ export function FatigueView({
                         <span className="text-center">Hrs</span>
                         <span className="text-center text-purple-600" title="Workload (1-5)">W</span>
                         <span className="text-center text-purple-600" title="Attention (1-5)">A</span>
-                        <span className="text-center text-green-600" title="Break frequency (hours)">BF</span>
+                        <span className="text-center text-green-600" title="Break frequency (mins)">BF</span>
                         <span className="text-center text-green-600" title="Break length (mins)">BL</span>
                         <span className="text-center" title="Fatigue Risk Index for selected W/A">FRI</span>
                         <span className="text-center text-red-600" title="Worst case FRI (W=5, A=5)">Worst</span>
@@ -1132,7 +1132,7 @@ export function FatigueView({
                         return (
                           <div
                             key={dayName}
-                            className={`grid grid-cols-[45px_38px_50px_75px_75px_50px_42px_38px_38px_42px_38px_60px_60px] gap-1 p-1.5 rounded-lg items-center ${
+                            className={`grid grid-cols-[45px_38px_50px_75px_75px_50px_50px_50px_50px_50px_45px_65px_65px] gap-2 p-1.5 rounded-lg items-center ${
                               isRestDay
                                 ? 'bg-slate-100 text-slate-400'
                                 : index < 2
@@ -1225,7 +1225,7 @@ export function FatigueView({
                               className={`w-full border border-purple-200 rounded px-0.5 py-1 text-xs text-center ${
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
                               }`}
-                              title="Workload (1-5)"
+                              title={`Workload: 1=Light, 2=Moderate, 3=Average, 4=Heavy, 5=Very Heavy`}
                             >
                               <option value={1}>1</option>
                               <option value={2}>2</option>
@@ -1242,7 +1242,7 @@ export function FatigueView({
                               className={`w-full border border-purple-200 rounded px-0.5 py-1 text-xs text-center ${
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
                               }`}
-                              title="Attention (1-5)"
+                              title={`Attention: 1=Low, 2=Moderate, 3=Average, 4=High, 5=Very High`}
                             >
                               <option value={1}>1</option>
                               <option value={2}>2</option>
@@ -1715,7 +1715,7 @@ export function FatigueView({
                                   <div>
                                     <label className="text-xs text-slate-600 block mb-1">Workload (1-5)</label>
                                     <select
-                                      value={shift.workload ?? 2}
+                                      value={shift.workload ?? params.workload}
                                       onChange={(e) => handleUpdateShift(shift.id, 'workload', parseInt(e.target.value))}
                                       className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
                                     >
@@ -1729,7 +1729,7 @@ export function FatigueView({
                                   <div>
                                     <label className="text-xs text-slate-600 block mb-1">Attention (1-5)</label>
                                     <select
-                                      value={shift.attention ?? 1}
+                                      value={shift.attention ?? params.attention}
                                       onChange={(e) => handleUpdateShift(shift.id, 'attention', parseInt(e.target.value))}
                                       className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
                                     >
