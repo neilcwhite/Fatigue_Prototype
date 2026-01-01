@@ -966,18 +966,25 @@ export function PersonView({
                             const { pattern, project } = getAssignmentInfo(assignment);
                             const shiftViolationSeverity = violationAssignmentSeverity.get(assignment.id);
 
+                            // Get FRI for this specific assignment
+                            const assignmentIdx = periodAssignments.findIndex(a => a.id === assignment.id);
+                            const assignmentFRI = assignmentIdx !== -1 && fatigueAnalysis
+                              ? fatigueAnalysis.results[assignmentIdx]?.riskIndex
+                              : null;
+
+                            // Determine chip colour based on FRI (fatigue risk)
+                            const getFRIChipStyle = (fri: number | null) => {
+                              if (fri === null) return 'bg-slate-100 border border-slate-300 text-slate-900';
+                              if (fri >= 1.2) return 'bg-red-200 border border-red-400 text-red-900';
+                              if (fri >= 1.1) return 'bg-orange-200 border border-orange-400 text-orange-900';
+                              if (fri >= 1.0) return 'bg-yellow-200 border border-yellow-400 text-yellow-900';
+                              return 'bg-green-200 border border-green-400 text-green-900';
+                            };
+
                             return (
                               <div
                                 key={assignment.id}
-                                className={`relative rounded p-1 text-[9px] ${
-                                  shiftViolationSeverity === 'error'
-                                    ? 'bg-red-200 border border-red-400 text-red-900'
-                                    : shiftViolationSeverity === 'warning'
-                                      ? 'bg-amber-200 border border-amber-400 text-amber-900'
-                                      : pattern?.isNight
-                                        ? 'bg-purple-100 border border-purple-300 text-purple-900'
-                                        : 'bg-blue-100 border border-blue-300 text-blue-900'
-                                }`}
+                                className={`relative rounded p-1 text-[9px] ${getFRIChipStyle(assignmentFRI)}`}
                               >
                                 <div className="absolute top-0 right-0 flex gap-0.5">
                                   {onUpdateAssignment && (
