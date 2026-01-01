@@ -285,6 +285,23 @@ export function PersonView({
     return { pattern, project };
   };
 
+  // Check if assignment has custom times different from the pattern
+  const hasCustomTimes = (assignment: AssignmentCamel, pattern: ShiftPatternCamel | undefined): boolean => {
+    if (!pattern) return false;
+    const hasCustomStart = assignment.customStartTime && assignment.customStartTime !== pattern.startTime;
+    const hasCustomEnd = assignment.customEndTime && assignment.customEndTime !== pattern.endTime;
+    return !!(hasCustomStart || hasCustomEnd);
+  };
+
+  // Get display name for assignment (shows "Custom" if times differ from pattern)
+  const getAssignmentDisplayName = (assignment: AssignmentCamel, pattern: ShiftPatternCamel | undefined): string => {
+    if (!pattern) return 'Unknown';
+    if (hasCustomTimes(assignment, pattern)) {
+      return 'Custom';
+    }
+    return pattern.name;
+  };
+
   const formatDateHeader = (dateStr: string) => {
     // Parse without timezone issues
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -384,7 +401,7 @@ export function PersonView({
       rows.push([
         a.date,
         d.toLocaleDateString('en-GB', { weekday: 'short' }),
-        pattern?.name || 'Unknown',
+        getAssignmentDisplayName(a, pattern),
         a.customStartTime || pattern?.startTime || '',
         a.customEndTime || pattern?.endTime || '',
         project?.name || 'Unknown',
@@ -963,7 +980,7 @@ export function PersonView({
                                 >
                                   <Trash2 className="w-2.5 h-2.5" />
                                 </button>
-                                <div className="font-medium truncate pr-3">{pattern?.name || '?'}</div>
+                                <div className="font-medium truncate pr-3">{getAssignmentDisplayName(assignment, pattern)}</div>
                                 <div className="opacity-75">
                                   {assignment.customStartTime || pattern?.startTime || '?'}-{assignment.customEndTime || pattern?.endTime || '?'}
                                 </div>
@@ -1019,8 +1036,9 @@ export function PersonView({
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-slate-800 text-sm">{pattern?.name || 'Unknown'}</span>
-                            {pattern?.isNight && <span className="text-purple-600 text-sm">🌙</span>}
+                            <span className="font-medium text-slate-800 text-sm">{getAssignmentDisplayName(assignment, pattern)}</span>
+                            {pattern?.isNight && !hasCustomTimes(assignment, pattern) && <span className="text-purple-600 text-sm">🌙</span>}
+                            {hasCustomTimes(assignment, pattern) && <span className="text-orange-500 text-xs">(edited)</span>}
                             {assignmentViolationSeverity === 'error' && <AlertTriangle className="w-3 h-3 text-red-500" />}
                             {assignmentViolationSeverity === 'warning' && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                           </div>
@@ -1028,7 +1046,7 @@ export function PersonView({
                           <div className="text-[10px] text-slate-500">
                             {assignment.customStartTime || pattern?.startTime || '?'} - {assignment.customEndTime || pattern?.endTime || '?'}
                             <span className="mx-1">•</span>
-                            {pattern?.dutyType}
+                            {hasCustomTimes(assignment, pattern) ? 'Custom' : pattern?.dutyType}
                           </div>
                         </div>
                       </div>
