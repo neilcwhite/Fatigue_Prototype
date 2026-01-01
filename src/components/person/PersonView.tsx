@@ -1108,7 +1108,20 @@ export function PersonView({
                       </div>
                       <div className="flex items-center gap-2">
                         {fri !== undefined && (
-                          <div className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getFRIColor(fri)}`}>
+                          <div
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              fri >= 1.2 ? 'bg-red-600 text-white' :
+                              fri >= 1.1 ? 'bg-orange-500 text-white' :
+                              fri >= 1.0 ? 'bg-yellow-500 text-white' :
+                              'bg-green-600 text-white'
+                            }`}
+                            title={`Fatigue Risk Index: ${fri.toFixed(3)} - ${
+                              fri >= 1.2 ? 'Critical' :
+                              fri >= 1.1 ? 'Elevated' :
+                              fri >= 1.0 ? 'Moderate' :
+                              'Low'
+                            }`}
+                          >
                             FRI: {fri.toFixed(3)}
                           </div>
                         )}
