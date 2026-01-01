@@ -153,9 +153,17 @@ export function SummaryView({
     }
   };
 
-  // Get all shift patterns for this project
+  // Get all shift patterns for this project, sorted by creation date (oldest first)
   const projectPatterns = useMemo(() =>
-    shiftPatterns.filter(sp => sp.projectId === project.id),
+    shiftPatterns
+      .filter(sp => sp.projectId === project.id)
+      .sort((a, b) => {
+        // Sort by createdAt if available, otherwise keep original order
+        if (a.createdAt && b.createdAt) {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        return 0;
+      }),
     [shiftPatterns, project.id]
   );
 

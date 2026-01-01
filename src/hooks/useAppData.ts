@@ -113,6 +113,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         dutyType: sp.duty_type || 'Non-Possession',
         isNight: sp.is_night || false,
         organisationId: sp.organisation_id,
+        createdAt: sp.created_at,
         // Fatigue parameters
         workload: sp.workload,
         attention: sp.attention,

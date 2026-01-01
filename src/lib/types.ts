@@ -217,6 +217,7 @@ export interface ShiftPatternCamel {
   dutyType: 'Possession' | 'Non-Possession' | 'Office' | 'Lookout' | 'Machine' | 'Protection' | 'Other';
   isNight: boolean;
   organisationId: string;
+  createdAt?: string;     // ISO timestamp for sorting
   // Fatigue parameters
   workload?: number;      // 1-5 scale
   attention?: number;     // 1-5 scale
