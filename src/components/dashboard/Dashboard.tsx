@@ -68,8 +68,11 @@ export function Dashboard({
 
       const pattern = projectPatterns.find(p => p.id === assignment.shiftPatternId);
       if (pattern?.startTime && pattern?.endTime) {
-        const start = parseFloat(pattern.startTime.replace(':', '.'));
-        const end = parseFloat(pattern.endTime.replace(':', '.'));
+        // Parse HH:MM format correctly - convert to decimal hours
+        const [startHours, startMins] = pattern.startTime.split(':').map(Number);
+        const [endHours, endMins] = pattern.endTime.split(':').map(Number);
+        const start = startHours + (startMins / 60);
+        const end = endHours + (endMins / 60);
         let hours = end - start;
         if (hours < 0) hours += 24; // Overnight shift
         totalHours += hours;

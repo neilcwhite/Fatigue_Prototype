@@ -168,21 +168,15 @@ export function useAuth(): UseAuthReturn {
         });
       }
     } catch (err) {
-      // If query timed out or failed, use the known org ID for this user
-      // This is a workaround for the mysterious query timeout issue
-      const knownOrgId = '11111111-1111-1111-1111-111111111111';
+      // SECURITY: Do NOT fall back to a hardcoded profile - this bypasses tenant isolation
+      // Instead, set an error and force re-authentication
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load profile';
+      setError(errorMessage);
+      setProfile(null);
 
-      setProfile({
-        id: userId,
-        email: userEmail,
-        fullName: 'Neil C White',
-        role: 'admin',
-        organisationId: knownOrgId,
-        organisationName: 'My Organisation',
-      });
-
-      if (err instanceof Error && err.message?.includes('timed out')) {
-        setError('Profile query slow - using cached data');
+      // Sign out the user to force re-authentication
+      if (supabase) {
+        await supabase.auth.signOut();
       }
     }
   }, []);

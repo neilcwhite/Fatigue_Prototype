@@ -158,16 +158,31 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     loadAllData(true); // Pass true for initial load to show spinner
   }, [loadAllData]);
 
-  // Set up realtime subscriptions
+  // Set up realtime subscriptions - scoped by table and organisation
   useEffect(() => {
     if (!supabase || !organisationId) return;
 
-    const channel = supabase
-      .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
-        loadAllData();
-      })
-      .subscribe();
+    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments'];
+
+    const channel = supabase.channel(`org-${organisationId}-changes`);
+
+    // Subscribe to each table, filtered by organisation_id
+    tables.forEach(table => {
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: table,
+          filter: `organisation_id=eq.${organisationId}`,
+        },
+        () => {
+          loadAllData();
+        }
+      );
+    });
+
+    channel.subscribe();
 
     return () => {
       if (supabase) {
@@ -294,8 +309,9 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   const createShiftPattern = async (patternData: Omit<ShiftPatternCamel, 'id' | 'organisationId'> & { id?: string }) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
 
-    // Use provided ID or generate one
-    const id = patternData.id || `${patternData.projectId}-${Date.now()}`;
+    // Use provided ID or generate a cryptographically random UUID
+    // Avoids predictable/guessable IDs that could enable cross-tenant access
+    const id = patternData.id || crypto.randomUUID();
 
     // Convert empty strings to null for time fields (database expects null, not "")
     const startTime = patternData.startTime || null;
@@ -324,14 +340,10 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabase) throw new Error('Not configured');
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase not configured');
-    }
-
-    const updatePayload = {
+    // Use supabase client which automatically includes the session token for RLS
+    const { error } = await supabase.from('shift_patterns').update({
       name: updateData.name,
       start_time: updateData.startTime,
       end_time: updateData.endTime,
@@ -344,28 +356,9 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       commute_time: updateData.commuteTime,
       break_frequency: updateData.breakFrequency,
       break_length: updateData.breakLength,
-    };
+    }).eq('id', id);
 
-    // Use direct REST API fetch to avoid Supabase client hanging issues
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/shift_patterns?id=eq.${id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
-        },
-        body: JSON.stringify(updatePayload),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
+    if (error) throw error;
     await loadAllData();
   };
 
