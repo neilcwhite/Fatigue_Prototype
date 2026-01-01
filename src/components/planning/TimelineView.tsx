@@ -566,10 +566,8 @@ export function TimelineView({
                           : isCopyMode && isPartOfPattern
                             ? 'bg-blue-50 hover:bg-green-50 cursor-pointer'
                             : !isPartOfPattern
-                              ? 'bg-slate-100/50 cursor-not-allowed'
-                              : isWeekend
-                                ? 'weekend-hatch hover:bg-blue-50 cursor-pointer'
-                                : 'hover:bg-blue-50 cursor-pointer'
+                              ? 'weekend-hatch cursor-not-allowed'
+                              : 'hover:bg-blue-50 cursor-pointer'
                       }`}
                       onClick={(e) => handleCellClick(e, date, isPartOfPattern)}
                       onDragOver={(e) => {
