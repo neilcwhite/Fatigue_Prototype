@@ -48,10 +48,38 @@ export function AssignmentEditModal({
     setError(null);
 
     try {
+      // Determine if we have custom times that differ from the selected pattern
+      const hasCustomStart = customStartTime && customStartTime !== selectedPattern.startTime;
+      const hasCustomEnd = customEndTime && customEndTime !== selectedPattern.endTime;
+      const hasCustomTimes = hasCustomStart || hasCustomEnd;
+
+      // Find the Custom (Ad-hoc) pattern for this project
+      const customPattern = allShiftPatterns.find(p => p.id.endsWith('-custom'));
+
+      // Determine which pattern to use
+      let targetPatternId = selectedPatternId;
+      let finalCustomStartTime = customStartTime || undefined;
+      let finalCustomEndTime = customEndTime || undefined;
+
+      // If we have custom times and we're not already on the custom pattern, move to custom
+      if (hasCustomTimes && customPattern && !selectedPatternId.endsWith('-custom')) {
+        targetPatternId = customPattern.id;
+        // Keep the custom times as they are
+      }
+
+      // If we're on the custom pattern and clearing custom times back to match another pattern,
+      // and the user explicitly selected a different pattern, use that pattern
+      if (!hasCustomTimes && selectedPatternId.endsWith('-custom') && selectedPatternId !== assignment.shiftPatternId) {
+        // User explicitly selected a non-custom pattern and has no custom times
+        targetPatternId = selectedPatternId;
+        finalCustomStartTime = undefined;
+        finalCustomEndTime = undefined;
+      }
+
       await onSave(assignment.id, {
-        shiftPatternId: selectedPatternId,
-        customStartTime: customStartTime || undefined,
-        customEndTime: customEndTime || undefined,
+        shiftPatternId: targetPatternId,
+        customStartTime: finalCustomStartTime,
+        customEndTime: finalCustomEndTime,
         notes: notes || undefined,
       });
       onClose();
@@ -179,6 +207,21 @@ export function AssignmentEditModal({
               <Clock className="w-3 h-3" />
               Effective: {effectiveStartTime} - {effectiveEndTime}
             </div>
+            {/* Warning: will move to Custom row */}
+            {(() => {
+              const hasCustomStart = customStartTime && customStartTime !== selectedPattern.startTime;
+              const hasCustomEnd = customEndTime && customEndTime !== selectedPattern.endTime;
+              const willMoveToCustom = (hasCustomStart || hasCustomEnd) && !selectedPatternId.endsWith('-custom');
+              if (willMoveToCustom) {
+                return (
+                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2">
+                    <Clock className="w-3 h-3 flex-shrink-0" />
+                    <span>Custom times will move this assignment to the <strong>Custom (Ad-hoc)</strong> row</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           {/* Notes */}
