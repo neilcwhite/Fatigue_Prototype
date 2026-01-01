@@ -37,7 +37,7 @@ export function useAuth(): UseAuthReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProfile = useCallback(async (userId: string, userEmail: string): Promise<void> => {
+  const loadProfile = useCallback(async (userId: string, userEmail: string, sessionToken?: string): Promise<void> => {
     if (!supabase) {
       return;
     }
@@ -51,8 +51,8 @@ export function useAuth(): UseAuthReturn {
         throw new Error('Supabase not configured');
       }
 
-      // Use the anon key directly - we already know the user is authenticated
-      const accessToken = supabaseKey;
+      // Use the session token for RLS policies, fall back to anon key
+      const accessToken = sessionToken || supabaseKey;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
@@ -104,7 +104,7 @@ export function useAuth(): UseAuthReturn {
               method: 'GET',
               headers: {
                 'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
+                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
               },
             }
@@ -210,7 +210,8 @@ export function useAuth(): UseAuthReturn {
 
         try {
           profileLoadedForUser = session.user.id;
-          await loadProfile(session.user.id, session.user.email || '');
+          // Pass the session access token for RLS authentication
+          await loadProfile(session.user.id, session.user.email || '', session.access_token);
         } catch {
           profileLoadedForUser = null; // Reset so we can retry
         }
@@ -260,9 +261,9 @@ export function useAuth(): UseAuthReturn {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    if (data.user) {
+    if (data.user && data.session) {
       setUser(data.user);
-      await loadProfile(data.user.id, data.user.email || '');
+      await loadProfile(data.user.id, data.user.email || '', data.session.access_token);
     }
   };
 
@@ -273,9 +274,9 @@ export function useAuth(): UseAuthReturn {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
 
-    if (data.user) {
+    if (data.user && data.session) {
       setUser(data.user);
-      await loadProfile(data.user.id, data.user.email || '');
+      await loadProfile(data.user.id, data.user.email || '', data.session.access_token);
     }
   };
 
