@@ -76,6 +76,19 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         supabase.from('assignments').select('*').eq('organisation_id', organisationId).order('date'),
       ]);
 
+      // Check for errors on any query - surface them instead of silently showing empty data
+      const errors = [
+        employeesRes.error && `Employees: ${employeesRes.error.message}`,
+        projectsRes.error && `Projects: ${projectsRes.error.message}`,
+        teamsRes.error && `Teams: ${teamsRes.error.message}`,
+        patternsRes.error && `Shift patterns: ${patternsRes.error.message}`,
+        assignmentsRes.error && `Assignments: ${assignmentsRes.error.message}`,
+      ].filter(Boolean);
+
+      if (errors.length > 0) {
+        throw new Error(`Data load failed - check RLS policies. ${errors.join('; ')}`);
+      }
+
       // Map snake_case to camelCase for compatibility with v76 code
       const employees: EmployeeCamel[] = (employeesRes.data || []).map(e => ({
         id: e.id,
@@ -210,24 +223,26 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateProject = async (id: number, updateData: Partial<ProjectCamel>) => {
-    if (!supabase) throw new Error('Not configured');
-    
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('projects').update({
       name: updateData.name,
       location: updateData.location,
       start_date: updateData.startDate,
       end_date: updateData.endDate,
       type: updateData.type,
-    }).eq('id', id);
-    
+    }).eq('id', id).eq('organisation_id', organisationId);
+
     if (error) throw error;
     await loadAllData();
   };
 
   const deleteProject = async (id: number) => {
-    if (!supabase) throw new Error('Not configured');
-    
-    const { error } = await supabase.from('projects').delete().eq('id', id);
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant deletes
+    const { error } = await supabase.from('projects').delete().eq('id', id).eq('organisation_id', organisationId);
     if (error) throw error;
     await loadAllData();
   };
@@ -248,23 +263,25 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateEmployee = async (id: number, updateData: Partial<EmployeeCamel>) => {
-    if (!supabase) throw new Error('Not configured');
-    
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('employees').update({
       name: updateData.name,
       role: updateData.role,
       email: updateData.email,
       team_id: updateData.teamId,
-    }).eq('id', id);
-    
+    }).eq('id', id).eq('organisation_id', organisationId);
+
     if (error) throw error;
     await loadAllData();
   };
 
   const deleteEmployee = async (id: number) => {
-    if (!supabase) throw new Error('Not configured');
-    
-    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant deletes
+    const { error } = await supabase.from('employees').delete().eq('id', id).eq('organisation_id', organisationId);
     if (error) throw error;
     await loadAllData();
   };
@@ -285,21 +302,23 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateTeam = async (id: number, updateData: Partial<TeamCamel>) => {
-    if (!supabase) throw new Error('Not configured');
-    
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('teams').update({
       name: updateData.name,
       member_ids: updateData.memberIds,
-    }).eq('id', id);
-    
+    }).eq('id', id).eq('organisation_id', organisationId);
+
     if (error) throw error;
     await loadAllData();
   };
 
   const deleteTeam = async (id: number) => {
-    if (!supabase) throw new Error('Not configured');
-    
-    const { error } = await supabase.from('teams').delete().eq('id', id);
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant deletes
+    const { error } = await supabase.from('teams').delete().eq('id', id).eq('organisation_id', organisationId);
     if (error) throw error;
     await loadAllData();
   };
@@ -340,9 +359,9 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
-    if (!supabase) throw new Error('Not configured');
+    if (!supabase || !organisationId) throw new Error('Not configured');
 
-    // Use supabase client which automatically includes the session token for RLS
+    // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('shift_patterns').update({
       name: updateData.name,
       start_time: updateData.startTime,
@@ -356,16 +375,17 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       commute_time: updateData.commuteTime,
       break_frequency: updateData.breakFrequency,
       break_length: updateData.breakLength,
-    }).eq('id', id);
+    }).eq('id', id).eq('organisation_id', organisationId);
 
     if (error) throw error;
     await loadAllData();
   };
 
   const deleteShiftPattern = async (id: string) => {
-    if (!supabase) throw new Error('Not configured');
-    
-    const { error } = await supabase.from('shift_patterns').delete().eq('id', id);
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant deletes
+    const { error } = await supabase.from('shift_patterns').delete().eq('id', id).eq('organisation_id', organisationId);
     if (error) throw error;
     await loadAllData();
   };
@@ -391,8 +411,9 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   };
 
   const updateAssignment = async (id: number, updateData: Partial<AssignmentCamel>) => {
-    if (!supabase) throw new Error('Not configured');
-    
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('assignments').update({
       employee_id: updateData.employeeId,
       project_id: updateData.projectId,
@@ -401,16 +422,17 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       custom_start_time: updateData.customStartTime,
       custom_end_time: updateData.customEndTime,
       notes: updateData.notes,
-    }).eq('id', id);
-    
+    }).eq('id', id).eq('organisation_id', organisationId);
+
     if (error) throw error;
     await loadAllData();
   };
 
   const deleteAssignment = async (id: number) => {
-    if (!supabase) throw new Error('Not configured');
-    
-    const { error } = await supabase.from('assignments').delete().eq('id', id);
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Include organisation_id filter to prevent cross-tenant deletes
+    const { error } = await supabase.from('assignments').delete().eq('id', id).eq('organisation_id', organisationId);
     if (error) throw error;
     await loadAllData();
   };

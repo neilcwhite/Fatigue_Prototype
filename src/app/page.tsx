@@ -18,6 +18,11 @@ import type { ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
 
 type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
 
+// Check Supabase configuration at module level
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
+
 export default function Home() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
@@ -46,6 +51,27 @@ export default function Home() {
     createShiftPattern,
     updateShiftPattern,
   } = useAppData(profile?.organisationId || null);
+
+  // Supabase not configured - show clear error
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center text-white max-w-md p-8">
+          <h1 className="text-2xl font-bold mb-4 text-red-400">Configuration Error</h1>
+          <p className="text-slate-300 mb-4">
+            Supabase is not configured. Please set the following environment variables:
+          </p>
+          <ul className="text-left text-slate-400 text-sm space-y-2 bg-slate-800 p-4 rounded">
+            <li><code>NEXT_PUBLIC_SUPABASE_URL</code></li>
+            <li><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></li>
+          </ul>
+          <p className="text-slate-400 text-sm mt-4">
+            Add these to your <code>.env.local</code> file and restart the application.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Auth loading state
   if (authLoading) {
@@ -274,11 +300,11 @@ export default function Home() {
       {currentView === 'person' && !selectedEmployeeData && (
         <div className="min-h-screen bg-slate-900 text-white p-8">
           <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-            ← Back to Dashboard
+            &larr; Back to Dashboard
           </button>
           <h1 className="text-2xl font-bold mb-4">Employee View</h1>
           <p className="text-slate-400">
-            {employees.length === 0 
+            {employees.length === 0
               ? 'No employees available. Create employees first.'
               : 'Select an employee to view their schedule.'}
           </p>
@@ -289,11 +315,11 @@ export default function Home() {
       {currentView === 'summary' && !selectedProjectData && (
         <div className="min-h-screen bg-slate-900 text-white p-8">
           <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-            ← Back to Dashboard
+            &larr; Back to Dashboard
           </button>
           <h1 className="text-2xl font-bold mb-4">Project Summary</h1>
           <p className="text-slate-400">
-            {projects.length === 0 
+            {projects.length === 0
               ? 'No projects available. Create a project first.'
               : 'Select a project to view its summary.'}
           </p>
