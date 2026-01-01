@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp } from '@/components/ui/Icons';
+import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
+import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 import type { ShiftDefinition, FatigueResult } from '@/lib/types';
@@ -21,6 +22,7 @@ interface PersonViewProps {
   projects: ProjectCamel[];
   onSelectEmployee: (id: number) => void;
   onDeleteAssignment: (id: number) => Promise<void>;
+  onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
 }
 
@@ -35,6 +37,7 @@ export function PersonView({
   projects,
   onSelectEmployee,
   onDeleteAssignment,
+  onUpdateAssignment,
   onUpdateShiftPattern,
 }: PersonViewProps) {
   // Calculate initial year and period based on today's date
@@ -70,6 +73,9 @@ export function PersonView({
     breakFrequency: number;
     breakLength: number;
   } | null>(null);
+
+  // Assignment edit modal state
+  const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
 
   const networkRailPeriods = useMemo(() => generateNetworkRailPeriods(selectedYear), [selectedYear]);
   const availableYears = getAvailableYears();
@@ -973,14 +979,25 @@ export function PersonView({
                                         : 'bg-blue-100 border border-blue-300 text-blue-900'
                                 }`}
                               >
-                                <button
-                                  onClick={() => handleDelete(assignment)}
-                                  className="absolute top-0 right-0 text-red-400 hover:text-red-600 p-0.5"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-2.5 h-2.5" />
-                                </button>
-                                <div className="font-medium truncate pr-3">{getAssignmentDisplayName(assignment, pattern)}</div>
+                                <div className="absolute top-0 right-0 flex gap-0.5">
+                                  {onUpdateAssignment && (
+                                    <button
+                                      onClick={() => setEditingAssignment(assignment)}
+                                      className="text-blue-400 hover:text-blue-600 p-0.5"
+                                      title="Edit"
+                                    >
+                                      <Edit2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDelete(assignment)}
+                                    className="text-red-400 hover:text-red-600 p-0.5"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                                <div className="font-medium truncate pr-6">{getAssignmentDisplayName(assignment, pattern)}</div>
                                 <div className="opacity-75">
                                   {assignment.customStartTime || pattern?.startTime || '?'}-{assignment.customEndTime || pattern?.endTime || '?'}
                                 </div>
@@ -1056,6 +1073,15 @@ export function PersonView({
                             FRI: {fri.toFixed(3)}
                           </div>
                         )}
+                        {onUpdateAssignment && (
+                          <button
+                            onClick={() => setEditingAssignment(assignment)}
+                            className="text-blue-500 hover:text-blue-700 p-1"
+                            title="Edit assignment"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(assignment)} className="text-red-500 hover:text-red-700 p-1" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1068,6 +1094,25 @@ export function PersonView({
           </div>
         </div>
       </div>
+
+      {/* Assignment Edit Modal */}
+      {editingAssignment && onUpdateAssignment && (
+        <AssignmentEditModal
+          assignment={editingAssignment}
+          employee={employee}
+          shiftPattern={shiftPatterns.find(p => p.id === editingAssignment.shiftPatternId) || shiftPatterns[0]}
+          allShiftPatterns={shiftPatterns.filter(p => p.projectId === editingAssignment.projectId)}
+          onClose={() => setEditingAssignment(null)}
+          onSave={async (id, data) => {
+            await onUpdateAssignment(id, data);
+            setEditingAssignment(null);
+          }}
+          onDelete={async (id) => {
+            await onDeleteAssignment(id);
+            setEditingAssignment(null);
+          }}
+        />
+      )}
     </div>
   );
 }
