@@ -597,6 +597,14 @@ export function FatigueView({
     ));
   };
 
+  // Update shift parameter for weekly view (travel times, workload, attention, etc.)
+  const updateWeeklyShiftParam = (dayIndex: number, field: keyof Shift, value: number) => {
+    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    setShifts(prev => prev.map(s =>
+      s.day === dayNum ? { ...s, [field]: value } : s
+    ));
+  };
+
   // Get shift for a specific NR day index
   const getShiftForDay = (dayIndex: number): Shift | undefined => {
     const dayNum = nrDayIndexToShiftDay(dayIndex);
@@ -1037,12 +1045,17 @@ export function FatigueView({
                   ) : (
                     <div className="space-y-2">
                       {/* Header */}
-                      <div className="grid grid-cols-[80px_60px_100px_100px_1fr] gap-2 text-xs font-medium text-slate-600 px-2">
+                      <div className="grid grid-cols-[55px_45px_55px_70px_70px_55px_50px_50px_45px_45px] gap-1 text-xs font-medium text-slate-600 px-1">
                         <span>Day</span>
                         <span className="text-center">Rest</span>
+                        <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
                         <span className="text-center">Start</span>
                         <span className="text-center">End</span>
-                        <span className="text-center">Duration</span>
+                        <span className="text-center text-blue-600" title="Travel time home (mins)">Out</span>
+                        <span className="text-center">Hrs</span>
+                        <span className="text-center text-purple-600" title="Workload (1-5)">W</span>
+                        <span className="text-center text-purple-600" title="Attention (1-5)">A</span>
+                        <span className="text-center" title="Fatigue Risk Index">FRI</span>
                       </div>
 
                       {/* Day Rows */}
@@ -1054,10 +1067,15 @@ export function FatigueView({
                         if (endHour <= startHour) endHour += 24;
                         const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
 
+                        // Get FRI for this day from results
+                        const dayResult = results?.calculations.find(c => c.day === nrDayIndexToShiftDay(index));
+                        const dayFRI = dayResult?.riskIndex;
+                        const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
+
                         return (
                           <div
                             key={dayName}
-                            className={`grid grid-cols-[80px_60px_100px_100px_1fr] gap-2 p-2 rounded-lg items-center ${
+                            className={`grid grid-cols-[55px_45px_55px_70px_70px_55px_50px_50px_45px_45px] gap-1 p-1.5 rounded-lg items-center ${
                               isRestDay
                                 ? 'bg-slate-100 text-slate-400'
                                 : index < 2
@@ -1066,22 +1084,34 @@ export function FatigueView({
                             }`}
                           >
                             {/* Day Name */}
-                            <span className={`font-medium ${isRestDay ? 'text-slate-400' : 'text-slate-700'}`}>
+                            <span className={`font-medium text-sm ${isRestDay ? 'text-slate-400' : 'text-slate-700'}`}>
                               {dayName}
                             </span>
 
                             {/* Rest Checkbox */}
                             <div className="flex justify-center">
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isRestDay}
-                                  onChange={() => toggleRestDay(index)}
-                                  className="w-4 h-4 text-slate-600 border-slate-300 rounded"
-                                />
-                                <span className="text-xs">Rest</span>
-                              </label>
+                              <input
+                                type="checkbox"
+                                checked={isRestDay}
+                                onChange={() => toggleRestDay(index)}
+                                className="w-4 h-4 text-slate-600 border-slate-300 rounded"
+                                title="Rest day"
+                              />
                             </div>
+
+                            {/* Travel In */}
+                            <input
+                              type="number"
+                              min="0"
+                              max="180"
+                              value={shift?.commuteIn ?? 30}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
+                              disabled={isRestDay}
+                              className={`w-full border border-blue-200 rounded px-1 py-1 text-xs text-center ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-50 text-slate-900'
+                              }`}
+                              title="Travel to work (mins)"
+                            />
 
                             {/* Start Time */}
                             <input
@@ -1089,7 +1119,7 @@ export function FatigueView({
                               value={shift?.startTime || '07:00'}
                               onChange={(e) => updateWeeklyShiftTime(index, 'startTime', e.target.value)}
                               disabled={isRestDay}
-                              className={`border rounded px-2 py-1 text-sm ${
+                              className={`border rounded px-1 py-1 text-xs ${
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-900'
                               }`}
                             />
@@ -1100,9 +1130,23 @@ export function FatigueView({
                               value={shift?.endTime || '19:00'}
                               onChange={(e) => updateWeeklyShiftTime(index, 'endTime', e.target.value)}
                               disabled={isRestDay}
-                              className={`border rounded px-2 py-1 text-sm ${
+                              className={`border rounded px-1 py-1 text-xs ${
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-900'
                               }`}
+                            />
+
+                            {/* Travel Out */}
+                            <input
+                              type="number"
+                              min="0"
+                              max="180"
+                              value={shift?.commuteOut ?? 30}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
+                              disabled={isRestDay}
+                              className={`w-full border border-blue-200 rounded px-1 py-1 text-xs text-center ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-50 text-slate-900'
+                              }`}
+                              title="Travel home (mins)"
                             />
 
                             {/* Duration */}
@@ -1110,26 +1154,139 @@ export function FatigueView({
                               {isRestDay ? (
                                 <span className="text-xs text-slate-400">-</span>
                               ) : (
-                                <span className={`text-sm font-medium ${duration > 10 ? 'text-amber-600' : 'text-slate-700'}`}>
-                                  {duration.toFixed(1)}h
+                                <span className={`text-xs font-medium ${duration > 10 ? 'text-amber-600' : 'text-slate-700'}`}>
+                                  {duration.toFixed(1)}
                                 </span>
+                              )}
+                            </div>
+
+                            {/* Workload */}
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={shift?.workload ?? params.workload}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value) || 2)}
+                              disabled={isRestDay}
+                              className={`w-full border border-purple-200 rounded px-1 py-1 text-xs text-center ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
+                              }`}
+                              title="Workload (1-5)"
+                            />
+
+                            {/* Attention */}
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={shift?.attention ?? params.attention}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value) || 2)}
+                              disabled={isRestDay}
+                              className={`w-full border border-purple-200 rounded px-1 py-1 text-xs text-center ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
+                              }`}
+                              title="Attention (1-5)"
+                            />
+
+                            {/* FRI */}
+                            <div className="text-center">
+                              {isRestDay ? (
+                                <span className="text-xs text-slate-400">-</span>
+                              ) : dayFRI !== undefined ? (
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                                  dayRiskLevel === 'low' ? 'bg-green-100 text-green-800' :
+                                  dayRiskLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                                  dayRiskLevel === 'elevated' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  {dayFRI.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">-</span>
                               )}
                             </div>
                           </div>
                         );
                       })}
 
-                      {/* Weekly Summary */}
+                      {/* Weekly Summary with Average & Peak FRI */}
                       <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-600">Working Days:</span>
-                          <span className="font-medium text-slate-800">{shifts.filter(s => !s.isRestDay).length}</span>
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">Working Days:</span>
+                            <span className="font-medium text-slate-800">{shifts.filter(s => !s.isRestDay).length}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-600">Rest Days:</span>
+                            <span className="font-medium text-slate-800">{shifts.filter(s => s.isRestDay).length}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-sm mt-1">
-                          <span className="text-slate-600">Rest Days:</span>
-                          <span className="font-medium text-slate-800">{shifts.filter(s => s.isRestDay).length}</span>
-                        </div>
+                        {results && (
+                          <div className="pt-3 border-t border-slate-200">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className={`p-2 rounded text-center ${getRiskColor(getRiskLevel(results.summary.avgRisk).level)}`}>
+                                <p className="text-xs opacity-75">Avg FRI</p>
+                                <p className="text-lg font-bold">{results.summary.avgRisk.toFixed(3)}</p>
+                              </div>
+                              <div className={`p-2 rounded text-center ${getRiskColor(getRiskLevel(results.summary.maxRisk).level)}`}>
+                                <p className="text-xs opacity-75">Peak FRI</p>
+                                <p className="text-lg font-bold">{results.summary.maxRisk.toFixed(3)}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-2 text-center">
+                              {results.summary.highRiskCount > 0
+                                ? `${results.summary.highRiskCount} day(s) above 1.1 - monitor these roles`
+                                : 'All days within acceptable limits'}
+                            </p>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Role Quick-Compare for Weekly View */}
+                      {results && (
+                        <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-medium text-violet-800">Quick Role Check</p>
+                            <button
+                              onClick={() => setCompareRoles(!compareRoles)}
+                              className={`text-xs px-2 py-1 rounded ${
+                                compareRoles ? 'bg-violet-600 text-white' : 'bg-violet-200 text-violet-700 hover:bg-violet-300'
+                              }`}
+                            >
+                              {compareRoles ? 'Hide' : 'Compare Roles'}
+                            </button>
+                          </div>
+                          {compareRoles && roleComparisonResults && (
+                            <div className="space-y-1.5 mt-2">
+                              {roleComparisonResults.map(result => (
+                                <div
+                                  key={result.roleKey}
+                                  className={`flex items-center justify-between p-2 rounded text-xs ${
+                                    result.isCompliant
+                                      ? 'bg-green-100 border border-green-300'
+                                      : 'bg-red-100 border border-red-300'
+                                  }`}
+                                >
+                                  <span className={`font-medium ${result.isCompliant ? 'text-green-800' : 'text-red-800'}`}>
+                                    {result.roleName}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-600">
+                                      Avg: {result.avgRisk.toFixed(2)} | Peak: {result.maxRisk.toFixed(2)}
+                                    </span>
+                                    <span className={result.isCompliant ? 'text-green-600' : 'text-red-600'}>
+                                      {result.isCompliant ? '✓' : '✗'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                              <p className="text-xs text-violet-600 mt-1">
+                                Roles with Peak {'>'} 1.2 need monitoring
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
