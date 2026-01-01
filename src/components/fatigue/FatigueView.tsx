@@ -1060,7 +1060,7 @@ export function FatigueView({
                       </div>
 
                       {/* Header */}
-                      <div className="grid grid-cols-[50px_35px_45px_62px_62px_45px_40px_35px_35px_35px_35px_50px] gap-1 text-xs font-medium text-slate-600 px-1">
+                      <div className="grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_45px_45px_45px_45px_60px] gap-2 text-xs font-medium text-slate-600 px-1">
                         <span>Day</span>
                         <span className="text-center">Rest</span>
                         <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
@@ -1092,7 +1092,7 @@ export function FatigueView({
                         return (
                           <div
                             key={dayName}
-                            className={`grid grid-cols-[50px_35px_45px_62px_62px_45px_40px_35px_35px_35px_35px_50px] gap-1 p-1.5 rounded-lg items-center ${
+                            className={`grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_45px_45px_45px_45px_60px] gap-2 p-1.5 rounded-lg items-center ${
                               isRestDay
                                 ? 'bg-slate-100 text-slate-400'
                                 : index < 2
