@@ -523,15 +523,6 @@ export function PersonView({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <select
-              value={employee.id}
-              onChange={(e) => onSelectEmployee(Number(e.target.value))}
-              className="bg-slate-700 text-white border-none px-3 py-1.5 rounded text-sm"
-            >
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.name}</option>
-              ))}
-            </select>
             <span className="bg-slate-700 text-orange-400 px-3 py-1 rounded text-xs font-mono">PERSON VIEW</span>
             <SignOutHeader user={user} onSignOut={onSignOut} />
           </div>
@@ -542,6 +533,20 @@ export function PersonView({
       <div className="bg-white border-b border-slate-200 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {/* Person selector */}
+            <select
+              value={employee.id}
+              onChange={(e) => onSelectEmployee(Number(e.target.value))}
+              className="border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white text-slate-900 min-w-[150px]"
+            >
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
+              ))}
+            </select>
+
+            <div className="h-6 w-px bg-slate-300" />
+
+            {/* Year selector */}
             <select
               value={selectedYear}
               onChange={(e) => {
@@ -555,6 +560,7 @@ export function PersonView({
               ))}
             </select>
 
+            {/* Period selector */}
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrevPeriod}
@@ -640,7 +646,7 @@ export function PersonView({
             {fatigueAnalysis ? (
               <>
                 <p className={`text-lg font-bold ${fatigueAnalysis.maxFRI >= 1.2 ? 'text-red-600' : fatigueAnalysis.maxFRI >= 1.1 ? 'text-amber-600' : 'text-green-600'}`}>
-                  {fatigueAnalysis.maxFRI.toFixed(2)}
+                  {fatigueAnalysis.maxFRI.toFixed(3)}
                 </p>
                 <p className="text-[10px] text-slate-500">
                   {getFRILevel(fatigueAnalysis.maxFRI)} ({fatigueAnalysis.criticalShifts} critical)
@@ -806,7 +812,7 @@ export function PersonView({
                                   {/* FRI indicator for this pattern */}
                                   {pattern.avgFRI > 0 && (
                                     <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${getFRIChipColor(pattern.maxFRI)}`}>
-                                      FRI: {pattern.avgFRI.toFixed(2)} (max {pattern.maxFRI.toFixed(2)})
+                                      FRI: {pattern.avgFRI.toFixed(3)} (max {pattern.maxFRI.toFixed(3)})
                                     </span>
                                   )}
                                 </div>
@@ -974,7 +980,7 @@ export function PersonView({
                             className={`text-[9px] font-bold px-1 rounded ${getFRIChipColor(dateFRI)}`}
                             title={`Fatigue Risk Index: ${dateFRI.toFixed(3)} - ${getFRILevel(dateFRI)}`}
                           >
-                            {dateFRI.toFixed(2)}
+                            {dateFRI.toFixed(3)}
                           </span>
                         )}
                       </div>

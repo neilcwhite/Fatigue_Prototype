@@ -500,7 +500,7 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
                             className="text-sm font-bold"
                             style={{ color: riskLevel.color }}
                           >
-                            {result.riskIndex.toFixed(2)}
+                            {result.riskIndex.toFixed(3)}
                           </div>
                         </div>
                       );

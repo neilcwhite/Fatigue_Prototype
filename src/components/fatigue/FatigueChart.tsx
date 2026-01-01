@@ -371,7 +371,7 @@ export function FatigueChart({
                   textAnchor="middle"
                   className="text-[9px] fill-slate-700 font-medium"
                 >
-                  {d.riskIndex.toFixed(2)}
+                  {d.riskIndex.toFixed(3)}
                 </text>
               </g>
             );
