@@ -1044,8 +1044,23 @@ export function FatigueView({
                     </div>
                   ) : (
                     <div className="space-y-2">
+                      {/* Global Parameters Summary */}
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-amber-800">Global Settings:</span>
+                          <div className="flex gap-3 text-amber-700">
+                            <span title="Maximum continuous work before mandatory break">
+                              Continuous: <strong>{params.continuousWork}h</strong>
+                            </span>
+                            <span title="Break required after continuous work period">
+                              Break after: <strong>{params.breakAfterContinuous}m</strong>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Header */}
-                      <div className="grid grid-cols-[55px_45px_55px_70px_70px_55px_50px_50px_45px_45px] gap-1 text-xs font-medium text-slate-600 px-1">
+                      <div className="grid grid-cols-[50px_35px_45px_62px_62px_45px_40px_35px_35px_35px_35px_50px] gap-1 text-xs font-medium text-slate-600 px-1">
                         <span>Day</span>
                         <span className="text-center">Rest</span>
                         <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
@@ -1055,6 +1070,8 @@ export function FatigueView({
                         <span className="text-center">Hrs</span>
                         <span className="text-center text-purple-600" title="Workload (1-5)">W</span>
                         <span className="text-center text-purple-600" title="Attention (1-5)">A</span>
+                        <span className="text-center text-green-600" title="Break frequency (hours)">BF</span>
+                        <span className="text-center text-green-600" title="Break length (mins)">BL</span>
                         <span className="text-center" title="Fatigue Risk Index">FRI</span>
                       </div>
 
@@ -1075,7 +1092,7 @@ export function FatigueView({
                         return (
                           <div
                             key={dayName}
-                            className={`grid grid-cols-[55px_45px_55px_70px_70px_55px_50px_50px_45px_45px] gap-1 p-1.5 rounded-lg items-center ${
+                            className={`grid grid-cols-[50px_35px_45px_62px_62px_45px_40px_35px_35px_35px_35px_50px] gap-1 p-1.5 rounded-lg items-center ${
                               isRestDay
                                 ? 'bg-slate-100 text-slate-400'
                                 : index < 2
@@ -1186,6 +1203,35 @@ export function FatigueView({
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
                               }`}
                               title="Attention (1-5)"
+                            />
+
+                            {/* Break Frequency */}
+                            <input
+                              type="number"
+                              min="1"
+                              max="8"
+                              value={shift?.breakFreq ?? params.breakFrequency}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
+                              disabled={isRestDay}
+                              className={`w-full border border-green-200 rounded px-1 py-1 text-xs text-center ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-green-50 text-slate-900'
+                              }`}
+                              title="Break frequency (hours between breaks)"
+                            />
+
+                            {/* Break Length */}
+                            <input
+                              type="number"
+                              min="5"
+                              max="60"
+                              step="5"
+                              value={shift?.breakLen ?? params.breakLength}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
+                              disabled={isRestDay}
+                              className={`w-full border border-green-200 rounded px-1 py-1 text-xs text-center ${
+                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-green-50 text-slate-900'
+                              }`}
+                              title="Break length (mins)"
                             />
 
                             {/* FRI */}
