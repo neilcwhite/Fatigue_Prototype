@@ -894,13 +894,13 @@ export function PersonView({
             {/* Colour Legend */}
             <div className="flex items-center gap-4 text-[10px]">
               <div className="flex items-center gap-1">
-                <span className="font-medium text-slate-600">Cell:</span>
-                <span className="px-1.5 py-0.5 rounded bg-red-100 border border-red-400 text-red-800">NR Error</span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-100 border border-amber-400 text-amber-800">NR Warning</span>
-                <span className="px-1.5 py-0.5 rounded bg-white border border-slate-300 text-slate-600">OK</span>
+                <span className="font-medium text-slate-600">Cell (NR):</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-50 border border-red-400 text-red-800">Error</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-400 text-amber-800">Warning</span>
+                <span className="px-1.5 py-0.5 rounded bg-green-50 border border-green-300 text-green-800">OK</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="font-medium text-slate-600">Chip:</span>
+                <span className="font-medium text-slate-600">Chip (FRI):</span>
                 <span className="px-1.5 py-0.5 rounded bg-green-200 border border-green-400 text-green-800">&lt;1.0</span>
                 <span className="px-1.5 py-0.5 rounded bg-yellow-200 border border-yellow-400 text-yellow-800">1.0-1.1</span>
                 <span className="px-1.5 py-0.5 rounded bg-orange-200 border border-orange-400 text-orange-800">1.1-1.2</span>
@@ -942,6 +942,10 @@ export function PersonView({
 
                   const isHighlighted = highlightedDate === date;
 
+                  // Determine if this date has assignments and is NR compliant (no violations)
+                  const hasAssignments = dateAssignments.length > 0;
+                  const isNRCompliant = hasAssignments && !dateViolationSeverity;
+
                   return (
                     <div
                       key={date}
@@ -952,11 +956,13 @@ export function PersonView({
                             ? 'bg-red-50 border-red-400'
                             : dateViolationSeverity === 'warning'
                               ? 'bg-amber-50 border-amber-400'
-                              : isWeekend
-                                ? 'bg-slate-50 border-slate-200'
-                                : isToday
-                                  ? 'bg-blue-50 border-blue-300'
-                                  : 'bg-white border-slate-200'
+                              : isNRCompliant
+                                ? 'bg-green-50 border-green-300'
+                                : isWeekend
+                                  ? 'bg-slate-50 border-slate-200'
+                                  : isToday
+                                    ? 'bg-blue-50 border-blue-300'
+                                    : 'bg-white border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-0.5">
@@ -985,12 +991,13 @@ export function PersonView({
                               : null;
 
                             // Determine chip colour based on FRI (fatigue risk)
+                            // Use darker text colours for better contrast
                             const getFRIChipStyle = (fri: number | null) => {
-                              if (fri === null) return 'bg-slate-100 border border-slate-300 text-slate-900';
-                              if (fri >= 1.2) return 'bg-red-200 border border-red-400 text-red-900';
-                              if (fri >= 1.1) return 'bg-orange-200 border border-orange-400 text-orange-900';
-                              if (fri >= 1.0) return 'bg-yellow-200 border border-yellow-400 text-yellow-900';
-                              return 'bg-green-200 border border-green-400 text-green-900';
+                              if (fri === null) return 'bg-slate-100 border border-slate-300 text-slate-800';
+                              if (fri >= 1.2) return 'bg-red-200 border border-red-400 text-red-800';
+                              if (fri >= 1.1) return 'bg-orange-200 border border-orange-400 text-orange-800';
+                              if (fri >= 1.0) return 'bg-yellow-200 border border-yellow-400 text-yellow-800';
+                              return 'bg-green-200 border border-green-400 text-green-800';
                             };
 
                             return (
