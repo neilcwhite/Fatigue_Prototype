@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle } from '@/components/ui/Icons';
 import { TimelineView } from './TimelineView';
@@ -76,6 +76,11 @@ export function PlanningView({
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartY = useRef(0);
   const resizeStartHeight = useRef(200);
+
+  // Refs for measuring fixed heights
+  const headerRef = useRef<HTMLElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const [fixedHeight, setFixedHeight] = useState(0);
   
   // Drag state
   const draggedEmployeeRef = useRef<EmployeeCamel[] | null>(null);
