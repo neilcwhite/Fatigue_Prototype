@@ -970,7 +970,20 @@ export function PersonView({
                           {dateNum}
                         </span>
                         {dateFRI !== null && (
-                          <span className={`text-[8px] px-0.5 rounded ${getFRIColor(dateFRI)}`}>
+                          <span
+                            className={`text-[9px] font-bold px-1 rounded ${
+                              dateFRI >= 1.2 ? 'bg-red-600 text-white' :
+                              dateFRI >= 1.1 ? 'bg-orange-500 text-white' :
+                              dateFRI >= 1.0 ? 'bg-yellow-500 text-white' :
+                              'bg-green-600 text-white'
+                            }`}
+                            title={`Fatigue Risk Index: ${dateFRI.toFixed(3)} - ${
+                              dateFRI >= 1.2 ? 'Critical' :
+                              dateFRI >= 1.1 ? 'Elevated' :
+                              dateFRI >= 1.0 ? 'Moderate' :
+                              'Low'
+                            }`}
+                          >
                             {dateFRI.toFixed(2)}
                           </span>
                         )}
