@@ -1060,7 +1060,7 @@ export function FatigueView({
                       </div>
 
                       {/* Header */}
-                      <div className="grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_45px_45px_45px_45px_60px] gap-2 text-xs font-medium text-slate-600 px-1">
+                      <div className="grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_40px_40px_45px_45px_55px_55px] gap-2 text-xs font-medium text-slate-600 px-1">
                         <span>Day</span>
                         <span className="text-center">Rest</span>
                         <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
@@ -1072,7 +1072,8 @@ export function FatigueView({
                         <span className="text-center text-purple-600" title="Attention (1-5)">A</span>
                         <span className="text-center text-green-600" title="Break frequency (hours)">BF</span>
                         <span className="text-center text-green-600" title="Break length (mins)">BL</span>
-                        <span className="text-center" title="Fatigue Risk Index">FRI</span>
+                        <span className="text-center" title="Fatigue Risk Index for selected W/A">FRI</span>
+                        <span className="text-center text-red-600" title="Worst case FRI (W=5, A=5)">Worst</span>
                       </div>
 
                       {/* Day Rows */}
@@ -1089,10 +1090,32 @@ export function FatigueView({
                         const dayFRI = dayResult?.riskIndex;
                         const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
 
+                        // Calculate worst-case FRI (W=5, A=5) for this shift
+                        let worstCaseFRI: number | undefined;
+                        let worstCaseLevel = 'low';
+                        if (shift && !isRestDay) {
+                          const worstCaseShift: ShiftDefinition = {
+                            day: shift.day,
+                            startTime: shift.startTime,
+                            endTime: shift.endTime,
+                            commuteIn: shift.commuteIn,
+                            commuteOut: shift.commuteOut,
+                            workload: 5,
+                            attention: 5,
+                            breakFreq: shift.breakFreq,
+                            breakLen: shift.breakLen,
+                          };
+                          const worstCalc = calculateFatigueSequence([worstCaseShift], { ...params, workload: 5, attention: 5 });
+                          if (worstCalc.length > 0) {
+                            worstCaseFRI = Math.round(worstCalc[0].riskIndex * 1000) / 1000;
+                            worstCaseLevel = getRiskLevel(worstCaseFRI).level;
+                          }
+                        }
+
                         return (
                           <div
                             key={dayName}
-                            className={`grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_45px_45px_45px_45px_60px] gap-2 p-1.5 rounded-lg items-center ${
+                            className={`grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_40px_40px_45px_45px_55px_55px] gap-2 p-1.5 rounded-lg items-center ${
                               isRestDay
                                 ? 'bg-slate-100 text-slate-400'
                                 : index < 2
@@ -1178,32 +1201,38 @@ export function FatigueView({
                             </div>
 
                             {/* Workload */}
-                            <input
-                              type="number"
-                              min="1"
-                              max="5"
+                            <select
                               value={shift?.workload ?? params.workload}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value) || 2)}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value))}
                               disabled={isRestDay}
-                              className={`w-full border border-purple-200 rounded px-1 py-1 text-xs text-center ${
+                              className={`w-full border border-purple-200 rounded px-0.5 py-1 text-xs text-center ${
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
                               }`}
                               title="Workload (1-5)"
-                            />
+                            >
+                              <option value={1}>1</option>
+                              <option value={2}>2</option>
+                              <option value={3}>3</option>
+                              <option value={4}>4</option>
+                              <option value={5}>5</option>
+                            </select>
 
                             {/* Attention */}
-                            <input
-                              type="number"
-                              min="1"
-                              max="5"
+                            <select
                               value={shift?.attention ?? params.attention}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value) || 2)}
+                              onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value))}
                               disabled={isRestDay}
-                              className={`w-full border border-purple-200 rounded px-1 py-1 text-xs text-center ${
+                              className={`w-full border border-purple-200 rounded px-0.5 py-1 text-xs text-center ${
                                 isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
                               }`}
                               title="Attention (1-5)"
-                            />
+                            >
+                              <option value={1}>1</option>
+                              <option value={2}>2</option>
+                              <option value={3}>3</option>
+                              <option value={4}>4</option>
+                              <option value={5}>5</option>
+                            </select>
 
                             {/* Break Frequency */}
                             <input
@@ -1246,6 +1275,24 @@ export function FatigueView({
                                   'bg-red-100 text-red-800'
                                 }`}>
                                   {dayFRI.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">-</span>
+                              )}
+                            </div>
+
+                            {/* Worst Case FRI (W=5, A=5) */}
+                            <div className="text-center">
+                              {isRestDay ? (
+                                <span className="text-xs text-slate-400">-</span>
+                              ) : worstCaseFRI !== undefined ? (
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                                  worstCaseLevel === 'low' ? 'bg-green-100 text-green-800' :
+                                  worstCaseLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                                  worstCaseLevel === 'elevated' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  {worstCaseFRI.toFixed(2)}
                                 </span>
                               ) : (
                                 <span className="text-xs text-slate-400">-</span>
