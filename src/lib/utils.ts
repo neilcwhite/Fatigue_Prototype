@@ -4,11 +4,58 @@
 
 import type { RiskLevel, ViolationType, ComplianceViolation } from './types';
 
+// ==================== FRI COLOUR CONSTANTS ====================
+// Standardized colours for Fatigue Risk Index display across all components
+// FRI Thresholds: <1.0 (Low), 1.0-1.1 (Moderate), 1.1-1.2 (Elevated), >=1.2 (Critical)
+
+export const FRI_COLORS = {
+  // Solid backgrounds with white text - for chips, badges, small UI elements
+  solid: {
+    low: 'bg-green-600 text-white',
+    moderate: 'bg-yellow-500 text-white',
+    elevated: 'bg-orange-500 text-white',
+    critical: 'bg-red-600 text-white',
+    unknown: 'bg-slate-500 text-white',
+  },
+  // Light backgrounds with dark text - for cards, larger areas
+  light: {
+    low: 'bg-green-100 text-green-800 border-green-300',
+    moderate: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    elevated: 'bg-orange-100 text-orange-800 border-orange-300',
+    critical: 'bg-red-100 text-red-800 border-red-300',
+    unknown: 'bg-slate-100 text-slate-800 border-slate-300',
+  },
+} as const;
+
 // ==================== RISK COLORS ====================
 
 /**
+ * Get CSS classes for FRI chip/badge display (solid background, white text)
+ * Use for: calendar chips, FRI badges, small indicators
+ */
+export function getFRIChipColor(fri: number | null): string {
+  if (fri === null) return FRI_COLORS.solid.unknown;
+  if (fri >= 1.2) return FRI_COLORS.solid.critical;
+  if (fri >= 1.1) return FRI_COLORS.solid.elevated;
+  if (fri >= 1.0) return FRI_COLORS.solid.moderate;
+  return FRI_COLORS.solid.low;
+}
+
+/**
+ * Get CSS classes for FRI card/area display (light background, dark text)
+ * Use for: summary cards, larger display areas
+ */
+export function getFRICardColor(fri: number | null): string {
+  if (fri === null) return FRI_COLORS.light.unknown;
+  if (fri >= 1.2) return FRI_COLORS.light.critical;
+  if (fri >= 1.1) return FRI_COLORS.light.elevated;
+  if (fri >= 1.0) return FRI_COLORS.light.moderate;
+  return FRI_COLORS.light.low;
+}
+
+/**
  * Get CSS classes for FRI (Fatigue Risk Index) value display
- * Used in PersonView, SummaryView, and other components showing FRI values
+ * @deprecated Use getFRIChipColor or getFRICardColor instead
  */
 export function getFRIColor(fri: number): string {
   if (fri >= 1.2) return 'text-red-600 bg-red-100';
@@ -33,23 +80,23 @@ export function getFRILevel(fri: number): string {
  */
 export function getRiskColor(level: RiskLevel['level'] | string): string {
   switch (level) {
-    case 'low': return 'bg-green-100 text-green-800 border-green-300';
-    case 'moderate': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-    case 'elevated': return 'bg-orange-100 text-orange-800 border-orange-300';
-    case 'critical': return 'bg-red-100 text-red-800 border-red-300';
-    default: return 'bg-slate-100 text-slate-800 border-slate-300';
+    case 'low': return FRI_COLORS.light.low;
+    case 'moderate': return FRI_COLORS.light.moderate;
+    case 'elevated': return FRI_COLORS.light.elevated;
+    case 'critical': return FRI_COLORS.light.critical;
+    default: return FRI_COLORS.light.unknown;
   }
 }
 
 /**
- * Get background color class for risk level (lighter variant)
+ * Get solid background color class for risk level
  */
 export function getRiskBgColor(level: RiskLevel['level'] | string): string {
   switch (level) {
-    case 'low': return 'bg-green-500';
+    case 'low': return 'bg-green-600';
     case 'moderate': return 'bg-yellow-500';
     case 'elevated': return 'bg-orange-500';
-    case 'critical': return 'bg-red-500';
+    case 'critical': return 'bg-red-600';
     default: return 'bg-slate-500';
   }
 }

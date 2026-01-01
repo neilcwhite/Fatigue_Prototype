@@ -9,7 +9,7 @@ import type { ShiftDefinition, FatigueResult } from '@/lib/types';
 import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
 import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel, SupabaseUser } from '@/lib/types';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
-import { getFRIColor, getFRILevel } from '@/lib/utils';
+import { getFRIChipColor, getFRILevel } from '@/lib/utils';
 
 interface PersonViewProps {
   user: SupabaseUser;
@@ -661,10 +661,10 @@ export function PersonView({
                 <h3 className="font-semibold text-slate-800 text-sm">Fatigue Risk Analysis (HSE RR446)</h3>
               </div>
               <div className="flex items-center gap-2 text-[10px]">
-                <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">Low &lt;1.0</span>
-                <span className="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">Mod 1.0-1.1</span>
-                <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Elev 1.1-1.2</span>
-                <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Crit &ge;1.2</span>
+                <span className="px-1.5 py-0.5 rounded bg-green-600 text-white">Low &lt;1.0</span>
+                <span className="px-1.5 py-0.5 rounded bg-yellow-500 text-white">Mod 1.0-1.1</span>
+                <span className="px-1.5 py-0.5 rounded bg-orange-500 text-white">Elev 1.1-1.2</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-600 text-white">Crit &ge;1.2</span>
               </div>
             </div>
             <div className="p-3">
@@ -672,13 +672,13 @@ export function PersonView({
               <div className="flex items-center gap-4 mb-3 pb-3 border-b border-slate-200">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">Avg:</span>
-                  <span className={`text-sm font-bold ${getFRIColor(fatigueAnalysis.avgFRI).split(' ')[0]}`}>
+                  <span className={`text-sm font-bold px-1.5 py-0.5 rounded ${getFRIChipColor(fatigueAnalysis.avgFRI)}`}>
                     {fatigueAnalysis.avgFRI.toFixed(3)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">Max:</span>
-                  <span className={`text-sm font-bold ${getFRIColor(fatigueAnalysis.maxFRI).split(' ')[0]}`}>
+                  <span className={`text-sm font-bold px-1.5 py-0.5 rounded ${getFRIChipColor(fatigueAnalysis.maxFRI)}`}>
                     {fatigueAnalysis.maxFRI.toFixed(3)}
                   </span>
                 </div>
@@ -805,7 +805,7 @@ export function PersonView({
                                   <span className="text-[10px] text-slate-400">({pattern.assignmentCount} shift{pattern.assignmentCount > 1 ? 's' : ''})</span>
                                   {/* FRI indicator for this pattern */}
                                   {pattern.avgFRI > 0 && (
-                                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${getFRIColor(pattern.maxFRI)}`}>
+                                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${getFRIChipColor(pattern.maxFRI)}`}>
                                       FRI: {pattern.avgFRI.toFixed(2)} (max {pattern.maxFRI.toFixed(2)})
                                     </span>
                                   )}
@@ -901,10 +901,10 @@ export function PersonView({
               </div>
               <div className="flex items-center gap-1">
                 <span className="font-medium text-slate-600">Chip (FRI):</span>
-                <span className="px-1.5 py-0.5 rounded bg-green-200 border border-green-400 text-green-800">&lt;1.0</span>
-                <span className="px-1.5 py-0.5 rounded bg-yellow-200 border border-yellow-400 text-yellow-800">1.0-1.1</span>
-                <span className="px-1.5 py-0.5 rounded bg-orange-200 border border-orange-400 text-orange-800">1.1-1.2</span>
-                <span className="px-1.5 py-0.5 rounded bg-red-200 border border-red-400 text-red-800">&ge;1.2</span>
+                <span className="px-1.5 py-0.5 rounded bg-green-600 text-white">&lt;1.0</span>
+                <span className="px-1.5 py-0.5 rounded bg-yellow-500 text-white">1.0-1.1</span>
+                <span className="px-1.5 py-0.5 rounded bg-orange-500 text-white">1.1-1.2</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-600 text-white">&ge;1.2</span>
               </div>
             </div>
           </div>
@@ -971,18 +971,8 @@ export function PersonView({
                         </span>
                         {dateFRI !== null && (
                           <span
-                            className={`text-[9px] font-bold px-1 rounded ${
-                              dateFRI >= 1.2 ? 'bg-red-600 text-white' :
-                              dateFRI >= 1.1 ? 'bg-orange-500 text-white' :
-                              dateFRI >= 1.0 ? 'bg-yellow-500 text-white' :
-                              'bg-green-600 text-white'
-                            }`}
-                            title={`Fatigue Risk Index: ${dateFRI.toFixed(3)} - ${
-                              dateFRI >= 1.2 ? 'Critical' :
-                              dateFRI >= 1.1 ? 'Elevated' :
-                              dateFRI >= 1.0 ? 'Moderate' :
-                              'Low'
-                            }`}
+                            className={`text-[9px] font-bold px-1 rounded ${getFRIChipColor(dateFRI)}`}
+                            title={`Fatigue Risk Index: ${dateFRI.toFixed(3)} - ${getFRILevel(dateFRI)}`}
                           >
                             {dateFRI.toFixed(2)}
                           </span>
@@ -1003,26 +993,16 @@ export function PersonView({
                               ? fatigueAnalysis.results[assignmentIdx]?.riskIndex
                               : null;
 
-                            // Determine chip colour based on FRI (fatigue risk)
-                            // Use darker text colours for better contrast
-                            const getFRIChipStyle = (fri: number | null) => {
-                              if (fri === null) return 'bg-slate-100 border border-slate-300 text-slate-800';
-                              if (fri >= 1.2) return 'bg-red-200 border border-red-400 text-red-800';
-                              if (fri >= 1.1) return 'bg-orange-200 border border-orange-400 text-orange-800';
-                              if (fri >= 1.0) return 'bg-yellow-200 border border-yellow-400 text-yellow-800';
-                              return 'bg-green-200 border border-green-400 text-green-800';
-                            };
-
                             return (
                               <div
                                 key={assignment.id}
-                                className={`relative rounded p-1 text-[9px] ${getFRIChipStyle(assignmentFRI)}`}
+                                className={`relative rounded p-1 text-[9px] ${getFRIChipColor(assignmentFRI)}`}
                               >
                                 <div className="absolute top-0 right-0 flex gap-0.5">
                                   {onUpdateAssignment && (
                                     <button
                                       onClick={() => setEditingAssignment(assignment)}
-                                      className="text-blue-400 hover:text-blue-600 p-0.5"
+                                      className="text-white/80 hover:text-white p-0.5"
                                       title="Edit"
                                     >
                                       <Edit2 className="w-2.5 h-2.5" />
@@ -1030,14 +1010,14 @@ export function PersonView({
                                   )}
                                   <button
                                     onClick={() => handleDelete(assignment)}
-                                    className="text-red-400 hover:text-red-600 p-0.5"
+                                    className="text-white/80 hover:text-white p-0.5"
                                     title="Delete"
                                   >
                                     <Trash2 className="w-2.5 h-2.5" />
                                   </button>
                                 </div>
                                 <div className="font-medium truncate pr-6">{getAssignmentDisplayName(assignment, pattern)}</div>
-                                <div className="opacity-75">
+                                <div className="text-white/90">
                                   {assignment.customStartTime || pattern?.startTime || '?'}-{assignment.customEndTime || pattern?.endTime || '?'}
                                 </div>
                               </div>
@@ -1109,18 +1089,8 @@ export function PersonView({
                       <div className="flex items-center gap-2">
                         {fri !== undefined && (
                           <div
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              fri >= 1.2 ? 'bg-red-600 text-white' :
-                              fri >= 1.1 ? 'bg-orange-500 text-white' :
-                              fri >= 1.0 ? 'bg-yellow-500 text-white' :
-                              'bg-green-600 text-white'
-                            }`}
-                            title={`Fatigue Risk Index: ${fri.toFixed(3)} - ${
-                              fri >= 1.2 ? 'Critical' :
-                              fri >= 1.1 ? 'Elevated' :
-                              fri >= 1.0 ? 'Moderate' :
-                              'Low'
-                            }`}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${getFRIChipColor(fri)}`}
+                            title={`Fatigue Risk Index: ${fri.toFixed(3)} - ${getFRILevel(fri)}`}
                           >
                             FRI: {fri.toFixed(3)}
                           </div>

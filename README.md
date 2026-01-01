@@ -229,14 +229,60 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 ## Key Features
 
-1. **Dashboard** - Project overview with stats and quick actions
-2. **Planning Views** - Timeline, Gantt, and Weekly views for assignment
-3. **Drag & Drop** - Assign employees by dragging to calendar cells
-4. **Person View** - Employee-centric calendar with fatigue analysis
-5. **Real-time FRI** - Live fatigue calculation as parameters change
-6. **Cross-Project Compliance** - Check employees across all projects
+1. **Dashboard** - Project overview with stats, compliance alerts, and quick navigation
+2. **Planning Views** - Timeline, Gantt, and Weekly views with VS Code-style resizable panels
+3. **Drag & Drop** - Assign employees by dragging to calendar cells with multi-select (Ctrl+click)
+4. **Person View** - Employee-centric calendar with dual colour coding (NR compliance + FRI)
+5. **Real-time FRI** - Live fatigue calculation with per-shift risk indicators
+6. **Cross-Project Compliance** - Check employees working across multiple projects
 7. **Team Assignments** - Bulk assign teams to shifts
 8. **Excel Import/Export** - Portable assignment data
+9. **Custom Times** - Override shift times for individual assignments (moves to Custom row)
+10. **Pattern Hatching** - Visual indication of non-working days per shift pattern
+
+## Person View
+
+The PersonView provides an employee-centric calendar showing all assignments across projects with compliance and fatigue analysis.
+
+### Colour Scheme
+
+The calendar uses a dual colour system to show both compliance and fatigue risk:
+
+| Element | Purpose | Colours |
+|---------|---------|---------|
+| **Cell Background** | Network Rail Compliance | Red (error), Amber (warning), Green (OK), White (no shifts) |
+| **Shift Chip** | Fatigue Risk Index (FRI) | Green (<1.0), Yellow (1.0-1.1), Orange (1.1-1.2), Red (>=1.2) |
+| **FRI Badge** | Per-day max FRI | Solid colour badge in top-right corner with tooltip |
+
+### Features
+
+- **Period Navigation** - Navigate by Network Rail 13-period year (Sat-Fri weeks)
+- **Export Schedule** - Download employee schedule as Excel file
+- **Compliance Summary** - Issues count, shift count, hours, project count, max FRI
+- **Shift Pattern Parameters** - View workload, attention, commute, breaks per pattern
+- **Edit Assignments** - Click edit icon to modify times, pattern, or add notes
+- **FRI Analysis** - Per-assignment fatigue risk with cumulative effects
+
+## Planning View
+
+The PlanningView provides project-centric shift assignment with multiple view modes.
+
+### View Modes
+
+| Mode | Description |
+|------|-------------|
+| **Timeline** | Shift patterns as rows, dates as columns, hatched for non-working days |
+| **Gantt** | Employee-focused timeline view |
+| **Weekly** | Week-based grid layout |
+
+### Features
+
+- **VS Code-style Panels** - Drag the resize handle to adjust planner/employee panel split
+- **Employee Panel** - Searchable employee list with compliance status indicators
+- **Multi-select** - Ctrl+click to select multiple employees, then drag to assign
+- **Pattern Hatching** - Days where pattern doesn't work shown with diagonal hatching
+- **Custom Times** - Drop on hatched cell to set custom start/end times (creates Custom row)
+- **Copy Mode** - Click assignment chip to copy to other cells
 
 ## Fatigue Risk Assessment Tool
 
