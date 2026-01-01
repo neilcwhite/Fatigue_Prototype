@@ -2,6 +2,27 @@
 
 A Network Rail compliant shift planning and fatigue monitoring system, implementing HSE Research Report RR446 fatigue calculations.
 
+**Version**: 2.0 (January 2026)
+
+## Recent Updates
+
+### Security Enhancements (v2.0)
+- **Tenant Isolation**: All database mutations now include `organisation_id` filter to prevent cross-tenant access
+- **Auth Hardening**: Removed fallback profile that could bypass tenant isolation on auth errors
+- **Secure IDs**: Shift pattern IDs now use `crypto.randomUUID()` instead of predictable sequential patterns
+- **Scoped Realtime**: Realtime subscriptions filtered by organisation to prevent data leakage
+- **Error Surfacing**: Data load failures now display clear error messages instead of silently showing empty data
+- **Config Validation**: Early check for Supabase environment variables with user-friendly error display
+
+### Fatigue View Enhancements (v2.0)
+- **Travel Times**: Travel In/Out columns in 7-day editor for commute tracking per shift
+- **Inline FRI Display**: See calculated FRI for each working day directly in the table
+- **Worst-Case Column**: Shows FRI with Workload=5, Attention=5 for high-demand role monitoring
+- **Dropdown Selects**: Workload and Attention restricted to 1-5 via dropdown (no manual entry)
+- **Global Settings Bar**: Summary showing continuous work limits and break requirements
+- **Weekly Summary**: Average FRI and Peak FRI displayed below the shift table
+- **Quick Role Check**: Compare how different roles would score on the same pattern
+
 ## Quick Start
 
 ```bash
@@ -127,13 +148,16 @@ Authentication hook:
 - Session management with auto-refresh
 - Profile loading with organisation context
 - Sign in/up/out methods
+- **Security**: Signs out user on profile load failure (no fallback bypass)
 
 ### `/src/hooks/useAppData.ts`
 Data management hook:
 - Loads all data for current organisation
-- Real-time subscriptions for live updates
+- Real-time subscriptions for live updates (scoped by organisation)
 - CRUD operations for all entities
 - Automatic snake_case/camelCase conversion
+- **Security**: All mutations include `organisation_id` filter
+- **Security**: Errors surfaced with clear RLS policy messages
 
 ## Fatigue Risk Index (FRI)
 
@@ -153,6 +177,8 @@ Based on HSE Research Report RR446, the system calculates:
 | 1.0 - 1.1 | Moderate | Yellow | Monitor |
 | 1.1 - 1.2 | Elevated | Orange | Review required |
 | > 1.2 | Critical | Red | Intervention needed |
+
+**Note**: FRI values are displayed to 3 decimal places throughout the application for precision (e.g., 1.045, 1.160).
 
 ### Fatigue Parameters (per shift pattern)
 
@@ -303,6 +329,37 @@ The FatigueView provides a comprehensive shift pattern editor with HSE RR446 fat
 - Visual distinction: working days in green, rest days in grey
 - Working/rest day counts shown in summary
 
+#### Column Layout
+
+| Column | Description |
+|--------|-------------|
+| Day | Day of week (Sat-Fri) |
+| Rest | Checkbox for rest days |
+| In | Travel time to site (minutes) |
+| Start | Shift start time (HH:MM) |
+| End | Shift end time (HH:MM) |
+| Out | Travel time from site (minutes) |
+| Hrs | Calculated shift duration |
+| W | Workload (1-5 dropdown) |
+| A | Attention (1-5 dropdown) |
+| BF | Break frequency (minutes) |
+| BL | Break length (minutes) |
+| FRI | Calculated Fatigue Risk Index |
+| Worst | FRI with W=5, A=5 (high-demand scenario) |
+
+#### Global Settings Bar
+
+Shows cumulative fatigue parameters applied across all shifts:
+- **Continuous Work**: Maximum hours before mandatory break
+- **Break After**: Required break duration after continuous work period
+
+#### Weekly Summary
+
+Displayed below the shift table:
+- **Avg FRI**: Average FRI across all working days
+- **Peak FRI**: Highest FRI value in the sequence (worst day)
+- Working/rest day counts
+
 ### Save & Update Patterns
 
 | Action | Description |
@@ -338,6 +395,48 @@ Compare fatigue compliance across multiple roles for the same shift pattern:
 2. Select roles to compare
 3. View compliance status (pass/fail) for each role
 4. Identify which roles are suitable for the pattern
+
+### Quick Role Check
+
+A streamlined role comparison available directly in the 7-day editor:
+- Shows FRI compliance for common rail roles against the current pattern
+- Green/red indicators for pass/fail
+- Helps quickly identify which roles can safely work the pattern
+
+### Worst-Case Analysis
+
+The "Worst" column shows what the FRI would be if the shift were performed by someone with:
+- **Workload = 5** (maximum physical/mental demand)
+- **Attention = 5** (maximum vigilance required)
+
+This helps assess:
+- Whether the pattern is safe even for high-demand roles
+- The headroom available before critical fatigue levels
+- Risk exposure if conditions change during the shift
+
+## Security
+
+### Multi-Tenant Architecture
+
+The system implements strict tenant isolation:
+
+| Layer | Protection |
+|-------|------------|
+| **Database** | Row Level Security (RLS) policies on all tables |
+| **API** | All queries/mutations include `organisation_id` filter |
+| **Realtime** | Subscriptions scoped by organisation |
+| **Auth** | No fallback profiles - errors trigger sign out |
+| **IDs** | Cryptographically random UUIDs for shift patterns |
+
+### Production Hardening Checklist
+
+- [ ] Enable RLS on all Supabase tables
+- [ ] Configure auth email verification
+- [ ] Set up proper CORS origins
+- [ ] Enable Supabase Auth rate limiting
+- [ ] Configure session expiry policies
+- [ ] Set up audit logging
+- [ ] Enable database backups
 
 ## License
 

@@ -426,6 +426,40 @@ export function FatigueView({
     };
   }, [shifts, params, startDayOfWeek]);
 
+  // Calculate worst-case results (W=5, A=5) for the full sequence
+  const worstCaseResults = useMemo(() => {
+    const workingShifts = shifts.filter(s => !s.isRestDay);
+    if (workingShifts.length === 0) return null;
+
+    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
+    // Build shift definitions with W=5, A=5 for worst case
+    const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
+      day: s.day,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      commuteIn: s.commuteIn,
+      commuteOut: s.commuteOut,
+      workload: 5,
+      attention: 5,
+      breakFreq: s.breakFreq,
+      breakLen: s.breakLen,
+    }));
+
+    const worstParams = { ...params, workload: 5, attention: 5 };
+    const calculations = calculateFatigueSequence(shiftDefinitions, worstParams);
+
+    // Map day to calculation for easy lookup
+    const calcByDay = new Map<number, { riskIndex: number; riskLevel: { level: string } }>();
+    sortedShifts.forEach((shift, idx) => {
+      calcByDay.set(shift.day, {
+        riskIndex: Math.round(calculations[idx].riskIndex * 1000) / 1000,
+        riskLevel: getRiskLevel(calculations[idx].riskIndex),
+      });
+    });
+
+    return calcByDay;
+  }, [shifts, params]);
+
   // Calculate role comparison results
   const roleComparisonResults = useMemo(() => {
     // Filter out rest days - they don't contribute to fatigue
@@ -1060,7 +1094,7 @@ export function FatigueView({
                       </div>
 
                       {/* Header */}
-                      <div className="grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_40px_40px_45px_45px_55px_55px] gap-2 text-xs font-medium text-slate-600 px-1">
+                      <div className="grid grid-cols-[45px_38px_50px_75px_75px_50px_42px_38px_38px_42px_38px_60px_60px] gap-1 text-xs font-medium text-slate-600 px-1">
                         <span>Day</span>
                         <span className="text-center">Rest</span>
                         <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
@@ -1090,32 +1124,15 @@ export function FatigueView({
                         const dayFRI = dayResult?.riskIndex;
                         const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
 
-                        // Calculate worst-case FRI (W=5, A=5) for this shift
-                        let worstCaseFRI: number | undefined;
-                        let worstCaseLevel = 'low';
-                        if (shift && !isRestDay) {
-                          const worstCaseShift: ShiftDefinition = {
-                            day: shift.day,
-                            startTime: shift.startTime,
-                            endTime: shift.endTime,
-                            commuteIn: shift.commuteIn,
-                            commuteOut: shift.commuteOut,
-                            workload: 5,
-                            attention: 5,
-                            breakFreq: shift.breakFreq,
-                            breakLen: shift.breakLen,
-                          };
-                          const worstCalc = calculateFatigueSequence([worstCaseShift], { ...params, workload: 5, attention: 5 });
-                          if (worstCalc.length > 0) {
-                            worstCaseFRI = Math.round(worstCalc[0].riskIndex * 1000) / 1000;
-                            worstCaseLevel = getRiskLevel(worstCaseFRI).level;
-                          }
-                        }
+                        // Get worst-case FRI (W=5, A=5) from pre-calculated results
+                        const worstResult = worstCaseResults?.get(nrDayIndexToShiftDay(index));
+                        const worstCaseFRI = worstResult?.riskIndex;
+                        const worstCaseLevel = worstResult?.riskLevel?.level || 'low';
 
                         return (
                           <div
                             key={dayName}
-                            className={`grid grid-cols-[50px_40px_55px_80px_80px_55px_50px_40px_40px_45px_45px_55px_55px] gap-2 p-1.5 rounded-lg items-center ${
+                            className={`grid grid-cols-[45px_38px_50px_75px_75px_50px_42px_38px_38px_42px_38px_60px_60px] gap-1 p-1.5 rounded-lg items-center ${
                               isRestDay
                                 ? 'bg-slate-100 text-slate-400'
                                 : index < 2
@@ -1268,13 +1285,13 @@ export function FatigueView({
                               {isRestDay ? (
                                 <span className="text-xs text-slate-400">-</span>
                               ) : dayFRI !== undefined ? (
-                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                                <span className={`text-xs font-bold px-1 py-0.5 rounded ${
                                   dayRiskLevel === 'low' ? 'bg-green-100 text-green-800' :
                                   dayRiskLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
                                   dayRiskLevel === 'elevated' ? 'bg-orange-100 text-orange-800' :
                                   'bg-red-100 text-red-800'
                                 }`}>
-                                  {dayFRI.toFixed(2)}
+                                  {dayFRI.toFixed(3)}
                                 </span>
                               ) : (
                                 <span className="text-xs text-slate-400">-</span>
@@ -1286,13 +1303,13 @@ export function FatigueView({
                               {isRestDay ? (
                                 <span className="text-xs text-slate-400">-</span>
                               ) : worstCaseFRI !== undefined ? (
-                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                                <span className={`text-xs font-bold px-1 py-0.5 rounded ${
                                   worstCaseLevel === 'low' ? 'bg-green-100 text-green-800' :
                                   worstCaseLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
                                   worstCaseLevel === 'elevated' ? 'bg-orange-100 text-orange-800' :
                                   'bg-red-100 text-red-800'
                                 }`}>
-                                  {worstCaseFRI.toFixed(2)}
+                                  {worstCaseFRI.toFixed(3)}
                                 </span>
                               ) : (
                                 <span className="text-xs text-slate-400">-</span>
