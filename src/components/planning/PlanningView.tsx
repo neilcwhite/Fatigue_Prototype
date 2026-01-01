@@ -119,6 +119,20 @@ export function PlanningView({
       setSelectedPeriod(currentPeriod?.name || networkRailPeriods[0].name);
     }
   }, [networkRailPeriods, selectedPeriod]);
+
+  // Measure fixed heights on mount and resize
+  useEffect(() => {
+    const measureFixedHeight = () => {
+      const headerH = headerRef.current?.offsetHeight || 0;
+      const controlsH = controlsRef.current?.offsetHeight || 0;
+      const resizeHandleH = 8; // h-2 = 0.5rem = 8px
+      setFixedHeight(headerH + controlsH + resizeHandleH);
+    };
+
+    measureFixedHeight();
+    window.addEventListener('resize', measureFixedHeight);
+    return () => window.removeEventListener('resize', measureFixedHeight);
+  }, []);
   
   // Filter data for this project
   const projectShiftPatterns = shiftPatterns.filter(sp => sp.projectId === project.id);
@@ -314,6 +328,9 @@ export function PlanningView({
   // Get current period
   const currentPeriod = networkRailPeriods.find(p => p.name === selectedPeriod);
 
+  // Calculate main content height (viewport - header - controls - resize handle - employee panel)
+  const mainContentHeight = `calc(100vh - ${fixedHeight}px - ${employeePanelHeight}px)`;
+
   // Export handler
   const handleExport = () => {
     exportToExcel({
@@ -341,7 +358,7 @@ export function PlanningView({
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-slate-100">
       {/* Header */}
-      <header className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-blue-600 flex-shrink-0">
+      <header ref={headerRef} className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-blue-600 flex-shrink-0">
         <div className="px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -370,7 +387,7 @@ export function PlanningView({
       </header>
       
       {/* Controls Bar */}
-      <div className="p-4 flex-shrink-0">
+      <div ref={controlsRef} className="p-4 flex-shrink-0">
         <div className="flex flex-wrap items-center gap-3 bg-white shadow-sm border border-slate-200 rounded-lg px-4 py-3">
           {/* View mode buttons */}
           <div className="flex items-center gap-1">
@@ -469,8 +486,11 @@ export function PlanningView({
         </div>
       </div>
       
-      {/* Main Content Area */}
-      <div className="flex-1 min-h-0 overflow-auto px-4">
+      {/* Main Content Area - height calculated to shrink when employee panel grows */}
+      <div
+        className="overflow-auto px-4"
+        style={{ height: mainContentHeight }}
+      >
         {viewMode === 'timeline' && currentPeriod && projectShiftPatterns.length > 0 && (
           <TimelineView
             project={project}
