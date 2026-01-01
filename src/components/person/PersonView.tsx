@@ -886,9 +886,27 @@ export function PersonView({
 
         {/* Schedule Calendar Grid */}
         <div id="schedule-calendar" className="bg-white rounded-lg shadow-md scroll-mt-4">
-          <div className="p-3 border-b border-slate-200 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-500" />
-            <h3 className="font-semibold text-slate-800 text-sm">Schedule - {currentPeriod?.name}</h3>
+          <div className="p-3 border-b border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-500" />
+              <h3 className="font-semibold text-slate-800 text-sm">Schedule - {currentPeriod?.name}</h3>
+            </div>
+            {/* Colour Legend */}
+            <div className="flex items-center gap-4 text-[10px]">
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-slate-600">Cell:</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-100 border border-red-400 text-red-800">NR Error</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-100 border border-amber-400 text-amber-800">NR Warning</span>
+                <span className="px-1.5 py-0.5 rounded bg-white border border-slate-300 text-slate-600">OK</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-slate-600">Chip:</span>
+                <span className="px-1.5 py-0.5 rounded bg-green-200 border border-green-400 text-green-800">&lt;1.0</span>
+                <span className="px-1.5 py-0.5 rounded bg-yellow-200 border border-yellow-400 text-yellow-800">1.0-1.1</span>
+                <span className="px-1.5 py-0.5 rounded bg-orange-200 border border-orange-400 text-orange-800">1.1-1.2</span>
+                <span className="px-1.5 py-0.5 rounded bg-red-200 border border-red-400 text-red-800">&ge;1.2</span>
+              </div>
+            </div>
           </div>
           <div className="p-3 overflow-x-auto">
             {/* Week Headers - dynamic based on period start day */}
@@ -927,24 +945,18 @@ export function PersonView({
                   return (
                     <div
                       key={date}
-                      className={`min-h-[80px] p-1.5 rounded-lg border transition-all ${
+                      className={`min-h-[80px] p-1.5 rounded-lg border-2 transition-all ${
                         isHighlighted
                           ? 'ring-4 ring-blue-500 ring-offset-2 animate-pulse bg-blue-100 border-blue-500 scale-105 z-10'
                           : dateViolationSeverity === 'error'
-                            ? 'bg-red-100 border-red-400'
+                            ? 'bg-red-50 border-red-400'
                             : dateViolationSeverity === 'warning'
-                              ? 'bg-amber-100 border-amber-400'
-                              : dateAssignments.length > 0
-                                ? dateFRI && dateFRI >= 1.2
-                                  ? 'bg-red-50 border-red-300'
-                                  : dateFRI && dateFRI >= 1.1
-                                    ? 'bg-amber-50 border-amber-300'
-                                    : 'bg-green-50 border-green-300'
-                                : isWeekend
-                                  ? 'bg-slate-100 border-slate-200'
-                                  : isToday
-                                    ? 'bg-blue-50 border-blue-300'
-                                    : 'bg-white border-slate-200'
+                              ? 'bg-amber-50 border-amber-400'
+                              : isWeekend
+                                ? 'bg-slate-50 border-slate-200'
+                                : isToday
+                                  ? 'bg-blue-50 border-blue-300'
+                                  : 'bg-white border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-0.5">
