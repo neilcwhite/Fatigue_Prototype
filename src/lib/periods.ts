@@ -23,23 +23,41 @@ const YEAR_START_DATES: Record<number, string> = {
 // ==================== HELPER FUNCTIONS ====================
 
 /**
+ * Parse date string without timezone issues
+ */
+function parseDateLocal(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Format date to YYYY-MM-DD string
+ */
+function formatDateString(date: Date): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
  * Add days to a date string
  */
 function addDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr);
+  const date = parseDateLocal(dateStr);
   date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
+  return formatDateString(date);
 }
 
 /**
  * Format date for display
  */
 export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-GB', { 
-    day: 'numeric', 
-    month: 'short', 
-    year: 'numeric' 
+  const date = parseDateLocal(dateStr);
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
   });
 }
 
@@ -54,11 +72,11 @@ export function formatDateRange(startDate: string, endDate: string): string {
  * Get the Saturday before or on a given date
  */
 function getSaturdayBefore(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = parseDateLocal(dateStr);
   const day = date.getDay();
   const diff = day === 6 ? 0 : (day + 1); // Days since Saturday
   date.setDate(date.getDate() - diff);
-  return date.toISOString().split('T')[0];
+  return formatDateString(date);
 }
 
 // ==================== PERIOD GENERATION ====================
@@ -172,8 +190,8 @@ export function getAvailableYears(): number[] {
  * Get day name (Mon, Tue, etc.)
  */
 export function getDayName(dateStr: string, short = true): string {
-  const date = new Date(dateStr);
-  const days = short 
+  const date = parseDateLocal(dateStr);
+  const days = short
     ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   return days[date.getDay()];
@@ -183,7 +201,7 @@ export function getDayName(dateStr: string, short = true): string {
  * Get day of week (0 = Sunday, 6 = Saturday)
  */
 export function getDayOfWeek(dateStr: string): number {
-  return new Date(dateStr).getDay();
+  return parseDateLocal(dateStr).getDay();
 }
 
 /**
@@ -205,17 +223,17 @@ export function getNRWeekDayKey(dateStr: string): 'Sat' | 'Sun' | 'Mon' | 'Tue' 
 }
 
 /**
- * Parse date string to Date object
+ * Parse date string to Date object (timezone-safe)
  */
 export function parseDate(dateStr: string): Date {
-  return new Date(dateStr);
+  return parseDateLocal(dateStr);
 }
 
 /**
  * Format date to ISO string (YYYY-MM-DD)
  */
 export function toISODateString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return formatDateString(date);
 }
 
 /**

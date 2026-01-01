@@ -219,16 +219,26 @@ export function PersonView({
     return new Set(violationAssignmentSeverity.keys());
   }, [violationAssignmentSeverity]);
 
+  // Helper to parse date string without timezone issues
+  const parseDateLocal = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed
+  };
+
   // Generate 28 days for current period
   const calendarDates = useMemo(() => {
     if (!currentPeriod) return [];
     const dates: string[] = [];
-    const startDate = new Date(currentPeriod.startDate);
+    const startDate = parseDateLocal(currentPeriod.startDate);
 
     for (let i = 0; i < 28; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]);
+      // Format as YYYY-MM-DD
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
     }
     return dates;
   }, [currentPeriod]);
@@ -236,7 +246,7 @@ export function PersonView({
   // Generate day headers based on the actual start day of the period
   const calendarDayHeaders = useMemo(() => {
     if (!currentPeriod) return ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    const startDate = new Date(currentPeriod.startDate);
+    const startDate = parseDateLocal(currentPeriod.startDate);
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const headers: string[] = [];
     for (let i = 0; i < 7; i++) {
@@ -276,7 +286,9 @@ export function PersonView({
   };
 
   const formatDateHeader = (dateStr: string) => {
-    const d = new Date(dateStr);
+    // Parse without timezone issues
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
     return {
       day: d.toLocaleDateString('en-GB', { weekday: 'short' }),
       date: d.getDate(),
