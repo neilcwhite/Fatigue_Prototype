@@ -685,7 +685,7 @@ export function TimelineView({
                                       className={`hover:bg-white/50 rounded p-0.5 ${isSelected ? 'text-white' : ''}`}
                                       title="Edit assignment"
                                     >
-                                      <Edit2 className="w-2.5 h-2.5" />
+                                      <Edit2 className="w-2 h-2" />
                                     </button>
                                     <button
                                       onClick={(e) => {
@@ -695,7 +695,7 @@ export function TimelineView({
                                       className={`hover:bg-red-200 rounded p-0.5 ${isSelected ? 'text-white hover:text-red-800' : ''}`}
                                       title="Remove from shift"
                                     >
-                                      <Trash2 className="w-2.5 h-2.5" />
+                                      <Trash2 className="w-2 h-2" />
                                     </button>
                                   </div>
                                 )}

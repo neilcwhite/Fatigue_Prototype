@@ -322,7 +322,7 @@ export function WeeklyView({
                                       className="hover:bg-white/80 rounded p-0.5"
                                       title="Edit"
                                     >
-                                      <Edit2 className="w-3 h-3" />
+                                      <Edit2 className="w-2 h-2" />
                                     </button>
                                     <button
                                       onClick={(e) => {
@@ -332,7 +332,7 @@ export function WeeklyView({
                                       className="hover:bg-red-300 rounded p-0.5"
                                       title="Remove"
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      <Trash2 className="w-2 h-2" />
                                     </button>
                                   </div>
                                 </div>

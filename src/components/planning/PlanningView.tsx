@@ -665,12 +665,12 @@ export function PlanningView({
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                     {complianceStatus.status === 'error' && !isSelected && (
                       <Box sx={{ color: '#ef4444', flexShrink: 0, display: 'flex' }}>
-                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <AlertTriangle className="w-2.5 h-2.5" />
                       </Box>
                     )}
                     {complianceStatus.status === 'warning' && !isSelected && (
                       <Box sx={{ color: '#f59e0b', flexShrink: 0, display: 'flex' }}>
-                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <AlertTriangle className="w-2.5 h-2.5" />
                       </Box>
                     )}
                     <Typography variant="body2" fontWeight={600}>{employee.name}</Typography>
