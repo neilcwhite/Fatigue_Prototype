@@ -1,6 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import FormControl from '@mui/material/FormControl';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle } from '@/components/ui/Icons';
 import { TimelineView } from './TimelineView';
@@ -62,15 +76,15 @@ export function PlanningView({
 }: PlanningViewProps) {
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
-  
+
   // Period selection
   const [selectedYear, setSelectedYear] = useState(2025);
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
-  
+
   // Selection state
   const [selectedEmployees, setSelectedEmployees] = useState<EmployeeCamel[]>([]);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
-  
+
   // Employee panel resize
   const [employeePanelHeight, setEmployeePanelHeight] = useState(200);
   const [isResizing, setIsResizing] = useState(false);
@@ -81,10 +95,10 @@ export function PlanningView({
   const headerRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const [fixedHeight, setFixedHeight] = useState(0);
-  
+
   // Drag state
   const draggedEmployeeRef = useRef<EmployeeCamel[] | null>(null);
-  
+
   // Custom time modal state
   const [customTimeModal, setCustomTimeModal] = useState<{
     show: boolean;
@@ -99,15 +113,15 @@ export function PlanningView({
 
   // Edit assignment modal state
   const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
-  
+
   // Generate periods for selected year
   const networkRailPeriods = useMemo(() => {
     return generateNetworkRailPeriods(selectedYear);
   }, [selectedYear]);
-  
+
   // Available years
   const availableYears = getAvailableYears();
-  
+
   // Initialize period on mount
   useEffect(() => {
     if (!selectedPeriod && networkRailPeriods.length > 0) {
@@ -133,7 +147,7 @@ export function PlanningView({
     window.addEventListener('resize', measureFixedHeight);
     return () => window.removeEventListener('resize', measureFixedHeight);
   }, []);
-  
+
   // Filter data for this project
   const projectShiftPatterns = shiftPatterns.filter(sp => sp.projectId === project.id);
   const projectAssignments = assignments.filter(a => a.projectId === project.id);
@@ -164,13 +178,13 @@ export function PlanningView({
 
     return customPatternId;
   };
-  
+
   // Filter employees for search
   const filteredEmployees = employees.filter(emp =>
     emp.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
     (emp.role?.toLowerCase() || '').includes(employeeSearchTerm.toLowerCase())
   );
-  
+
   // Handle resize
   const handleResizeStart = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -178,44 +192,44 @@ export function PlanningView({
     resizeStartHeight.current = employeePanelHeight;
     e.preventDefault();
   };
-  
+
   useEffect(() => {
     if (!isResizing) return;
-    
+
     const handleResizeMove = (e: MouseEvent) => {
       const deltaY = resizeStartY.current - e.clientY;
       const newHeight = Math.max(100, Math.min(window.innerHeight - 200, resizeStartHeight.current + deltaY));
       setEmployeePanelHeight(newHeight);
     };
-    
+
     const handleResizeEnd = () => {
       setIsResizing(false);
     };
-    
+
     document.addEventListener('mousemove', handleResizeMove);
     document.addEventListener('mouseup', handleResizeEnd);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleResizeMove);
       document.removeEventListener('mouseup', handleResizeEnd);
     };
   }, [isResizing]);
-  
+
   // Employee selection handlers
   const handleEmployeeClick = (e: React.MouseEvent, employee: EmployeeCamel) => {
     if (!e.ctrlKey && !e.metaKey) return;
-    
+
     if (selectedEmployees.some(emp => emp.id === employee.id)) {
       setSelectedEmployees(selectedEmployees.filter(emp => emp.id !== employee.id));
     } else {
       setSelectedEmployees([...selectedEmployees, employee]);
     }
   };
-  
+
   const clearSelection = () => {
     setSelectedEmployees([]);
   };
-  
+
   // Handle ESC key to clear selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -226,7 +240,7 @@ export function PlanningView({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  
+
   // Drag handlers
   const handleEmployeeDragStart = (e: React.DragEvent, employee: EmployeeCamel) => {
     const employeesToDrag = selectedEmployees.some(emp => emp.id === employee.id)
@@ -241,12 +255,12 @@ export function PlanningView({
   const handleEmployeeDragEnd = () => {
     // Don't clear ref here - let drop handle it
   };
-  
+
   const handleCellDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
-  
+
   const handleCellDrop = async (e: React.DragEvent, shiftPatternId: string, date: string, isValidCell: boolean = true) => {
     e.preventDefault();
     e.stopPropagation();
@@ -324,7 +338,7 @@ export function PlanningView({
     setCustomTimeModal(null);
     clearSelection();
   };
-  
+
   // Get current period
   const currentPeriod = networkRailPeriods.find(p => p.name === selectedPeriod);
 
@@ -354,142 +368,129 @@ export function PlanningView({
       existingAssignments: projectAssignments,
     });
   };
-  
+
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-100">
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'grey.100' }}>
       {/* Header */}
-      <header ref={headerRef} className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-blue-600 flex-shrink-0">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-md text-sm flex items-center gap-1"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-            <div>
-              <span className="text-white font-semibold text-lg">
-                {project.name} <span className="text-blue-400">Planning</span>
-              </span>
-              <span className="text-slate-500 text-sm ml-3">
-                {project.location} • {project.type}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="bg-slate-700 text-blue-400 px-3 py-1 rounded text-xs font-mono font-medium">
-              PLANNING VIEW
-            </span>
-            <SignOutHeader user={user} onSignOut={onSignOut} />
-          </div>
-        </div>
-      </header>
-      
+      <AppBar
+        ref={headerRef}
+        position="static"
+        sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #2563eb', flexShrink: 0 }}
+      >
+        <Toolbar sx={{ px: 3, py: 1.5 }}>
+          <Button
+            startIcon={<ChevronLeft className="w-4 h-4" />}
+            onClick={onBack}
+            sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', mr: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            Back
+          </Button>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
+              {project.name} <Box component="span" sx={{ color: '#60a5fa' }}>Planning</Box>
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'grey.500' }}>
+              {project.location} • {project.type}
+            </Typography>
+          </Box>
+          <Chip
+            label="PLANNING VIEW"
+            size="small"
+            sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: '#60a5fa', fontFamily: 'monospace', fontSize: '0.7rem', mr: 2 }}
+          />
+          <SignOutHeader user={user} onSignOut={onSignOut} />
+        </Toolbar>
+      </AppBar>
+
       {/* Controls Bar */}
-      <div ref={controlsRef} className="p-4 flex-shrink-0">
-        <div className="flex flex-wrap items-center gap-3 bg-white shadow-sm border border-slate-200 rounded-lg px-4 py-3">
+      <Box ref={controlsRef} sx={{ p: 2, flexShrink: 0 }}>
+        <Paper sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, px: 2, py: 1.5 }}>
           {/* View mode buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setViewMode('timeline')}
-              className={`px-3 py-1.5 rounded text-sm ${
-                viewMode === 'timeline'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Timeline
-            </button>
-            <button
-              onClick={() => setViewMode('gantt')}
-              className={`px-3 py-1.5 rounded text-sm ${
-                viewMode === 'gantt'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Gantt
-            </button>
-            <button
-              onClick={() => setViewMode('weekly')}
-              className={`px-3 py-1.5 rounded text-sm ${
-                viewMode === 'weekly'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Weekly Grid
-            </button>
-          </div>
-          
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(e, val) => val && setViewMode(val)}
+            size="small"
+          >
+            <ToggleButton value="timeline" sx={{ px: 2 }}>Timeline</ToggleButton>
+            <ToggleButton value="gantt" sx={{ px: 2 }}>Gantt</ToggleButton>
+            <ToggleButton value="weekly" sx={{ px: 2 }}>Weekly Grid</ToggleButton>
+          </ToggleButtonGroup>
+
           {/* Year & Period selectors */}
-          <div className="flex items-center gap-2 ml-4">
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                setSelectedYear(Number(e.target.value));
-                setSelectedPeriod(null);
-              }}
-              className="border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white text-slate-900"
-            >
-              {availableYears.map(year => (
-                <option key={year} value={year}>
-                  {year}/{year + 1}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedPeriod || ''}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white text-slate-900 min-w-[200px]"
-            >
-              {networkRailPeriods.map(period => (
-                <option key={period.name} value={period.name}>
-                  {period.name} ({period.startDate} - {period.endDate})
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="flex-1" />
-          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <Select
+                value={selectedYear}
+                onChange={(e) => {
+                  setSelectedYear(Number(e.target.value));
+                  setSelectedPeriod(null);
+                }}
+              >
+                {availableYears.map(year => (
+                  <MenuItem key={year} value={year}>
+                    {year}/{year + 1}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <Select
+                value={selectedPeriod || ''}
+                onChange={(e) => setSelectedPeriod(e.target.value as string)}
+              >
+                {networkRailPeriods.map(period => (
+                  <MenuItem key={period.name} value={period.name}>
+                    {period.name} ({period.startDate} - {period.endDate})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Box sx={{ flexGrow: 1 }} />
+
           {/* Create Shift Pattern */}
           {onCreateShiftPattern && (
-            <button 
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Plus className="w-4 h-4" />}
               onClick={onCreateShiftPattern}
-              className="px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+              size="small"
             >
-              <Plus className="w-4 h-4" />
               Add Shift Pattern
-            </button>
+            </Button>
           )}
-          
+
           {/* Export/Import */}
-          <div className="flex items-center gap-2">
-            <button
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<Download className="w-4 h-4" />}
               onClick={handleExport}
               disabled={projectAssignments.length === 0}
-              className="px-3 py-1.5 rounded text-sm bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              size="small"
             >
-              <Download className="w-4 h-4" />
               Export
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<Upload className="w-4 h-4" />}
               onClick={() => setShowImportModal(true)}
-              className="px-3 py-1.5 rounded text-sm bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1"
+              size="small"
             >
-              <Upload className="w-4 h-4" />
               Import
-            </button>
-          </div>
-        </div>
-      </div>
-      
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+
       {/* Main Content Area - height calculated to shrink when employee panel grows */}
-      <div
-        className="overflow-auto px-4"
-        style={{ height: mainContentHeight }}
+      <Box
+        sx={{ overflow: 'auto', px: 2, height: mainContentHeight }}
       >
         {viewMode === 'timeline' && currentPeriod && projectShiftPatterns.length > 0 && (
           <TimelineView
@@ -506,26 +507,28 @@ export function PlanningView({
             onCreateAssignment={onCreateAssignment}
           />
         )}
-        
+
         {viewMode === 'timeline' && currentPeriod && projectShiftPatterns.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <div className="text-slate-400 text-5xl mb-4">📋</div>
-            <h3 className="text-xl font-semibold text-slate-700 mb-2">No Shift Patterns</h3>
-            <p className="text-slate-500 mb-6">
+          <Paper sx={{ p: 6, textAlign: 'center' }}>
+            <Typography variant="h2" sx={{ color: 'grey.400', mb: 2 }}>📋</Typography>
+            <Typography variant="h6" sx={{ color: 'grey.700', mb: 1 }}>No Shift Patterns</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Create shift patterns to start assigning employees to this project.
-            </p>
+            </Typography>
             {onCreateShiftPattern && (
-              <button
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Plus className="w-5 h-5" />}
                 onClick={onCreateShiftPattern}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
+                size="large"
               >
-                <Plus className="w-5 h-5" />
                 Create First Shift Pattern
-              </button>
+              </Button>
             )}
-          </div>
+          </Paper>
         )}
-        
+
         {viewMode === 'gantt' && currentPeriod && (
           <GanttView
             project={project}
@@ -553,98 +556,136 @@ export function PlanningView({
             onEditAssignment={setEditingAssignment}
           />
         )}
-      </div>
-      
+      </Box>
+
       {/* Resize Handle */}
-      <div
+      <Box
         onMouseDown={handleResizeStart}
-        className={`h-2 cursor-row-resize flex items-center justify-center flex-shrink-0 ${
-          isResizing ? 'bg-blue-500' : 'bg-slate-300'
-        }`}
+        sx={{
+          height: 8,
+          cursor: 'row-resize',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          bgcolor: isResizing ? 'primary.main' : 'grey.300',
+        }}
       >
-        <div className="w-16 h-1 bg-slate-500 rounded" />
-      </div>
-      
+        <Box sx={{ width: 64, height: 4, bgcolor: 'grey.500', borderRadius: 1 }} />
+      </Box>
+
       {/* Employee Panel */}
-      <div
-        className="bg-white border-t border-slate-200 flex-shrink-0 overflow-hidden"
+      <Paper
+        sx={{
+          borderTop: 1,
+          borderColor: 'divider',
+          flexShrink: 0,
+          overflow: 'hidden',
+          borderRadius: 0,
+        }}
         style={{ height: employeePanelHeight }}
       >
-        <div className="p-3 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h3 className="font-semibold text-slate-800">
+        <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600}>
               Employees ({employees.length})
-            </h3>
-            <input
-              type="text"
+            </Typography>
+            <TextField
+              size="small"
               placeholder="Search employees..."
               value={employeeSearchTerm}
               onChange={(e) => setEmployeeSearchTerm(e.target.value)}
-              className="border border-slate-300 rounded px-2 py-1 text-sm w-48"
+              sx={{ width: 200 }}
             />
-          </div>
+          </Box>
           {selectedEmployees.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-blue-600 font-medium">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="primary" fontWeight={600}>
                 {selectedEmployees.length} selected
-              </span>
-              <button
-                onClick={clearSelection}
-                className="text-xs text-slate-500 hover:text-slate-700"
-              >
+              </Typography>
+              <Button size="small" onClick={clearSelection}>
                 Clear
-              </button>
-            </div>
+              </Button>
+            </Box>
           )}
-        </div>
-        
-        <div className="p-3 overflow-auto" style={{ height: employeePanelHeight - 60 }}>
-          <div className="flex flex-wrap gap-2">
+        </Box>
+
+        <Box sx={{ p: 1.5, overflow: 'auto' }} style={{ height: employeePanelHeight - 60 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {filteredEmployees.map(employee => {
               const isSelected = selectedEmployees.some(e => e.id === employee.id);
               const complianceStatus = getEmployeeComplianceStatus(employee.id, projectAssignments, projectShiftPatterns);
-              
+
               return (
-                <div
+                <Paper
                   key={employee.id}
                   draggable
                   onDragStart={(e) => handleEmployeeDragStart(e, employee)}
                   onDragEnd={handleEmployeeDragEnd}
                   onClick={(e) => handleEmployeeClick(e, employee)}
-                  className={`px-3 py-2 rounded-lg cursor-grab select-none transition-all ${
-                    isSelected
-                      ? 'bg-blue-600 text-white shadow-lg'
+                  elevation={isSelected ? 4 : 0}
+                  sx={{
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 2,
+                    cursor: 'grab',
+                    userSelect: 'none',
+                    transition: 'all 0.2s',
+                    bgcolor: isSelected
+                      ? 'primary.main'
                       : complianceStatus.status === 'error'
-                        ? 'bg-red-50 text-slate-700 border-2 border-red-300 hover:border-red-400'
+                        ? 'error.50'
                         : complianceStatus.status === 'warning'
-                          ? 'bg-amber-50 text-slate-700 border-2 border-amber-300 hover:border-amber-400'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                  title={complianceStatus.violations.length > 0 
+                          ? 'warning.50'
+                          : 'grey.100',
+                    color: isSelected ? 'white' : 'text.primary',
+                    border: 2,
+                    borderColor: isSelected
+                      ? 'primary.main'
+                      : complianceStatus.status === 'error'
+                        ? 'error.300'
+                        : complianceStatus.status === 'warning'
+                          ? 'warning.300'
+                          : 'transparent',
+                    '&:hover': {
+                      borderColor: isSelected
+                        ? 'primary.dark'
+                        : complianceStatus.status === 'error'
+                          ? 'error.400'
+                          : complianceStatus.status === 'warning'
+                            ? 'warning.400'
+                            : 'grey.300',
+                    },
+                  }}
+                  title={complianceStatus.violations.length > 0
                     ? `${employee.name}\n\n⚠️ ${complianceStatus.violations.map(v => v.message).join('\n⚠️ ')}\n\nDrag to assign to shift. Ctrl+click to select multiple.`
                     : 'Drag to assign to shift. Ctrl+click to select multiple.'
                   }
                 >
-                  <div className="flex items-center gap-1.5">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                     {complianceStatus.status === 'error' && !isSelected && (
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                      <Box sx={{ color: '#ef4444', flexShrink: 0, display: 'flex' }}>
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                      </Box>
                     )}
                     {complianceStatus.status === 'warning' && !isSelected && (
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      <Box sx={{ color: '#f59e0b', flexShrink: 0, display: 'flex' }}>
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                      </Box>
                     )}
-                    <div className="font-medium text-sm">{employee.name}</div>
-                  </div>
+                    <Typography variant="body2" fontWeight={600}>{employee.name}</Typography>
+                  </Box>
                   {employee.role && (
-                    <div className={`text-xs ${isSelected ? 'text-blue-200' : 'text-slate-500'}`}>
+                    <Typography variant="caption" sx={{ color: isSelected ? 'primary.100' : 'text.secondary' }}>
                       {employee.role}
-                    </div>
+                    </Typography>
                   )}
-                </div>
+                </Paper>
               );
             })}
-          </div>
-        </div>
-      </div>
+          </Box>
+        </Box>
+      </Paper>
 
       {/* Custom Time Modal */}
       {customTimeModal && (
@@ -678,6 +719,6 @@ export function PlanningView({
           onDelete={onDeleteAssignment}
         />
       )}
-    </div>
+    </Box>
   );
 }

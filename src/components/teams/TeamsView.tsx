@@ -1,6 +1,32 @@
 'use client';
 
 import { useState } from 'react';
+import Box from '@mui/material/Box';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Chip from '@mui/material/Chip';
+import Grid from '@mui/material/Grid';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Alert from '@mui/material/Alert';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Checkbox from '@mui/material/Checkbox';
+import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
 import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X } from '@/components/ui/Icons';
 import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
 
@@ -20,7 +46,6 @@ interface TeamsViewProps {
 
 export function TeamsView({
   user,
-  onSignOut,
   onBack,
   teams,
   employees,
@@ -99,7 +124,6 @@ export function TeamsView({
     );
   };
 
-  // Open assignment modal
   const openAssignModal = (team: TeamCamel) => {
     setAssigningTeam(team);
     setSelectedProjectId(projects.length > 0 ? projects[0].id : null);
@@ -110,12 +134,10 @@ export function TeamsView({
     setShowAssignModal(true);
   };
 
-  // Get shift patterns for selected project
   const projectPatterns = selectedProjectId
     ? shiftPatterns.filter(sp => sp.projectId === selectedProjectId)
     : [];
 
-  // Handle bulk assignment
   const handleBulkAssign = async () => {
     if (!assigningTeam || !selectedProjectId || !selectedPatternId || !assignStartDate || !assignEndDate) {
       setAssignError('Please fill in all fields');
@@ -135,7 +157,6 @@ export function TeamsView({
       return;
     }
 
-    // Get the shift pattern to check which days are active
     const pattern = shiftPatterns.find(sp => sp.id === selectedPatternId);
     if (!pattern) {
       setAssignError('Shift pattern not found');
@@ -146,7 +167,6 @@ export function TeamsView({
     setAssignError(null);
 
     try {
-      // Generate all dates in the range
       const dates: string[] = [];
       const current = new Date(start);
       while (current <= end) {
@@ -155,7 +175,6 @@ export function TeamsView({
           ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const dayKey = dayNames[dayOfWeek];
 
-        // Only include days where the pattern is active
         if (pattern.weeklySchedule && pattern.weeklySchedule[dayKey]) {
           dates.push(current.toISOString().split('T')[0]);
         }
@@ -168,7 +187,6 @@ export function TeamsView({
         return;
       }
 
-      // Create assignments for each team member for each date
       let created = 0;
       for (const employeeId of memberIds) {
         for (const date of dates) {
@@ -193,352 +211,329 @@ export function TeamsView({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
-      <header className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-purple-500">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className="text-slate-400 hover:text-white flex items-center gap-1"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-            <div className="text-white font-semibold text-lg">
-              <span className="text-purple-400">Team</span> Management
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="bg-slate-700 text-purple-400 px-3 py-1 rounded text-xs font-mono">
-              TEAMS
-            </span>
-            <div className="text-slate-400 text-sm">{user?.email}</div>
-          </div>
-        </div>
-      </header>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          background: 'linear-gradient(to right, #1e293b, #0f172a)',
+          borderBottom: '4px solid',
+          borderColor: 'secondary.main',
+        }}
+      >
+        <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
+          <Button
+            onClick={onBack}
+            startIcon={<ChevronLeft className="w-4 h-4" />}
+            sx={{ color: 'grey.400', mr: 2, '&:hover': { color: 'white' } }}
+          >
+            Back
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            <Box component="span" sx={{ color: 'secondary.light' }}>Team</Box> Management
+          </Typography>
+          <Chip
+            label="TEAMS"
+            size="small"
+            sx={{
+              bgcolor: 'rgba(51, 65, 85, 0.8)',
+              color: 'secondary.light',
+              fontFamily: 'monospace',
+              fontWeight: 500,
+              fontSize: '0.7rem',
+              mr: 2,
+            }}
+          />
+          <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+        </Toolbar>
+      </AppBar>
 
       {/* Content */}
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Teams</h2>
-            <p className="text-slate-600">Create teams and bulk-assign them to shift patterns</p>
-          </div>
-          <button
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box>
+            <Typography variant="h4" fontWeight={700}>Teams</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Create teams and bulk-assign them to shift patterns
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<Plus className="w-4 h-4" />}
             onClick={openCreateModal}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Create Team
-          </button>
-        </div>
+            Create Team
+          </Button>
+        </Box>
 
         {teams.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-700 mb-2">No Teams Yet</h3>
-            <p className="text-slate-500 mb-6">
+          <Card sx={{ p: 6, textAlign: 'center' }}>
+            <Box sx={{ color: 'grey.300', mb: 2 }}>
+              <Users className="w-16 h-16" />
+            </Box>
+            <Typography variant="h6" gutterBottom>No Teams Yet</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Create a team to group employees and assign them to projects together
-            </p>
-            <button
-              onClick={openCreateModal}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
-            >
+            </Typography>
+            <Button variant="contained" color="secondary" onClick={openCreateModal}>
               Create Your First Team
-            </button>
-          </div>
+            </Button>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Grid container spacing={3}>
             {teams.map(team => {
               const teamMembers = employees.filter(e => team.memberIds?.includes(e.id));
               return (
-                <div
-                  key={team.id}
-                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-900">{team.name}</h3>
-                      <p className="text-sm text-slate-600">
-                        {teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openEditModal(team)}
-                        className="text-blue-600 hover:text-blue-800 p-1"
-                        title="Edit team"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(team)}
-                        className="text-red-600 hover:text-red-800 p-1"
-                        title="Delete team"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                <Grid size={{ xs: 12, md: 6, lg: 4 }} key={team.id}>
+                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Box>
+                          <Typography variant="h6" fontWeight={600}>{team.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {teamMembers.length} member{teamMembers.length !== 1 ? 's' : ''}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <IconButton size="small" onClick={() => openEditModal(team)} color="primary">
+                            <Edit2 className="w-4 h-4" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleDelete(team)} color="error">
+                            <Trash2 className="w-4 h-4" />
+                          </IconButton>
+                        </Box>
+                      </Box>
 
-                  {/* Team Members */}
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-slate-500 mb-2">MEMBERS</p>
-                    <div className="flex flex-wrap gap-1">
-                      {teamMembers.length === 0 ? (
-                        <span className="text-slate-400 text-sm">No members</span>
-                      ) : (
-                        <>
-                          {teamMembers.slice(0, 5).map(member => (
-                            <span
-                              key={member.id}
-                              className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs"
-                            >
-                              {member.name.split(' ')[0]}
-                            </span>
-                          ))}
-                          {teamMembers.length > 5 && (
-                            <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded text-xs">
-                              +{teamMembers.length - 5} more
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Assign Button */}
-                  <button
-                    onClick={() => openAssignModal(team)}
-                    disabled={teamMembers.length === 0 || projects.length === 0}
-                    className={`w-full py-2 rounded-md flex items-center justify-center gap-2 ${
-                      teamMembers.length === 0 || projects.length === 0
-                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                        : 'bg-purple-600 text-white hover:bg-purple-700'
-                    }`}
-                    title={projects.length === 0 ? 'Create a project first' : teamMembers.length === 0 ? 'Add team members first' : 'Assign team to shift pattern'}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Assign to Shift Pattern
-                  </button>
-                </div>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        MEMBERS
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {teamMembers.length === 0 ? (
+                          <Typography variant="body2" color="text.secondary">No members</Typography>
+                        ) : (
+                          <>
+                            {teamMembers.slice(0, 5).map(member => (
+                              <Chip key={member.id} label={member.name.split(' ')[0]} size="small" />
+                            ))}
+                            {teamMembers.length > 5 && (
+                              <Chip label={`+${teamMembers.length - 5} more`} size="small" color="default" />
+                            )}
+                          </>
+                        )}
+                      </Box>
+                    </CardContent>
+                    <CardActions sx={{ p: 2, pt: 0 }}>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        fullWidth
+                        startIcon={<Calendar className="w-4 h-4" />}
+                        onClick={() => openAssignModal(team)}
+                        disabled={teamMembers.length === 0 || projects.length === 0}
+                      >
+                        Assign to Shift Pattern
+                      </Button>
+                    </CardActions>
+                  </Card>
+                </Grid>
               );
             })}
 
             {/* Add Team Card */}
-            <div
-              onClick={openCreateModal}
-              className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-dashed border-purple-300 rounded-lg p-6 hover:border-purple-500 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[200px]"
-            >
-              <div className="bg-purple-600 rounded-full p-3 mb-3">
-                <Plus className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="font-semibold text-slate-900">Create New Team</h3>
-            </div>
-          </div>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+              <Card
+                onClick={openCreateModal}
+                sx={{
+                  height: '100%',
+                  minHeight: 200,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  border: '2px dashed',
+                  borderColor: 'secondary.light',
+                  '&:hover': { borderColor: 'secondary.main' },
+                }}
+              >
+                <Box sx={{ bgcolor: 'secondary.main', borderRadius: '50%', p: 1.5, mb: 1.5 }}>
+                  <Plus className="w-6 h-6" />
+                </Box>
+                <Typography variant="subtitle1" fontWeight={600}>Create New Team</Typography>
+              </Card>
+            </Grid>
+          </Grid>
         )}
-      </div>
+      </Box>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">
-                {editingTeam ? 'Edit Team' : 'Create Team'}
-              </h2>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Team Name
-                  </label>
-                  <input
-                    type="text"
-                    value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                    placeholder="e.g., Night Shift Team A"
-                  />
-                </div>
+      {/* Create/Edit Team Modal */}
+      <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {editingTeam ? 'Edit Team' : 'Create Team'}
+        </DialogTitle>
+        <form onSubmit={handleSubmit}>
+          <DialogContent dividers>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <TextField
+                label="Team Name"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                placeholder="e.g., Night Shift Team A"
+                fullWidth
+                required
+              />
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Select Members ({selectedMembers.length} selected)
-                  </label>
-                  <div className="border border-slate-200 rounded-md max-h-48 overflow-y-auto">
-                    {employees.length === 0 ? (
-                      <p className="p-3 text-slate-500 text-sm">No employees available</p>
-                    ) : (
-                      employees.map(emp => (
-                        <label
-                          key={emp.id}
-                          className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedMembers.includes(emp.id)}
-                            onChange={() => toggleMember(emp.id)}
-                            className="mr-3"
-                          />
-                          <span className="text-sm text-slate-900">{emp.name}</span>
-                          {emp.role && (
-                            <span className="ml-2 text-xs text-slate-600">({emp.role})</span>
-                          )}
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-                >
-                  {editingTeam ? 'Save Changes' : 'Create Team'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  Select Members ({selectedMembers.length} selected)
+                </Typography>
+                <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto' }}>
+                  {employees.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
+                      No employees available
+                    </Typography>
+                  ) : (
+                    <List dense>
+                      {employees.map(emp => (
+                        <ListItem key={emp.id} disablePadding>
+                          <ListItemButton onClick={() => toggleMember(emp.id)}>
+                            <ListItemIcon>
+                              <Checkbox
+                                edge="start"
+                                checked={selectedMembers.includes(emp.id)}
+                                disableRipple
+                              />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={emp.name}
+                              secondary={emp.role}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </Paper>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={() => setShowModal(false)}>Cancel</Button>
+            <Button type="submit" variant="contained" color="secondary">
+              {editingTeam ? 'Save Changes' : 'Create Team'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
 
       {/* Assignment Modal */}
-      {showAssignModal && assigningTeam && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Assign Team to Shift Pattern</h2>
-                <p className="text-sm text-slate-600">
-                  Assigning: <span className="font-medium">{assigningTeam.name}</span> ({assigningTeam.memberIds?.length || 0} members)
-                </p>
-              </div>
-              <button onClick={() => setShowAssignModal(false)} className="text-slate-500 hover:text-slate-700">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <Dialog open={showAssignModal} onClose={() => setShowAssignModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            Assign Team to Shift Pattern
+            <Typography variant="body2" color="text.secondary">
+              Assigning: <strong>{assigningTeam?.name}</strong> ({assigningTeam?.memberIds?.length || 0} members)
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setShowAssignModal(false)} size="small">
+            <X className="w-5 h-5" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {assignError && <Alert severity="error">{assignError}</Alert>}
 
-            <div className="p-4 space-y-4">
-              {assignError && (
-                <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
-                  {assignError}
-                </div>
-              )}
+            <TextField
+              select
+              label="Project"
+              value={selectedProjectId || ''}
+              onChange={(e) => {
+                setSelectedProjectId(Number(e.target.value));
+                setSelectedPatternId(null);
+              }}
+              fullWidth
+              required
+            >
+              <MenuItem value="">Select a project...</MenuItem>
+              {projects.map(p => (
+                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+              ))}
+            </TextField>
 
-              {/* Project Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Project <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedProjectId || ''}
-                  onChange={(e) => {
-                    setSelectedProjectId(Number(e.target.value));
-                    setSelectedPatternId(null);
-                  }}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                >
-                  <option value="">Select a project...</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
+            <TextField
+              select
+              label="Shift Pattern"
+              value={selectedPatternId || ''}
+              onChange={(e) => setSelectedPatternId(e.target.value)}
+              fullWidth
+              required
+              disabled={!selectedProjectId}
+            >
+              <MenuItem value="">Select a shift pattern...</MenuItem>
+              {projectPatterns.map(sp => (
+                <MenuItem key={sp.id} value={sp.id}>
+                  {sp.name} ({sp.startTime} - {sp.endTime})
+                </MenuItem>
+              ))}
+            </TextField>
+            {selectedProjectId && projectPatterns.length === 0 && (
+              <Alert severity="warning" variant="outlined">
+                No shift patterns defined for this project. Create one in Planning view first.
+              </Alert>
+            )}
 
-              {/* Shift Pattern Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Shift Pattern <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedPatternId || ''}
-                  onChange={(e) => setSelectedPatternId(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                  disabled={!selectedProjectId}
-                >
-                  <option value="">Select a shift pattern...</option>
-                  {projectPatterns.map(sp => (
-                    <option key={sp.id} value={sp.id}>
-                      {sp.name} ({sp.startTime} - {sp.endTime})
-                    </option>
-                  ))}
-                </select>
-                {selectedProjectId && projectPatterns.length === 0 && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    No shift patterns defined for this project. Create one in Planning view first.
-                  </p>
-                )}
-              </div>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <TextField
+                  type="date"
+                  label="Start Date"
+                  value={assignStartDate}
+                  onChange={(e) => setAssignStartDate(e.target.value)}
+                  fullWidth
+                  required
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <TextField
+                  type="date"
+                  label="End Date"
+                  value={assignEndDate}
+                  onChange={(e) => setAssignEndDate(e.target.value)}
+                  fullWidth
+                  required
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Grid>
+            </Grid>
 
-              {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={assignStartDate}
-                    onChange={(e) => setAssignStartDate(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    End Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={assignEndDate}
-                    onChange={(e) => setAssignEndDate(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                  />
-                </div>
-              </div>
-
-              {/* Preview */}
-              {selectedPatternId && assignStartDate && assignEndDate && (
-                <div className="bg-slate-50 p-3 rounded-md">
-                  <p className="text-sm text-slate-600">
-                    This will create assignments for <strong>{assigningTeam.memberIds?.length || 0}</strong> team members
-                    from <strong>{assignStartDate}</strong> to <strong>{assignEndDate}</strong> on days
-                    when the shift pattern is active.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
-              <button
-                type="button"
-                onClick={() => setShowAssignModal(false)}
-                className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-                disabled={assigning}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkAssign}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
-                disabled={assigning || !selectedProjectId || !selectedPatternId || !assignStartDate || !assignEndDate}
-              >
-                {assigning ? 'Assigning...' : 'Assign Team'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            {selectedPatternId && assignStartDate && assignEndDate && (
+              <Alert severity="info" variant="outlined">
+                This will create assignments for <strong>{assigningTeam?.memberIds?.length || 0}</strong> team members
+                from <strong>{assignStartDate}</strong> to <strong>{assignEndDate}</strong> on days
+                when the shift pattern is active.
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: 'action.hover' }}>
+          <Button onClick={() => setShowAssignModal(false)} disabled={assigning}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleBulkAssign}
+            variant="contained"
+            color="secondary"
+            disabled={assigning || !selectedProjectId || !selectedPatternId || !assignStartDate || !assignEndDate}
+            startIcon={assigning ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {assigning ? 'Assigning...' : 'Assign Team'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }

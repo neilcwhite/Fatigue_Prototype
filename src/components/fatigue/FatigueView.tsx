@@ -1,7 +1,34 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users } from '@/components/ui/Icons';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Alert from '@mui/material/Alert';
+import Grid from '@mui/material/Grid';
+import Collapse from '@mui/material/Collapse';
+import LinearProgress from '@mui/material/LinearProgress';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X } from '@/components/ui/Icons';
 import {
   calculateFatigueSequence,
   getRiskLevel,
@@ -16,8 +43,7 @@ import { getRiskColor } from '@/lib/utils';
 
 interface Shift extends ShiftDefinition {
   id: number;
-  isRestDay?: boolean;  // Mark day as rest/off (no work)
-  // Per-day parameters (optional - uses global defaults if not set)
+  isRestDay?: boolean;
   commuteIn?: number;
   commuteOut?: number;
   workload?: number;
@@ -30,17 +56,14 @@ interface FatigueViewProps {
   user: SupabaseUser;
   onSignOut: () => void;
   onBack: () => void;
-  // Data from the app
   projects?: ProjectCamel[];
   employees?: EmployeeCamel[];
   shiftPatterns?: ShiftPatternCamel[];
   assignments?: AssignmentCamel[];
-  // Save functions
   onCreateShiftPattern?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
 }
 
-// Extended templates including the original simple ones
 const TEMPLATES = {
   ...FATIGUE_TEMPLATES,
   standard5x8: {
@@ -97,8 +120,6 @@ const TEMPLATES = {
   },
 };
 
-// Role-based fatigue presets (workload, attention)
-// Based on typical rail industry safety-critical roles
 const ROLE_PRESETS = {
   custom: { name: 'Custom', workload: 2, attention: 2, description: 'Set your own values' },
   coss: { name: 'COSS', workload: 4, attention: 5, description: 'Controller of Site Safety - highest responsibility' },
@@ -114,42 +135,24 @@ const ROLE_PRESETS = {
 
 type RoleKey = keyof typeof ROLE_PRESETS;
 
-// Helper to get day of week from day number (assumes Day 1 = Monday)
 const getDayOfWeek = (dayNum: number, startDay: number = 1): string => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  // startDay: 1=Mon, 2=Tue, etc.
   const index = ((startDay - 1) + (dayNum - 1)) % 7;
   return days[index];
 };
 
-// Network Rail week days (Saturday to Friday)
 const NR_DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
 type NRDayKey = typeof NR_DAYS[number];
 
-// Map NR day index (0=Sat) to Shift day number (1=Sat for NR week)
 const nrDayIndexToShiftDay = (nrIndex: number): number => nrIndex + 1;
 
-// Convert shifts array to WeeklySchedule format for database storage
 const shiftsToWeeklySchedule = (shifts: Shift[], defaultParams: { commuteTime: number; workload: number; attention: number; breakFrequency: number; breakLength: number }) => {
   const schedule: Record<string, { startTime: string; endTime: string; commuteIn?: number; commuteOut?: number; workload?: number; attention?: number; breakFreq?: number; breakLen?: number } | null> = {
-    Sat: null,
-    Sun: null,
-    Mon: null,
-    Tue: null,
-    Wed: null,
-    Thu: null,
-    Fri: null,
+    Sat: null, Sun: null, Mon: null, Tue: null, Wed: null, Thu: null, Fri: null,
   };
 
-  // Map day number to NR day name (1=Sat, 2=Sun, etc.)
   const dayNumToNRDay: Record<number, NRDayKey> = {
-    1: 'Sat',
-    2: 'Sun',
-    3: 'Mon',
-    4: 'Tue',
-    5: 'Wed',
-    6: 'Thu',
-    7: 'Fri',
+    1: 'Sat', 2: 'Sun', 3: 'Mon', 4: 'Tue', 5: 'Wed', 6: 'Thu', 7: 'Fri',
   };
 
   shifts.forEach(shift => {
@@ -171,6 +174,27 @@ const shiftsToWeeklySchedule = (shifts: Shift[], defaultParams: { commuteTime: n
   return schedule;
 };
 
+// Helper to get risk color for MUI sx prop
+const getRiskChipSx = (level: string) => {
+  switch (level) {
+    case 'low': return { bgcolor: '#dcfce7', color: '#166534' };
+    case 'moderate': return { bgcolor: '#fef9c3', color: '#854d0e' };
+    case 'elevated': return { bgcolor: '#ffedd5', color: '#9a3412' };
+    case 'critical': return { bgcolor: '#fee2e2', color: '#991b1b' };
+    default: return { bgcolor: 'grey.200', color: 'grey.700' };
+  }
+};
+
+const getRiskCardSx = (level: string) => {
+  switch (level) {
+    case 'low': return { bgcolor: '#dcfce7', color: '#166534', borderColor: '#86efac' };
+    case 'moderate': return { bgcolor: '#fef9c3', color: '#854d0e', borderColor: '#fde047' };
+    case 'elevated': return { bgcolor: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' };
+    case 'critical': return { bgcolor: '#fee2e2', color: '#991b1b', borderColor: '#fca5a5' };
+    default: return { bgcolor: 'grey.100', color: 'grey.800', borderColor: 'grey.300' };
+  }
+};
+
 export function FatigueView({
   user,
   onSignOut,
@@ -190,15 +214,12 @@ export function FatigueView({
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // View mode: 'weekly' (7-day grid) or 'multiweek' (original flexible list)
   const [viewMode, setViewMode] = useState<'weekly' | 'multiweek'>('weekly');
 
-  // Project, shift pattern, and employee selection for loading rosters
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
 
-  // Save modal state
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savePatternName, setSavePatternName] = useState('');
   const [saveProjectId, setSaveProjectId] = useState<number | null>(null);
@@ -207,13 +228,11 @@ export function FatigueView({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Role and day-of-week settings
   const [selectedRole, setSelectedRole] = useState<RoleKey>('custom');
-  const [startDayOfWeek, setStartDayOfWeek] = useState<number>(1); // 1=Sat for NR week
+  const [startDayOfWeek, setStartDayOfWeek] = useState<number>(1);
   const [compareRoles, setCompareRoles] = useState(false);
   const [selectedRolesForCompare, setSelectedRolesForCompare] = useState<RoleKey[]>(['coss', 'lookout', 'labourer']);
 
-  // Fatigue parameters - explicitly typed to allow mutable number values
   const [params, setParams] = useState<{
     commuteTime: number;
     workload: number;
@@ -232,13 +251,11 @@ export function FatigueView({
     breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
   });
 
-  // Get shift patterns for the selected project
   const projectPatterns = useMemo(() => {
     if (!selectedProjectId) return [];
     return shiftPatterns.filter(p => p.projectId === selectedProjectId);
   }, [selectedProjectId, shiftPatterns]);
 
-  // Get employees assigned to the selected shift pattern
   const patternEmployees = useMemo(() => {
     if (!selectedProjectId || !selectedPatternId) return [];
     const employeeIds = new Set(
@@ -249,20 +266,16 @@ export function FatigueView({
     return employees.filter(e => employeeIds.has(e.id));
   }, [selectedProjectId, selectedPatternId, assignments, employees]);
 
-  // Get selected data
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const selectedPattern = shiftPatterns.find(p => p.id === selectedPatternId);
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
-  // Load shift pattern as roster (converts weekly schedule to shifts)
   const handleLoadPattern = () => {
     if (!selectedPatternId || !selectedPattern) return;
 
-    // Build shifts from the pattern's weekly schedule or default times
     const loadedShifts: Shift[] = [];
 
     if (selectedPattern.weeklySchedule) {
-      // Use the weekly schedule if defined
       const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
       const schedule = selectedPattern.weeklySchedule;
 
@@ -284,7 +297,6 @@ export function FatigueView({
         }
       });
     } else if (selectedPattern.startTime && selectedPattern.endTime) {
-      // No weekly schedule - create a simple 5-day pattern from pattern times
       for (let day = 1; day <= 5; day++) {
         loadedShifts.push({
           id: Date.now() + day,
@@ -301,23 +313,16 @@ export function FatigueView({
       }
     }
 
-    // Sort by day number
     loadedShifts.sort((a, b) => a.day - b.day);
-
-    // Set start day to Monday by default for patterns
     setStartDayOfWeek(1);
     setShifts(loadedShifts);
   };
 
-  // Apply employee's role workload/attention to the current shifts
   const handleApplyEmployeeRole = () => {
     if (!selectedEmployeeId || !selectedEmployee) return;
 
-    // Look up employee's role to get typical workload/attention
-    // For now, we'll use the employee's role name to match a preset if possible
     const employeeRole = selectedEmployee.role?.toLowerCase() || '';
 
-    // Try to match to a role preset
     let workload = params.workload;
     let attention = params.attention;
 
@@ -350,25 +355,15 @@ export function FatigueView({
       attention = ROLE_PRESETS.trainee.attention;
     }
 
-    // Update all shifts with the employee's workload/attention
-    setShifts(shifts.map(s => ({
-      ...s,
-      workload,
-      attention,
-    })));
-
-    // Update global params too
+    setShifts(shifts.map(s => ({ ...s, workload, attention })));
     setParams(prev => ({ ...prev, workload, attention }));
   };
 
-  // Calculate results using full HSE RR446 algorithm
   const results = useMemo(() => {
-    // Filter out rest days - they don't contribute to fatigue
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) return null;
 
     const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
-    // Include per-shift fatigue parameters in the shift definitions
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
       day: s.day,
       startTime: s.startTime,
@@ -383,7 +378,6 @@ export function FatigueView({
 
     const calculations = calculateFatigueSequence(shiftDefinitions, params);
 
-    // Calculate duty lengths for display
     const calculationsWithDuty = calculations.map((calc, idx) => {
       const shift = sortedShifts[idx];
       const startHour = parseTimeToHours(shift.startTime);
@@ -406,7 +400,6 @@ export function FatigueView({
     const maxRisk = Math.max(...riskIndices);
     const totalHours = calculationsWithDuty.reduce((a, c) => a + c.dutyLength, 0);
 
-    // Component averages
     const avgCumulative = calculationsWithDuty.reduce((a, c) => a + c.cumulative, 0) / calculationsWithDuty.length;
     const avgTiming = calculationsWithDuty.reduce((a, c) => a + c.timing, 0) / calculationsWithDuty.length;
     const avgJobBreaks = calculationsWithDuty.reduce((a, c) => a + c.jobBreaks, 0) / calculationsWithDuty.length;
@@ -426,13 +419,11 @@ export function FatigueView({
     };
   }, [shifts, params, startDayOfWeek]);
 
-  // Calculate worst-case results (W=5, A=5) for the full sequence
   const worstCaseResults = useMemo(() => {
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) return null;
 
     const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
-    // Build shift definitions with W=5, A=5 for worst case
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
       day: s.day,
       startTime: s.startTime,
@@ -448,7 +439,6 @@ export function FatigueView({
     const worstParams = { ...params, workload: 5, attention: 5 };
     const calculations = calculateFatigueSequence(shiftDefinitions, worstParams);
 
-    // Map day to calculation for easy lookup
     const calcByDay = new Map<number, { riskIndex: number; riskLevel: { level: string } }>();
     sortedShifts.forEach((shift, idx) => {
       calcByDay.set(shift.day, {
@@ -460,19 +450,15 @@ export function FatigueView({
     return calcByDay;
   }, [shifts, params]);
 
-  // Calculate role comparison results
   const roleComparisonResults = useMemo(() => {
-    // Filter out rest days - they don't contribute to fatigue
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (!compareRoles || workingShifts.length === 0) return null;
 
     const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
 
-    // Calculate for each selected role
     const roleResults = selectedRolesForCompare.map(roleKey => {
       const role = ROLE_PRESETS[roleKey];
 
-      // Build shift definitions using the role's workload/attention but keeping per-shift commute
       const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
         day: s.day,
         startTime: s.startTime,
@@ -485,17 +471,13 @@ export function FatigueView({
         breakLen: s.breakLen,
       }));
 
-      const roleParams = {
-        ...params,
-        workload: role.workload,
-        attention: role.attention,
-      };
+      const roleParams = { ...params, workload: role.workload, attention: role.attention };
 
       const calculations = calculateFatigueSequence(shiftDefinitions, roleParams);
       const maxRisk = Math.max(...calculations.map(c => c.riskIndex));
       const avgRisk = calculations.reduce((a, c) => a + c.riskIndex, 0) / calculations.length;
       const highRiskDays = calculations.filter(c => c.riskIndex >= 1.1).length;
-      const isCompliant = maxRisk < 1.2; // Below "critical" threshold
+      const isCompliant = maxRisk < 1.2;
 
       return {
         roleKey,
@@ -520,7 +502,6 @@ export function FatigueView({
       day: lastDay + 1,
       startTime: '08:00',
       endTime: '17:00',
-      // Initialize with global defaults split into in/out
       commuteIn: Math.floor(params.commuteTime / 2),
       commuteOut: Math.ceil(params.commuteTime / 2),
       workload: params.workload,
@@ -539,7 +520,6 @@ export function FatigueView({
     setShifts(shifts.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
 
-  // Apply global params to all shifts
   const handleApplyGlobalToAll = () => {
     setShifts(shifts.map(s => ({
       ...s,
@@ -558,7 +538,6 @@ export function FatigueView({
       setShifts(template.shifts.map((s, i) => ({
         ...s,
         id: Date.now() + i,
-        // Initialize with global defaults
         commuteIn: Math.floor(params.commuteTime / 2),
         commuteOut: Math.ceil(params.commuteTime / 2),
         workload: params.workload,
@@ -577,33 +556,22 @@ export function FatigueView({
     setParams({ ...DEFAULT_FATIGUE_PARAMS });
   };
 
-  // Apply role preset to workload/attention
   const handleApplyRolePreset = (roleKey: RoleKey) => {
     setSelectedRole(roleKey);
     if (roleKey !== 'custom') {
       const role = ROLE_PRESETS[roleKey];
-      setParams(prev => ({
-        ...prev,
-        workload: role.workload,
-        attention: role.attention,
-      }));
-      // Also update all existing shifts
-      setShifts(shifts.map(s => ({
-        ...s,
-        workload: role.workload,
-        attention: role.attention,
-      })));
+      setParams(prev => ({ ...prev, workload: role.workload, attention: role.attention }));
+      setShifts(shifts.map(s => ({ ...s, workload: role.workload, attention: role.attention })));
     }
   };
 
-  // Initialize 7-day week for weekly view mode
   const initializeWeeklyShifts = () => {
     const weekShifts: Shift[] = NR_DAYS.map((_, index) => ({
       id: Date.now() + index,
       day: nrDayIndexToShiftDay(index),
       startTime: '07:00',
       endTime: '19:00',
-      isRestDay: index === 0 || index === 1, // Sat/Sun rest by default
+      isRestDay: index === 0 || index === 1,
       commuteIn: Math.floor(params.commuteTime / 2),
       commuteOut: Math.ceil(params.commuteTime / 2),
       workload: params.workload,
@@ -612,10 +580,9 @@ export function FatigueView({
       breakLen: params.breakLength,
     }));
     setShifts(weekShifts);
-    setStartDayOfWeek(6); // Saturday start for NR week
+    setStartDayOfWeek(6);
   };
 
-  // Toggle rest day for weekly view
   const toggleRestDay = (dayIndex: number) => {
     const dayNum = nrDayIndexToShiftDay(dayIndex);
     setShifts(prev => prev.map(s =>
@@ -623,7 +590,6 @@ export function FatigueView({
     ));
   };
 
-  // Update shift time for weekly view
   const updateWeeklyShiftTime = (dayIndex: number, field: 'startTime' | 'endTime', value: string) => {
     const dayNum = nrDayIndexToShiftDay(dayIndex);
     setShifts(prev => prev.map(s =>
@@ -631,7 +597,6 @@ export function FatigueView({
     ));
   };
 
-  // Update shift parameter for weekly view (travel times, workload, attention, etc.)
   const updateWeeklyShiftParam = (dayIndex: number, field: keyof Shift, value: number) => {
     const dayNum = nrDayIndexToShiftDay(dayIndex);
     setShifts(prev => prev.map(s =>
@@ -639,13 +604,11 @@ export function FatigueView({
     ));
   };
 
-  // Get shift for a specific NR day index
   const getShiftForDay = (dayIndex: number): Shift | undefined => {
     const dayNum = nrDayIndexToShiftDay(dayIndex);
     return shifts.find(s => s.day === dayNum);
   };
 
-  // Save pattern handler
   const handleSavePattern = async () => {
     if (!savePatternName.trim()) {
       setSaveError('Pattern name is required');
@@ -660,7 +623,6 @@ export function FatigueView({
       return;
     }
 
-    // Check at least one working day
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) {
       setSaveError('At least one working day is required');
@@ -672,8 +634,6 @@ export function FatigueView({
 
     try {
       const weeklySchedule = shiftsToWeeklySchedule(shifts, params);
-
-      // Get representative start/end times from first working shift
       const firstWorking = workingShifts[0];
 
       await onCreateShiftPattern({
@@ -703,7 +663,6 @@ export function FatigueView({
     }
   };
 
-  // Update existing pattern handler
   const handleUpdateExistingPattern = async () => {
     if (!selectedPatternId || !onUpdateShiftPattern) {
       setSaveError('No pattern selected or update function not available');
@@ -735,7 +694,6 @@ export function FatigueView({
       });
 
       setSaveError(null);
-      // Show success feedback
       alert('Pattern updated successfully!');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update pattern';
@@ -745,7 +703,6 @@ export function FatigueView({
     }
   };
 
-  // Toggle a role in the comparison list
   const toggleCompareRole = (roleKey: RoleKey) => {
     if (selectedRolesForCompare.includes(roleKey)) {
       setSelectedRolesForCompare(selectedRolesForCompare.filter(r => r !== roleKey));
@@ -754,35 +711,16 @@ export function FatigueView({
     }
   };
 
-  // Export to CSV
   const handleExportCSV = () => {
     if (!results) return;
 
-    const headers = [
-      'Day',
-      'Start Time',
-      'End Time',
-      'Duration (h)',
-      'Cumulative',
-      'Timing',
-      'Job/Breaks',
-      'FRI',
-      'Risk Level',
-    ];
+    const headers = ['Day', 'Start Time', 'End Time', 'Duration (h)', 'Cumulative', 'Timing', 'Job/Breaks', 'FRI', 'Risk Level'];
 
     const rows = results.calculations.map(calc => [
-      calc.day,
-      calc.startTime,
-      calc.endTime,
-      calc.dutyLength,
-      calc.cumulative,
-      calc.timing,
-      calc.jobBreaks,
-      calc.riskIndex,
-      calc.riskLevel.label,
+      calc.day, calc.startTime, calc.endTime, calc.dutyLength,
+      calc.cumulative, calc.timing, calc.jobBreaks, calc.riskIndex, calc.riskLevel.label,
     ]);
 
-    // Add summary row
     rows.push([]);
     rows.push(['Summary']);
     rows.push(['Average FRI', '', '', '', '', '', '', results.summary.avgRisk]);
@@ -790,7 +728,6 @@ export function FatigueView({
     rows.push(['Total Hours', '', '', results.summary.totalHours]);
     rows.push(['High Risk Shifts', '', '', '', '', '', '', results.summary.highRiskCount]);
 
-    // Add parameters
     rows.push([]);
     rows.push(['Parameters']);
     rows.push(['Commute Time', `${params.commuteTime} min`]);
@@ -809,7 +746,6 @@ export function FatigueView({
     URL.revokeObjectURL(url);
   };
 
-  // Print/Export report
   const handlePrint = () => {
     if (!results) return;
 
@@ -923,7 +859,7 @@ export function FatigueView({
 
           <div class="footer">
             <p>This assessment uses the HSE Research Report RR446 methodology for calculating fatigue risk.</p>
-            <p>FRI = Cumulative Factor × Timing Factor × Job/Breaks Factor</p>
+            <p>FRI = Cumulative Factor x Timing Factor x Job/Breaks Factor</p>
           </div>
         </body>
       </html>
@@ -937,1381 +873,1224 @@ export function FatigueView({
     }
   };
 
-  // Risk bar visualization
+  // Risk bar component
   const RiskBar = ({ value, max = 1.5, label, color }: { value: number; max?: number; label: string; color: string }) => {
     const percentage = Math.min(100, (value / max) * 100);
     return (
-      <div className="mb-2">
-        <div className="flex justify-between text-xs mb-1">
-          <span className="text-slate-600">{label}</span>
-          <span className="font-medium text-slate-800">{value.toFixed(3)}</span>
-        </div>
-        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-          <div
-            className={`h-full ${color} transition-all duration-300`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
+      <Box sx={{ mb: 1.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">{label}</Typography>
+          <Typography variant="caption" fontWeight={600}>{value.toFixed(3)}</Typography>
+        </Box>
+        <LinearProgress
+          variant="determinate"
+          value={percentage}
+          sx={{
+            height: 8,
+            borderRadius: 1,
+            bgcolor: 'grey.200',
+            '& .MuiLinearProgress-bar': { bgcolor: color },
+          }}
+        />
+      </Box>
     );
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
-      <header className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-orange-500">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded-md text-sm flex items-center gap-1"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-            <div className="text-white font-semibold text-lg">
-              Fatigue <span className="text-orange-400">Risk Assessment</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="bg-slate-700 text-orange-400 px-3 py-1 rounded text-xs font-mono">
-              HSE RR446 COMPLIANT
-            </span>
-            <div className="text-slate-400 text-sm">{user?.email}</div>
-          </div>
-        </div>
-      </header>
+      <AppBar position="static" sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #f97316' }}>
+        <Toolbar>
+          <Button
+            startIcon={<ChevronLeft className="w-4 h-4" />}
+            onClick={onBack}
+            sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', mr: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+          >
+            Back
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            Fatigue <Box component="span" sx={{ color: '#fb923c' }}>Risk Assessment</Box>
+          </Typography>
+          <Chip
+            label="HSE RR446 COMPLIANT"
+            size="small"
+            sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: '#fb923c', fontFamily: 'monospace', fontSize: '0.7rem', mr: 2 }}
+          />
+          <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+        </Toolbar>
+      </AppBar>
 
-      <div className="p-6">
-        {/* View Mode Toggle */}
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => setViewMode('weekly')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'weekly'
-                  ? 'bg-orange-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              7-Day Week
-            </button>
-            <button
-              onClick={() => setViewMode('multiweek')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'multiweek'
-                  ? 'bg-orange-500 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Multi-Week Pattern
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
+      <Box sx={{ p: 3 }}>
+        {/* View Mode Toggle & Actions */}
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={(e, val) => val && setViewMode(val)}
+            size="small"
+            sx={{ bgcolor: 'white' }}
+          >
+            <ToggleButton value="weekly" sx={{ px: 3 }}>7-Day Week</ToggleButton>
+            <ToggleButton value="multiweek" sx={{ px: 3 }}>Multi-Week Pattern</ToggleButton>
+          </ToggleButtonGroup>
+
+          <Box sx={{ display: 'flex', gap: 1 }}>
             {shifts.length > 0 && onCreateShiftPattern && (
-              <button
-                onClick={() => {
-                  setSaveProjectId(selectedProjectId);
-                  setShowSaveModal(true);
-                }}
-                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center gap-2"
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<Download className="w-4 h-4" />}
+                onClick={() => { setSaveProjectId(selectedProjectId); setShowSaveModal(true); }}
               >
-                <Download className="w-4 h-4" />
                 Save as New Pattern
-              </button>
+              </Button>
             )}
             {shifts.length > 0 && selectedPatternId && onUpdateShiftPattern && (
-              <button
+              <Button
+                variant="contained"
+                color="secondary"
                 onClick={handleUpdateExistingPattern}
                 disabled={isSaving}
-                className="px-4 py-2 bg-violet-600 text-white rounded-md text-sm font-medium hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2"
               >
                 {isSaving ? 'Saving...' : 'Update Pattern'}
-              </button>
+              </Button>
             )}
-          </div>
-        </div>
+          </Box>
+        </Box>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Grid container spacing={3}>
           {/* Left Panel - Input */}
-          <div className="space-y-4">
-            {/* 7-Day Weekly View */}
-            {viewMode === 'weekly' && (
-              <div className="bg-white rounded-lg shadow-md">
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-800">Network Rail Week (Sat-Fri)</h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={initializeWeeklyShifts}
-                      className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                    >
-                      Reset Week
-                    </button>
-                    <button
-                      onClick={() => setShowSettings(!showSettings)}
-                      className={`text-sm px-3 py-1 rounded flex items-center gap-1 ${
-                        showSettings ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      <Settings className="w-4 h-4" />
-                      Parameters
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  {/* Instructions */}
-                  <p className="text-xs text-slate-500 mb-4">
-                    Network Rail week runs Saturday to Friday. Check "Rest" for non-working days.
-                  </p>
-
-                  {/* 7-Day Grid */}
-                  {shifts.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-slate-500 mb-4">Click "Reset Week" to create a 7-day roster template</p>
-                      <button
-                        onClick={initializeWeeklyShifts}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          <Grid size={{ xs: 12, lg: 6 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* 7-Day Weekly View */}
+              {viewMode === 'weekly' && (
+                <Paper elevation={2}>
+                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle1" fontWeight={600}>Network Rail Week (Sat-Fri)</Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button size="small" variant="outlined" color="primary" onClick={initializeWeeklyShifts}>
+                        Reset Week
+                      </Button>
+                      <Button
+                        size="small"
+                        variant={showSettings ? 'contained' : 'outlined'}
+                        color={showSettings ? 'warning' : 'inherit'}
+                        startIcon={<Settings className="w-4 h-4" />}
+                        onClick={() => setShowSettings(!showSettings)}
                       >
-                        Create Week Template
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {/* Global Parameters Summary */}
-                      <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-amber-800">Global Settings:</span>
-                          <div className="flex gap-3 text-amber-700">
-                            <span title="Maximum continuous work before mandatory break">
-                              Continuous: <strong>{params.continuousWork}h</strong>
-                            </span>
-                            <span title="Break required after continuous work period">
-                              Break after: <strong>{params.breakAfterContinuous}m</strong>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                        Parameters
+                      </Button>
+                    </Box>
+                  </Box>
 
-                      {/* Header */}
-                      <div className="grid grid-cols-[42px_36px_46px_72px_72px_46px_46px_46px_46px_50px_42px_60px_60px] gap-1 text-xs font-medium text-slate-600 px-1">
-                        <span className="text-center">Day</span>
-                        <span className="text-center">Rest</span>
-                        <span className="text-center text-blue-600" title="Travel time to work (mins)">In</span>
-                        <span className="text-center">Start</span>
-                        <span className="text-center">End</span>
-                        <span className="text-center text-blue-600" title="Travel time home (mins)">Out</span>
-                        <span className="text-center">Hrs</span>
-                        <span className="text-center text-purple-600" title="Workload (1-5)">W</span>
-                        <span className="text-center text-purple-600" title="Attention (1-5)">A</span>
-                        <span className="text-center text-green-600" title="Break frequency (mins)">BF</span>
-                        <span className="text-center text-green-600" title="Break length (mins)">BL</span>
-                        <span className="text-center" title="Fatigue Risk Index for selected W/A">FRI</span>
-                        <span className="text-center text-red-600" title="Worst case FRI (W=5, A=5)">Worst</span>
-                      </div>
+                  <Box sx={{ p: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                      Network Rail week runs Saturday to Friday. Check "Rest" for non-working days.
+                    </Typography>
 
-                      {/* Day Rows */}
-                      {NR_DAYS.map((dayName, index) => {
-                        const shift = getShiftForDay(index);
-                        const isRestDay = shift?.isRestDay ?? true;
-                        const startHour = shift ? parseTimeToHours(shift.startTime) : 0;
-                        let endHour = shift ? parseTimeToHours(shift.endTime) : 0;
-                        if (endHour <= startHour) endHour += 24;
-                        const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
+                    {shifts.length === 0 ? (
+                      <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography color="text.secondary" sx={{ mb: 2 }}>
+                          Click "Reset Week" to create a 7-day roster template
+                        </Typography>
+                        <Button variant="contained" onClick={initializeWeeklyShifts}>
+                          Create Week Template
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box>
+                        {/* Global Parameters Summary */}
+                        <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" fontWeight={600}>Global Settings:</Typography>
+                            <Typography variant="caption">
+                              Continuous: <strong>{params.continuousWork}h</strong> | Break after: <strong>{params.breakAfterContinuous}m</strong>
+                            </Typography>
+                          </Box>
+                        </Alert>
 
-                        // Get FRI for this day from results
-                        const dayResult = results?.calculations.find(c => c.day === nrDayIndexToShiftDay(index));
-                        const dayFRI = dayResult?.riskIndex;
-                        const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
+                        {/* Header */}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '45px 40px 50px 75px 75px 50px 45px 45px 45px 50px 45px 60px 60px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>In</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Start</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>End</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>Out</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Hrs</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main' }}>W</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main' }}>A</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main' }}>BF</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main' }}>BL</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>FRI</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main' }}>Worst</Typography>
+                        </Box>
 
-                        // Get worst-case FRI (W=5, A=5) from pre-calculated results
-                        const worstResult = worstCaseResults?.get(nrDayIndexToShiftDay(index));
-                        const worstCaseFRI = worstResult?.riskIndex;
-                        const worstCaseLevel = worstResult?.riskLevel?.level || 'low';
+                        {/* Day Rows */}
+                        {NR_DAYS.map((dayName, index) => {
+                          const shift = getShiftForDay(index);
+                          const isRestDay = shift?.isRestDay ?? true;
+                          const startHour = shift ? parseTimeToHours(shift.startTime) : 0;
+                          let endHour = shift ? parseTimeToHours(shift.endTime) : 0;
+                          if (endHour <= startHour) endHour += 24;
+                          const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
 
-                        return (
-                          <div
-                            key={dayName}
-                            className={`grid grid-cols-[42px_36px_46px_72px_72px_46px_46px_46px_46px_50px_42px_60px_60px] gap-1 p-1.5 rounded-lg items-center ${
-                              isRestDay
-                                ? 'bg-slate-100 text-slate-400'
-                                : index < 2
-                                  ? 'bg-amber-50 border border-amber-200'
-                                  : 'bg-green-50 border border-green-200'
-                            }`}
-                          >
-                            {/* Day Name */}
-                            <span className={`font-medium text-sm text-center ${isRestDay ? 'text-slate-400' : 'text-slate-700'}`}>
-                              {dayName}
-                            </span>
+                          const dayResult = results?.calculations.find(c => c.day === nrDayIndexToShiftDay(index));
+                          const dayFRI = dayResult?.riskIndex;
+                          const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
 
-                            {/* Rest Checkbox */}
-                            <div className="flex justify-center">
-                              <input
-                                type="checkbox"
-                                checked={isRestDay}
-                                onChange={() => toggleRestDay(index)}
-                                className="w-4 h-4 text-slate-600 border-slate-300 rounded"
-                                title="Rest day"
+                          const worstResult = worstCaseResults?.get(nrDayIndexToShiftDay(index));
+                          const worstCaseFRI = worstResult?.riskIndex;
+                          const worstCaseLevel = worstResult?.riskLevel?.level || 'low';
+
+                          return (
+                            <Box
+                              key={dayName}
+                              sx={{
+                                display: 'grid',
+                                gridTemplateColumns: '45px 40px 50px 75px 75px 50px 45px 45px 45px 50px 45px 60px 60px',
+                                gap: 0.5,
+                                p: 1,
+                                borderRadius: 1,
+                                alignItems: 'center',
+                                bgcolor: isRestDay ? 'grey.100' : (index < 2 ? 'warning.50' : 'success.50'),
+                                border: 1,
+                                borderColor: isRestDay ? 'grey.300' : (index < 2 ? 'warning.200' : 'success.200'),
+                                mb: 0.5,
+                                opacity: isRestDay ? 0.7 : 1,
+                              }}
+                            >
+                              <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'center' }}>{dayName}</Typography>
+
+                              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                <Checkbox
+                                  size="small"
+                                  checked={isRestDay}
+                                  onChange={() => toggleRestDay(index)}
+                                  sx={{ p: 0 }}
+                                />
+                              </Box>
+
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={shift?.commuteIn ?? 30}
+                                onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'info.50' } }}
                               />
-                            </div>
 
-                            {/* Travel In */}
-                            <input
-                              type="number"
-                              min="0"
-                              max="180"
-                              value={shift?.commuteIn ?? 30}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
-                              disabled={isRestDay}
-                              className={`w-full border border-blue-200 rounded px-1 py-1 text-xs text-center ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-50 text-slate-900'
-                              }`}
-                              title="Travel to work (mins)"
-                            />
+                              <TextField
+                                type="time"
+                                size="small"
+                                value={shift?.startTime || '07:00'}
+                                onChange={(e) => updateWeeklyShiftTime(index, 'startTime', e.target.value)}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { style: { padding: '4px' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'white' } }}
+                              />
 
-                            {/* Start Time */}
-                            <input
-                              type="time"
-                              value={shift?.startTime || '07:00'}
-                              onChange={(e) => updateWeeklyShiftTime(index, 'startTime', e.target.value)}
-                              disabled={isRestDay}
-                              className={`border rounded px-1 py-1 text-xs ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-900'
-                              }`}
-                            />
+                              <TextField
+                                type="time"
+                                size="small"
+                                value={shift?.endTime || '19:00'}
+                                onChange={(e) => updateWeeklyShiftTime(index, 'endTime', e.target.value)}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { style: { padding: '4px' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'white' } }}
+                              />
 
-                            {/* End Time */}
-                            <input
-                              type="time"
-                              value={shift?.endTime || '19:00'}
-                              onChange={(e) => updateWeeklyShiftTime(index, 'endTime', e.target.value)}
-                              disabled={isRestDay}
-                              className={`border rounded px-1 py-1 text-xs ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-900'
-                              }`}
-                            />
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={shift?.commuteOut ?? 30}
+                                onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'info.50' } }}
+                              />
 
-                            {/* Travel Out */}
-                            <input
-                              type="number"
-                              min="0"
-                              max="180"
-                              value={shift?.commuteOut ?? 30}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
-                              disabled={isRestDay}
-                              className={`w-full border border-blue-200 rounded px-1 py-1 text-xs text-center ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-50 text-slate-900'
-                              }`}
-                              title="Travel home (mins)"
-                            />
+                              <Typography variant="body2" sx={{ textAlign: 'center', fontWeight: duration > 10 ? 600 : 400, color: duration > 10 ? 'warning.main' : 'text.primary' }}>
+                                {isRestDay ? '-' : duration.toFixed(1)}
+                              </Typography>
 
-                            {/* Duration */}
-                            <div className="text-center">
-                              {isRestDay ? (
-                                <span className="text-xs text-slate-400">-</span>
-                              ) : (
-                                <span className={`text-xs font-medium ${duration > 10 ? 'text-amber-600' : 'text-slate-700'}`}>
-                                  {duration.toFixed(1)}
-                                </span>
-                              )}
-                            </div>
+                              <TextField
+                                select
+                                size="small"
+                                value={shift?.workload ?? params.workload}
+                                onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value))}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'secondary.50' } }}
+                              >
+                                {[1, 2, 3, 4, 5].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                              </TextField>
 
-                            {/* Workload */}
-                            <select
-                              value={shift?.workload ?? params.workload}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value))}
-                              disabled={isRestDay}
-                              className={`w-full border border-purple-200 rounded px-0.5 py-1 text-xs text-center ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
-                              }`}
-                              title={`Workload: 1=Light, 2=Moderate, 3=Average, 4=Heavy, 5=Very Heavy`}
-                            >
-                              <option value={1}>1</option>
-                              <option value={2}>2</option>
-                              <option value={3}>3</option>
-                              <option value={4}>4</option>
-                              <option value={5}>5</option>
-                            </select>
+                              <TextField
+                                select
+                                size="small"
+                                value={shift?.attention ?? params.attention}
+                                onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value))}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'secondary.50' } }}
+                              >
+                                {[1, 2, 3, 4, 5].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                              </TextField>
 
-                            {/* Attention */}
-                            <select
-                              value={shift?.attention ?? params.attention}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value))}
-                              disabled={isRestDay}
-                              className={`w-full border border-purple-200 rounded px-0.5 py-1 text-xs text-center ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-purple-50 text-slate-900'
-                              }`}
-                              title={`Attention: 1=Low, 2=Moderate, 3=Average, 4=High, 5=Very High`}
-                            >
-                              <option value={1}>1</option>
-                              <option value={2}>2</option>
-                              <option value={3}>3</option>
-                              <option value={4}>4</option>
-                              <option value={5}>5</option>
-                            </select>
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={shift?.breakFreq ?? params.breakFrequency}
+                                onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { min: 1, max: 8, style: { textAlign: 'center', padding: '4px' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'success.50' } }}
+                              />
 
-                            {/* Break Frequency */}
-                            <input
-                              type="number"
-                              min="1"
-                              max="8"
-                              value={shift?.breakFreq ?? params.breakFrequency}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
-                              disabled={isRestDay}
-                              className={`w-full border border-green-200 rounded px-1 py-1 text-xs text-center ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-green-50 text-slate-900'
-                              }`}
-                              title="Break frequency (hours between breaks)"
-                            />
+                              <TextField
+                                type="number"
+                                size="small"
+                                value={shift?.breakLen ?? params.breakLength}
+                                onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
+                                disabled={isRestDay}
+                                slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' } } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'success.50' } }}
+                              />
 
-                            {/* Break Length */}
-                            <input
-                              type="number"
-                              min="5"
-                              max="60"
-                              step="5"
-                              value={shift?.breakLen ?? params.breakLength}
-                              onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
-                              disabled={isRestDay}
-                              className={`w-full border border-green-200 rounded px-1 py-1 text-xs text-center ${
-                                isRestDay ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-green-50 text-slate-900'
-                              }`}
-                              title="Break length (mins)"
-                            />
+                              <Box sx={{ textAlign: 'center' }}>
+                                {isRestDay ? (
+                                  <Typography variant="caption" color="text.disabled">-</Typography>
+                                ) : dayFRI !== undefined ? (
+                                  <Chip size="small" label={dayFRI.toFixed(3)} sx={{ ...getRiskChipSx(dayRiskLevel), fontSize: '0.7rem', fontWeight: 700, height: 22 }} />
+                                ) : (
+                                  <Typography variant="caption" color="text.disabled">-</Typography>
+                                )}
+                              </Box>
 
-                            {/* FRI */}
-                            <div className="text-center">
-                              {isRestDay ? (
-                                <span className="text-xs text-slate-400">-</span>
-                              ) : dayFRI !== undefined ? (
-                                <span className={`text-xs font-bold px-1 py-0.5 rounded ${
-                                  dayRiskLevel === 'low' ? 'bg-green-100 text-green-800' :
-                                  dayRiskLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
-                                  dayRiskLevel === 'elevated' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
-                                  {dayFRI.toFixed(3)}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-400">-</span>
-                              )}
-                            </div>
+                              <Box sx={{ textAlign: 'center' }}>
+                                {isRestDay ? (
+                                  <Typography variant="caption" color="text.disabled">-</Typography>
+                                ) : worstCaseFRI !== undefined ? (
+                                  <Chip size="small" label={worstCaseFRI.toFixed(3)} sx={{ ...getRiskChipSx(worstCaseLevel), fontSize: '0.7rem', fontWeight: 700, height: 22 }} />
+                                ) : (
+                                  <Typography variant="caption" color="text.disabled">-</Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          );
+                        })}
 
-                            {/* Worst Case FRI (W=5, A=5) */}
-                            <div className="text-center">
-                              {isRestDay ? (
-                                <span className="text-xs text-slate-400">-</span>
-                              ) : worstCaseFRI !== undefined ? (
-                                <span className={`text-xs font-bold px-1 py-0.5 rounded ${
-                                  worstCaseLevel === 'low' ? 'bg-green-100 text-green-800' :
-                                  worstCaseLevel === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
-                                  worstCaseLevel === 'elevated' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-red-100 text-red-800'
-                                }`}>
-                                  {worstCaseFRI.toFixed(3)}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-400">-</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                        {/* Weekly Summary */}
+                        <Paper variant="outlined" sx={{ mt: 2, p: 2 }}>
+                          <Grid container spacing={2} sx={{ mb: 2 }}>
+                            <Grid size={{ xs: 6 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">Working Days:</Typography>
+                                <Typography variant="body2" fontWeight={600}>{shifts.filter(s => !s.isRestDay).length}</Typography>
+                              </Box>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">Rest Days:</Typography>
+                                <Typography variant="body2" fontWeight={600}>{shifts.filter(s => s.isRestDay).length}</Typography>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                          {results && (
+                            <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                              <Grid container spacing={2}>
+                                <Grid size={{ xs: 6 }}>
+                                  <Paper sx={{ p: 1.5, textAlign: 'center', ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Avg FRI</Typography>
+                                    <Typography variant="h6" fontWeight={700}>{results.summary.avgRisk.toFixed(3)}</Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid size={{ xs: 6 }}>
+                                  <Paper sx={{ p: 1.5, textAlign: 'center', ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Peak FRI</Typography>
+                                    <Typography variant="h6" fontWeight={700}>{results.summary.maxRisk.toFixed(3)}</Typography>
+                                  </Paper>
+                                </Grid>
+                              </Grid>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                                {results.summary.highRiskCount > 0
+                                  ? `${results.summary.highRiskCount} day(s) above 1.1 - monitor these roles`
+                                  : 'All days within acceptable limits'}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Paper>
 
-                      {/* Weekly Summary with Average & Peak FRI */}
-                      <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        <div className="grid grid-cols-2 gap-4 mb-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">Working Days:</span>
-                            <span className="font-medium text-slate-800">{shifts.filter(s => !s.isRestDay).length}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-600">Rest Days:</span>
-                            <span className="font-medium text-slate-800">{shifts.filter(s => s.isRestDay).length}</span>
-                          </div>
-                        </div>
+                        {/* Role Quick-Compare */}
                         {results && (
-                          <div className="pt-3 border-t border-slate-200">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className={`p-2 rounded text-center ${getRiskColor(getRiskLevel(results.summary.avgRisk).level)}`}>
-                                <p className="text-xs opacity-75">Avg FRI</p>
-                                <p className="text-lg font-bold">{results.summary.avgRisk.toFixed(3)}</p>
-                              </div>
-                              <div className={`p-2 rounded text-center ${getRiskColor(getRiskLevel(results.summary.maxRisk).level)}`}>
-                                <p className="text-xs opacity-75">Peak FRI</p>
-                                <p className="text-lg font-bold">{results.summary.maxRisk.toFixed(3)}</p>
-                              </div>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-2 text-center">
-                              {results.summary.highRiskCount > 0
-                                ? `${results.summary.highRiskCount} day(s) above 1.1 - monitor these roles`
-                                : 'All days within acceptable limits'}
-                            </p>
-                          </div>
+                          <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: 'secondary.50' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                              <Typography variant="caption" fontWeight={600} color="secondary.dark">Quick Role Check</Typography>
+                              <Button
+                                size="small"
+                                variant={compareRoles ? 'contained' : 'outlined'}
+                                color="secondary"
+                                onClick={() => setCompareRoles(!compareRoles)}
+                              >
+                                {compareRoles ? 'Hide' : 'Compare Roles'}
+                              </Button>
+                            </Box>
+                            <Collapse in={compareRoles}>
+                              {roleComparisonResults && (
+                                <Box sx={{ mt: 1 }}>
+                                  {roleComparisonResults.map(result => (
+                                    <Paper
+                                      key={result.roleKey}
+                                      variant="outlined"
+                                      sx={{
+                                        p: 1,
+                                        mb: 0.5,
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        bgcolor: result.isCompliant ? 'success.50' : 'error.50',
+                                        borderColor: result.isCompliant ? 'success.300' : 'error.300',
+                                      }}
+                                    >
+                                      <Typography variant="body2" fontWeight={600} color={result.isCompliant ? 'success.dark' : 'error.dark'}>
+                                        {result.roleName}
+                                      </Typography>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                          Avg: {result.avgRisk.toFixed(2)} | Peak: {result.maxRisk.toFixed(2)}
+                                        </Typography>
+                                        <Typography variant="body2" color={result.isCompliant ? 'success.main' : 'error.main'}>
+                                          {result.isCompliant ? '✓' : '✗'}
+                                        </Typography>
+                                      </Box>
+                                    </Paper>
+                                  ))}
+                                  <Typography variant="caption" color="secondary.dark" sx={{ display: 'block', mt: 1 }}>
+                                    Roles with Peak {'>'} 1.2 need monitoring
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Collapse>
+                          </Paper>
                         )}
-                      </div>
-
-                      {/* Role Quick-Compare for Weekly View */}
-                      {results && (
-                        <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-200">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs font-medium text-violet-800">Quick Role Check</p>
-                            <button
-                              onClick={() => setCompareRoles(!compareRoles)}
-                              className={`text-xs px-2 py-1 rounded ${
-                                compareRoles ? 'bg-violet-600 text-white' : 'bg-violet-200 text-violet-700 hover:bg-violet-300'
-                              }`}
-                            >
-                              {compareRoles ? 'Hide' : 'Compare Roles'}
-                            </button>
-                          </div>
-                          {compareRoles && roleComparisonResults && (
-                            <div className="space-y-1.5 mt-2">
-                              {roleComparisonResults.map(result => (
-                                <div
-                                  key={result.roleKey}
-                                  className={`flex items-center justify-between p-2 rounded text-xs ${
-                                    result.isCompliant
-                                      ? 'bg-green-100 border border-green-300'
-                                      : 'bg-red-100 border border-red-300'
-                                  }`}
-                                >
-                                  <span className={`font-medium ${result.isCompliant ? 'text-green-800' : 'text-red-800'}`}>
-                                    {result.roleName}
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-slate-600">
-                                      Avg: {result.avgRisk.toFixed(2)} | Peak: {result.maxRisk.toFixed(2)}
-                                    </span>
-                                    <span className={result.isCompliant ? 'text-green-600' : 'text-red-600'}>
-                                      {result.isCompliant ? '✓' : '✗'}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                              <p className="text-xs text-violet-600 mt-1">
-                                Roles with Peak {'>'} 1.2 need monitoring
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Multi-Week Pattern View (Original) */}
-            {viewMode === 'multiweek' && (
-            <div className="bg-white rounded-lg shadow-md">
-              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800">Shift Pattern Definition</h3>
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={`text-sm px-3 py-1 rounded flex items-center gap-1 ${
-                    showSettings ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  <Settings className="w-4 h-4" />
-                  Parameters
-                </button>
-              </div>
-
-              <div className="p-4">
-                {/* Role Preset & Start Day Selector */}
-                <div className="mb-4 grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-slate-700 mb-1 block">Role Preset</label>
-                    <select
-                      value={selectedRole}
-                      onChange={(e) => handleApplyRolePreset(e.target.value as RoleKey)}
-                      className="w-full border rounded px-3 py-2 text-sm text-slate-900 bg-white"
-                    >
-                      {Object.entries(ROLE_PRESETS).map(([key, role]) => (
-                        <option key={key} value={key} title={role.description}>
-                          {role.name} ({role.workload}/{role.attention})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-slate-500 mt-1">{ROLE_PRESETS[selectedRole].description}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-700 mb-1 block">Day 1 is</label>
-                    <select
-                      value={startDayOfWeek}
-                      onChange={(e) => setStartDayOfWeek(parseInt(e.target.value))}
-                      className="w-full border rounded px-3 py-2 text-sm text-slate-900 bg-white"
-                    >
-                      <option value={1}>Monday</option>
-                      <option value={2}>Tuesday</option>
-                      <option value={3}>Wednesday</option>
-                      <option value={4}>Thursday</option>
-                      <option value={5}>Friday</option>
-                      <option value={6}>Saturday</option>
-                      <option value={7}>Sunday</option>
-                    </select>
-                    <p className="text-xs text-slate-500 mt-1">Set the start day of your roster</p>
-                  </div>
-                </div>
-
-                {/* Load from Project Shift Patterns */}
-                {projects.length > 0 && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <label className="text-sm font-medium text-blue-800 mb-2 block flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Load from Project
-                    </label>
-
-                    {/* Step 1: Select Project */}
-                    <div className="mb-3">
-                      <label className="text-xs text-blue-700 mb-1 block">1. Select Project</label>
-                      <select
-                        value={selectedProjectId || ''}
-                        onChange={(e) => {
-                          const projectId = e.target.value ? parseInt(e.target.value) : null;
-                          setSelectedProjectId(projectId);
-                          setSelectedPatternId(null);
-                          setSelectedEmployeeId(null);
-                        }}
-                        className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                      >
-                        <option value="">Select project...</option>
-                        {projects.map(project => (
-                          <option key={project.id} value={project.id}>
-                            {project.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Step 2: Select Shift Pattern */}
-                    {selectedProjectId && (
-                      <div className="mb-3">
-                        <label className="text-xs text-blue-700 mb-1 block">2. Select Shift Pattern</label>
-                        <select
-                          value={selectedPatternId || ''}
-                          onChange={(e) => {
-                            setSelectedPatternId(e.target.value || null);
-                            setSelectedEmployeeId(null);
-                          }}
-                          className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                        >
-                          <option value="">Select shift pattern...</option>
-                          {projectPatterns.map(pattern => (
-                            <option key={pattern.id} value={pattern.id}>
-                              {pattern.name} {pattern.isNight ? '(Night)' : '(Day)'} - {pattern.startTime || '??'}–{pattern.endTime || '??'}
-                            </option>
-                          ))}
-                        </select>
-                        {projectPatterns.length === 0 && (
-                          <p className="text-xs text-amber-600 mt-1">No shift patterns defined for this project</p>
-                        )}
-                      </div>
+                      </Box>
                     )}
+                  </Box>
+                </Paper>
+              )}
 
-                    {/* Load Pattern Button */}
-                    {selectedPatternId && (
-                      <button
-                        onClick={handleLoadPattern}
-                        className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium mb-3"
-                      >
-                        Load Shift Pattern
-                      </button>
-                    )}
+              {/* Multi-Week Pattern View */}
+              {viewMode === 'multiweek' && (
+                <Paper elevation={2}>
+                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle1" fontWeight={600}>Shift Pattern Definition</Typography>
+                    <Button
+                      size="small"
+                      variant={showSettings ? 'contained' : 'outlined'}
+                      color={showSettings ? 'warning' : 'inherit'}
+                      startIcon={<Settings className="w-4 h-4" />}
+                      onClick={() => setShowSettings(!showSettings)}
+                    >
+                      Parameters
+                    </Button>
+                  </Box>
 
-                    {/* Step 3: Optional - Check Individual Compliance */}
-                    {selectedPatternId && shifts.length > 0 && (
-                      <div className="pt-3 border-t border-blue-200">
-                        <label className="text-xs text-blue-700 mb-1 block">3. Check Individual Compliance (Optional)</label>
-                        <p className="text-xs text-blue-600 mb-2">Select a person to apply their role's workload/attention</p>
-                        <select
-                          value={selectedEmployeeId || ''}
-                          onChange={(e) => setSelectedEmployeeId(e.target.value ? parseInt(e.target.value) : null)}
-                          className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-white mb-2"
-                        >
-                          <option value="">Select employee...</option>
-                          {patternEmployees.map(emp => (
-                            <option key={emp.id} value={emp.id}>
-                              {emp.name} {emp.role ? `(${emp.role})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        {patternEmployees.length === 0 && (
-                          <p className="text-xs text-amber-600 mb-2">No employees assigned to this pattern</p>
-                        )}
-                        {selectedEmployeeId && (
-                          <button
-                            onClick={handleApplyEmployeeRole}
-                            className="w-full px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm font-medium"
+                  <Box sx={{ p: 2 }}>
+                    {/* Role Preset & Start Day */}
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Role Preset</InputLabel>
+                          <Select
+                            value={selectedRole}
+                            label="Role Preset"
+                            onChange={(e) => handleApplyRolePreset(e.target.value as RoleKey)}
                           >
-                            Apply {selectedEmployee?.name}'s Role
-                          </button>
+                            {Object.entries(ROLE_PRESETS).map(([key, role]) => (
+                              <MenuItem key={key} value={key}>
+                                {role.name} ({role.workload}/{role.attention})
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Typography variant="caption" color="text.secondary">{ROLE_PRESETS[selectedRole].description}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Day 1 is</InputLabel>
+                          <Select
+                            value={startDayOfWeek}
+                            label="Day 1 is"
+                            onChange={(e) => setStartDayOfWeek(Number(e.target.value))}
+                          >
+                            <MenuItem value={1}>Monday</MenuItem>
+                            <MenuItem value={2}>Tuesday</MenuItem>
+                            <MenuItem value={3}>Wednesday</MenuItem>
+                            <MenuItem value={4}>Thursday</MenuItem>
+                            <MenuItem value={5}>Friday</MenuItem>
+                            <MenuItem value={6}>Saturday</MenuItem>
+                            <MenuItem value={7}>Sunday</MenuItem>
+                          </Select>
+                        </FormControl>
+                        <Typography variant="caption" color="text.secondary">Set the start day of your roster</Typography>
+                      </Grid>
+                    </Grid>
+
+                    {/* Load from Project */}
+                    {projects.length > 0 && (
+                      <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'info.50', borderColor: 'info.200' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                          <Users className="w-4 h-4" />
+                          <Typography variant="subtitle2" color="info.dark">Load from Project</Typography>
+                        </Box>
+
+                        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                          <InputLabel>1. Select Project</InputLabel>
+                          <Select
+                            value={selectedProjectId || ''}
+                            label="1. Select Project"
+                            onChange={(e) => {
+                              const projectId = e.target.value ? parseInt(String(e.target.value)) : null;
+                              setSelectedProjectId(projectId);
+                              setSelectedPatternId(null);
+                              setSelectedEmployeeId(null);
+                            }}
+                          >
+                            <MenuItem value="">Select project...</MenuItem>
+                            {projects.map(project => (
+                              <MenuItem key={project.id} value={project.id}>{project.name}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        {selectedProjectId && (
+                          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                            <InputLabel>2. Select Shift Pattern</InputLabel>
+                            <Select
+                              value={selectedPatternId || ''}
+                              label="2. Select Shift Pattern"
+                              onChange={(e) => {
+                                setSelectedPatternId(e.target.value as string || null);
+                                setSelectedEmployeeId(null);
+                              }}
+                            >
+                              <MenuItem value="">Select shift pattern...</MenuItem>
+                              {projectPatterns.map(pattern => (
+                                <MenuItem key={pattern.id} value={pattern.id}>
+                                  {pattern.name} {pattern.isNight ? '(Night)' : '(Day)'} - {pattern.startTime || '??'}-{pattern.endTime || '??'}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
                         )}
-                      </div>
+
+                        {selectedPatternId && (
+                          <Button fullWidth variant="contained" color="primary" onClick={handleLoadPattern} sx={{ mb: 2 }}>
+                            Load Shift Pattern
+                          </Button>
+                        )}
+
+                        {selectedPatternId && shifts.length > 0 && (
+                          <Box sx={{ pt: 2, borderTop: 1, borderColor: 'info.200' }}>
+                            <Typography variant="caption" color="info.dark" sx={{ display: 'block', mb: 1 }}>
+                              3. Check Individual Compliance (Optional)
+                            </Typography>
+                            <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                              <InputLabel>Select employee</InputLabel>
+                              <Select
+                                value={selectedEmployeeId || ''}
+                                label="Select employee"
+                                onChange={(e) => setSelectedEmployeeId(e.target.value ? parseInt(String(e.target.value)) : null)}
+                              >
+                                <MenuItem value="">Select employee...</MenuItem>
+                                {patternEmployees.map(emp => (
+                                  <MenuItem key={emp.id} value={emp.id}>
+                                    {emp.name} {emp.role ? `(${emp.role})` : ''}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            {selectedEmployeeId && (
+                              <Button fullWidth variant="contained" color="secondary" onClick={handleApplyEmployeeRole}>
+                                Apply {selectedEmployee?.name}'s Role
+                              </Button>
+                            )}
+                          </Box>
+                        )}
+                      </Paper>
                     )}
 
-                    {/* Status message */}
-                    {selectedPattern && (
-                      <p className="text-xs text-blue-600 mt-2">
-                        {shifts.length > 0
-                          ? `Loaded: ${selectedPattern.name} (${shifts.length} shifts)`
-                          : `Selected: ${selectedPattern.name}`
-                        }
-                        {selectedEmployee && ` • Checking for: ${selectedEmployee.name}`}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Templates */}
-                <div className="mb-4">
-                  <label className="text-sm font-medium text-slate-700 mb-2 block">Or Load Template</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(TEMPLATES).map(([key, template]) => (
-                      <button
-                        key={key}
-                        onClick={() => handleLoadTemplate(key)}
-                        className="text-xs px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded text-left text-slate-700 truncate"
-                        title={template.name}
-                      >
-                        {template.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={handleAddShift}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1 text-sm"
-                  >
-                    <Plus className="w-4 h-4" /> Add Shift
-                  </button>
-                  <button
-                    onClick={handleClearAll}
-                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 text-sm"
-                  >
-                    Clear All
-                  </button>
-                </div>
-
-                {/* Shifts List - Header Row */}
-                {shifts.length > 0 && (
-                  <div className="grid grid-cols-[60px_50px_70px_90px_90px_70px_36px_36px] gap-1 px-3 py-2 bg-slate-200 rounded-t-lg text-xs font-medium text-slate-600 items-center">
-                    <span>Day</span>
-                    <span>DoW</span>
-                    <span className="text-center">Travel In</span>
-                    <span className="text-center">Start</span>
-                    <span className="text-center">Finish</span>
-                    <span className="text-center">Travel Out</span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                )}
-
-                {/* Shifts List with Per-Day Parameters */}
-                <div className="space-y-0 max-h-[500px] overflow-y-auto">
-                  {shifts.length === 0 ? (
-                    <p className="text-slate-500 text-center py-8">
-                      Add shifts or load a template to calculate fatigue risk
-                    </p>
-                  ) : (
-                    [...shifts].sort((a, b) => a.day - b.day).map(shift => {
-                      const isExpanded = expandedShiftParams === shift.id;
-                      return (
-                        <div key={shift.id} className="border-x border-b first:border-t bg-slate-50 overflow-hidden first:rounded-t-lg last:rounded-b-lg">
-                          {/* Main Row - Grid Layout */}
-                          <div className="grid grid-cols-[60px_50px_70px_90px_90px_70px_36px_36px] gap-1 p-2 items-center">
-                            {/* Day Number */}
-                            <input
-                              type="number"
-                              min="1"
-                              max="28"
-                              value={shift.day}
-                              onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
-                              className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white text-center"
-                              title="Day number"
-                            />
-
-                            {/* Day of Week */}
-                            <span className="text-xs font-medium text-slate-600 bg-slate-200 px-1.5 py-1.5 rounded text-center">
-                              {getDayOfWeek(shift.day, startDayOfWeek)}
-                            </span>
-
-                            {/* Travel In */}
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                max="180"
-                                value={shift.commuteIn ?? 30}
-                                onChange={(e) => handleUpdateShift(shift.id, 'commuteIn', parseInt(e.target.value) || 0)}
-                                className="w-full border border-blue-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-blue-50 text-center"
-                                title="Travel time to work (mins)"
-                              />
-                            </div>
-
-                            {/* Start Time */}
-                            <input
-                              type="time"
-                              value={shift.startTime}
-                              onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
-                              className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                              title="Shift start time"
-                            />
-
-                            {/* End Time */}
-                            <input
-                              type="time"
-                              value={shift.endTime}
-                              onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
-                              className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                              title="Shift end time"
-                            />
-
-                            {/* Travel Out */}
-                            <div className="relative">
-                              <input
-                                type="number"
-                                min="0"
-                                max="180"
-                                value={shift.commuteOut ?? 30}
-                                onChange={(e) => handleUpdateShift(shift.id, 'commuteOut', parseInt(e.target.value) || 0)}
-                                className="w-full border border-purple-200 rounded px-2 py-1.5 text-sm text-slate-900 bg-purple-50 text-center"
-                                title="Travel time from work (mins)"
-                              />
-                            </div>
-
-                            {/* Settings Button */}
-                            <button
-                              onClick={() => setExpandedShiftParams(isExpanded ? null : shift.id)}
-                              className={`p-1.5 rounded transition-colors ${isExpanded ? 'bg-orange-100 text-orange-700' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-200'}`}
-                              title="Edit day parameters"
+                    {/* Templates */}
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>Or Load Template</Typography>
+                      <Grid container spacing={1}>
+                        {Object.entries(TEMPLATES).map(([key, template]) => (
+                          <Grid size={{ xs: 6 }} key={key}>
+                            <Button
+                              fullWidth
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleLoadTemplate(key)}
+                              sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
                             >
-                              <Settings className="w-4 h-4" />
-                            </button>
+                              {template.name}
+                            </Button>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
 
-                            {/* Delete Button */}
-                            <button
-                              onClick={() => handleRemoveShift(shift.id)}
-                              className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded"
-                              title="Remove shift"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                    {/* Actions */}
+                    <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+                      <Button variant="contained" startIcon={<Plus className="w-4 h-4" />} onClick={handleAddShift}>
+                        Add Shift
+                      </Button>
+                      <Button variant="outlined" onClick={handleClearAll}>
+                        Clear All
+                      </Button>
+                    </Box>
 
-                          {/* Expanded Per-Day Parameters */}
-                          {isExpanded && (
-                            <div className="px-3 pb-3 pt-0 border-t border-slate-200 bg-white">
-                              <div className="pt-3 space-y-3">
-                                <p className="text-xs text-slate-500 font-medium">Day {shift.day} ({getDayOfWeek(shift.day, startDayOfWeek)}) Fatigue Parameters</p>
-
-                                {/* Workload / Attention */}
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1">Workload (1-5)</label>
-                                    <select
-                                      value={shift.workload ?? params.workload}
-                                      onChange={(e) => handleUpdateShift(shift.id, 'workload', parseInt(e.target.value))}
-                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                                    >
-                                      <option value={1}>1 - Light</option>
-                                      <option value={2}>2 - Moderate</option>
-                                      <option value={3}>3 - Average</option>
-                                      <option value={4}>4 - Heavy</option>
-                                      <option value={5}>5 - Very Heavy</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1">Attention (1-5)</label>
-                                    <select
-                                      value={shift.attention ?? params.attention}
-                                      onChange={(e) => handleUpdateShift(shift.id, 'attention', parseInt(e.target.value))}
-                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                                    >
-                                      <option value={1}>1 - Low</option>
-                                      <option value={2}>2 - Moderate</option>
-                                      <option value={3}>3 - Average</option>
-                                      <option value={4}>4 - High</option>
-                                      <option value={5}>5 - Very High</option>
-                                    </select>
-                                  </div>
-                                </div>
-
-                                {/* Break Frequency / Length */}
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1">Break Freq (mins)</label>
-                                    <input
-                                      type="number"
-                                      min="30"
-                                      max="480"
-                                      value={shift.breakFreq ?? 180}
-                                      onChange={(e) => handleUpdateShift(shift.id, 'breakFreq', parseInt(e.target.value) || 180)}
-                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1">Break Length (mins)</label>
-                                    <input
-                                      type="number"
-                                      min="5"
-                                      max="60"
-                                      value={shift.breakLen ?? 30}
-                                      onChange={(e) => handleUpdateShift(shift.id, 'breakLen', parseInt(e.target.value) || 30)}
-                                      className="w-full border rounded px-2 py-1.5 text-sm text-slate-900 bg-white"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-            )}
-
-            {/* Parameters Panel (Collapsible) */}
-            {showSettings && (
-              <div className="bg-white rounded-lg shadow-md">
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-800">HSE RR446 Default Parameters</h3>
-                  <div className="flex items-center gap-2">
+                    {/* Shifts List */}
                     {shifts.length > 0 && (
-                      <button
-                        onClick={handleApplyGlobalToAll}
-                        className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
-                      >
-                        Apply to All Days
-                      </button>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: '60px 50px 70px 90px 90px 70px 36px 36px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.200', borderRadius: '8px 8px 0 0' }}>
+                        <Typography variant="caption" fontWeight={600}>Day</Typography>
+                        <Typography variant="caption" fontWeight={600}>DoW</Typography>
+                        <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Travel In</Typography>
+                        <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Start</Typography>
+                        <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Finish</Typography>
+                        <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Travel Out</Typography>
+                        <Box />
+                        <Box />
+                      </Box>
                     )}
-                    <button
-                      onClick={handleResetParams}
-                      className="text-xs text-blue-600 hover:text-blue-700"
-                    >
-                      Reset Defaults
-                    </button>
-                  </div>
-                </div>
-                <div className="p-4 space-y-4">
-                  <p className="text-xs text-slate-500 bg-slate-50 p-2 rounded">
-                    These are default values for new shifts. Click the <Settings className="w-3 h-3 inline" /> icon on each shift to customize per-day parameters (e.g., different commute times for hotel stays).
-                  </p>
-                  {/* Commute */}
-                  <div>
-                    <label className="text-sm font-medium text-slate-700 block mb-1">
-                      Default Commute Time (minutes)
-                    </label>
-                    <input
+
+                    <Box sx={{ maxHeight: 500, overflow: 'auto' }}>
+                      {shifts.length === 0 ? (
+                        <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                          Add shifts or load a template to calculate fatigue risk
+                        </Typography>
+                      ) : (
+                        [...shifts].sort((a, b) => a.day - b.day).map(shift => {
+                          const isExpanded = expandedShiftParams === shift.id;
+                          return (
+                            <Paper key={shift.id} variant="outlined" sx={{ mb: 0.5, overflow: 'hidden' }}>
+                              <Box sx={{ display: 'grid', gridTemplateColumns: '60px 50px 70px 90px 90px 70px 36px 36px', gap: 0.5, p: 1, alignItems: 'center' }}>
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift.day}
+                                  onChange={(e) => handleUpdateShift(shift.id, 'day', parseInt(e.target.value) || 1)}
+                                  slotProps={{ htmlInput: { min: 1, max: 28, style: { textAlign: 'center', padding: '6px' } } }}
+                                />
+                                <Chip size="small" label={getDayOfWeek(shift.day, startDayOfWeek)} sx={{ bgcolor: 'grey.200' }} />
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift.commuteIn ?? 30}
+                                  onChange={(e) => handleUpdateShift(shift.id, 'commuteIn', parseInt(e.target.value) || 0)}
+                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '6px' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'info.50' } }}
+                                />
+                                <TextField
+                                  type="time"
+                                  size="small"
+                                  value={shift.startTime}
+                                  onChange={(e) => handleUpdateShift(shift.id, 'startTime', e.target.value)}
+                                  slotProps={{ htmlInput: { style: { padding: '6px' } } }}
+                                />
+                                <TextField
+                                  type="time"
+                                  size="small"
+                                  value={shift.endTime}
+                                  onChange={(e) => handleUpdateShift(shift.id, 'endTime', e.target.value)}
+                                  slotProps={{ htmlInput: { style: { padding: '6px' } } }}
+                                />
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift.commuteOut ?? 30}
+                                  onChange={(e) => handleUpdateShift(shift.id, 'commuteOut', parseInt(e.target.value) || 0)}
+                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '6px' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'secondary.50' } }}
+                                />
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setExpandedShiftParams(isExpanded ? null : shift.id)}
+                                  color={isExpanded ? 'warning' : 'default'}
+                                >
+                                  <Settings className="w-4 h-4" />
+                                </IconButton>
+                                <IconButton size="small" color="error" onClick={() => handleRemoveShift(shift.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </IconButton>
+                              </Box>
+
+                              <Collapse in={isExpanded}>
+                                <Box sx={{ px: 2, pb: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5, mb: 1 }}>
+                                    Day {shift.day} ({getDayOfWeek(shift.day, startDayOfWeek)}) Fatigue Parameters
+                                  </Typography>
+                                  <Grid container spacing={2}>
+                                    <Grid size={{ xs: 6 }}>
+                                      <FormControl fullWidth size="small">
+                                        <InputLabel>Workload (1-5)</InputLabel>
+                                        <Select
+                                          value={shift.workload ?? params.workload}
+                                          label="Workload (1-5)"
+                                          onChange={(e) => handleUpdateShift(shift.id, 'workload', parseInt(String(e.target.value)))}
+                                        >
+                                          <MenuItem value={1}>1 - Light</MenuItem>
+                                          <MenuItem value={2}>2 - Moderate</MenuItem>
+                                          <MenuItem value={3}>3 - Average</MenuItem>
+                                          <MenuItem value={4}>4 - Heavy</MenuItem>
+                                          <MenuItem value={5}>5 - Very Heavy</MenuItem>
+                                        </Select>
+                                      </FormControl>
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                      <FormControl fullWidth size="small">
+                                        <InputLabel>Attention (1-5)</InputLabel>
+                                        <Select
+                                          value={shift.attention ?? params.attention}
+                                          label="Attention (1-5)"
+                                          onChange={(e) => handleUpdateShift(shift.id, 'attention', parseInt(String(e.target.value)))}
+                                        >
+                                          <MenuItem value={1}>1 - Low</MenuItem>
+                                          <MenuItem value={2}>2 - Moderate</MenuItem>
+                                          <MenuItem value={3}>3 - Average</MenuItem>
+                                          <MenuItem value={4}>4 - High</MenuItem>
+                                          <MenuItem value={5}>5 - Very High</MenuItem>
+                                        </Select>
+                                      </FormControl>
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                      <TextField
+                                        type="number"
+                                        size="small"
+                                        label="Break Freq (mins)"
+                                        value={shift.breakFreq ?? 180}
+                                        onChange={(e) => handleUpdateShift(shift.id, 'breakFreq', parseInt(e.target.value) || 180)}
+                                        fullWidth
+                                        slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                                      />
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                      <TextField
+                                        type="number"
+                                        size="small"
+                                        label="Break Length (mins)"
+                                        value={shift.breakLen ?? 30}
+                                        onChange={(e) => handleUpdateShift(shift.id, 'breakLen', parseInt(e.target.value) || 30)}
+                                        fullWidth
+                                        slotProps={{ htmlInput: { min: 5, max: 60 } }}
+                                      />
+                                    </Grid>
+                                  </Grid>
+                                </Box>
+                              </Collapse>
+                            </Paper>
+                          );
+                        })
+                      )}
+                    </Box>
+                  </Box>
+                </Paper>
+              )}
+
+              {/* Parameters Panel */}
+              <Collapse in={showSettings}>
+                <Paper elevation={2}>
+                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle1" fontWeight={600}>HSE RR446 Default Parameters</Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {shifts.length > 0 && (
+                        <Button size="small" variant="outlined" color="warning" onClick={handleApplyGlobalToAll}>
+                          Apply to All Days
+                        </Button>
+                      )}
+                      <Button size="small" onClick={handleResetParams}>Reset Defaults</Button>
+                    </Box>
+                  </Box>
+                  <Box sx={{ p: 2 }}>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <Typography variant="caption">
+                        These are default values for new shifts. Click the settings icon on each shift to customize per-day parameters.
+                      </Typography>
+                    </Alert>
+
+                    <TextField
                       type="number"
-                      min="0"
-                      max="180"
+                      label="Default Commute Time (minutes)"
                       value={params.commuteTime}
                       onChange={(e) => setParams({ ...params, commuteTime: parseInt(e.target.value) || 0 })}
-                      className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
+                      fullWidth
+                      size="small"
+                      sx={{ mb: 2 }}
+                      slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                      helperText="Total daily commute (split 50/50 for in/out)"
                     />
-                    <p className="text-xs text-slate-500 mt-1">Total daily commute (split 50/50 for in/out)</p>
-                  </div>
 
-                  {/* Workload & Attention */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1">
-                        Workload (1-5)
-                      </label>
-                      <select
-                        value={params.workload}
-                        onChange={(e) => setParams({ ...params, workload: parseInt(e.target.value) })}
-                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
-                      >
-                        <option value={1}>1 - Light</option>
-                        <option value={2}>2 - Moderate</option>
-                        <option value={3}>3 - Average</option>
-                        <option value={4}>4 - Heavy</option>
-                        <option value={5}>5 - Very Heavy</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1">
-                        Attention (1-5)
-                      </label>
-                      <select
-                        value={params.attention}
-                        onChange={(e) => setParams({ ...params, attention: parseInt(e.target.value) })}
-                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
-                      >
-                        <option value={1}>1 - Low</option>
-                        <option value={2}>2 - Moderate</option>
-                        <option value={3}>3 - Average</option>
-                        <option value={4}>4 - High</option>
-                        <option value={5}>5 - Very High</option>
-                      </select>
-                    </div>
-                  </div>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Workload (1-5)</InputLabel>
+                          <Select
+                            value={params.workload}
+                            label="Workload (1-5)"
+                            onChange={(e) => setParams({ ...params, workload: parseInt(String(e.target.value)) })}
+                          >
+                            <MenuItem value={1}>1 - Light</MenuItem>
+                            <MenuItem value={2}>2 - Moderate</MenuItem>
+                            <MenuItem value={3}>3 - Average</MenuItem>
+                            <MenuItem value={4}>4 - Heavy</MenuItem>
+                            <MenuItem value={5}>5 - Very Heavy</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Attention (1-5)</InputLabel>
+                          <Select
+                            value={params.attention}
+                            label="Attention (1-5)"
+                            onChange={(e) => setParams({ ...params, attention: parseInt(String(e.target.value)) })}
+                          >
+                            <MenuItem value={1}>1 - Low</MenuItem>
+                            <MenuItem value={2}>2 - Moderate</MenuItem>
+                            <MenuItem value={3}>3 - Average</MenuItem>
+                            <MenuItem value={4}>4 - High</MenuItem>
+                            <MenuItem value={5}>5 - Very High</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
 
-                  {/* Break Settings */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1">
-                        Break Frequency (mins)
-                      </label>
-                      <input
-                        type="number"
-                        min="30"
-                        max="480"
-                        value={params.breakFrequency}
-                        onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })}
-                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1">
-                        Break Length (mins)
-                      </label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="60"
-                        value={params.breakLength}
-                        onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 30 })}
-                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
-                      />
-                    </div>
-                  </div>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <TextField
+                          type="number"
+                          label="Break Frequency (mins)"
+                          value={params.breakFrequency}
+                          onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })}
+                          fullWidth
+                          size="small"
+                          slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <TextField
+                          type="number"
+                          label="Break Length (mins)"
+                          value={params.breakLength}
+                          onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 30 })}
+                          fullWidth
+                          size="small"
+                          slotProps={{ htmlInput: { min: 5, max: 60 } }}
+                        />
+                      </Grid>
+                    </Grid>
 
-                  {/* Continuous Work */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1">
-                        Continuous Work (mins)
-                      </label>
-                      <input
-                        type="number"
-                        min="30"
-                        max="480"
-                        value={params.continuousWork}
-                        onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 180 })}
-                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 block mb-1">
-                        Break After Continuous
-                      </label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="60"
-                        value={params.breakAfterContinuous}
-                        onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })}
-                        className="w-full border rounded px-3 py-2 text-slate-900 bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 6 }}>
+                        <TextField
+                          type="number"
+                          label="Continuous Work (mins)"
+                          value={params.continuousWork}
+                          onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 180 })}
+                          fullWidth
+                          size="small"
+                          slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <TextField
+                          type="number"
+                          label="Break After Continuous"
+                          value={params.breakAfterContinuous}
+                          onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })}
+                          fullWidth
+                          size="small"
+                          slotProps={{ htmlInput: { min: 5, max: 60 } }}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Paper>
+              </Collapse>
+            </Box>
+          </Grid>
 
           {/* Right Panel - Results */}
-          <div className="bg-white rounded-lg shadow-md" ref={resultsRef}>
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-800">Fatigue Risk Analysis</h3>
-              {results && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowChart(!showChart)}
-                    className={`text-xs px-3 py-1.5 rounded flex items-center gap-1 transition-colors ${
-                      showChart ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    <BarChart className="w-3.5 h-3.5" />
-                    Chart
-                  </button>
-                  <button
-                    onClick={handleExportCSV}
-                    className="text-xs px-3 py-1.5 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 flex items-center gap-1"
-                    title="Export to CSV"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    CSV
-                  </button>
-                  <button
-                    onClick={handlePrint}
-                    className="text-xs px-3 py-1.5 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 flex items-center gap-1"
-                    title="Print Report"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    Report
-                  </button>
-                </div>
-              )}
-            </div>
+          <Grid size={{ xs: 12, lg: 6 }}>
+            <Paper elevation={2} ref={resultsRef}>
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight={600}>Fatigue Risk Analysis</Typography>
+                {results && (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant={showChart ? 'contained' : 'outlined'}
+                      color={showChart ? 'primary' : 'inherit'}
+                      startIcon={<BarChart className="w-3 h-3" />}
+                      onClick={() => setShowChart(!showChart)}
+                    >
+                      Chart
+                    </Button>
+                    <Button size="small" variant="outlined" startIcon={<Download className="w-3 h-3" />} onClick={handleExportCSV}>
+                      CSV
+                    </Button>
+                    <Button size="small" variant="outlined" color="warning" startIcon={<FileText className="w-3 h-3" />} onClick={handlePrint}>
+                      Report
+                    </Button>
+                  </Box>
+                )}
+              </Box>
 
-            <div className="p-4">
-              {!results ? (
-                <div className="text-center py-12 text-slate-500">
-                  <p className="text-lg mb-2">No shifts to analyze</p>
-                  <p className="text-sm">Add shifts on the left to see fatigue risk calculations</p>
-                </div>
-              ) : (
-                <>
-                  {/* Fatigue Chart */}
-                  {showChart && (
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-slate-700">FRI Progression Chart</h4>
-                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                          <input
-                            type="checkbox"
-                            checked={showComponents}
-                            onChange={(e) => setShowComponents(e.target.checked)}
-                            className="rounded border-slate-300"
+              <Box sx={{ p: 2 }}>
+                {!results ? (
+                  <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>No shifts to analyze</Typography>
+                    <Typography variant="body2" color="text.secondary">Add shifts on the left to see fatigue risk calculations</Typography>
+                  </Box>
+                ) : (
+                  <>
+                    {/* Chart */}
+                    <Collapse in={showChart}>
+                      <Box sx={{ mb: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Typography variant="subtitle2">FRI Progression Chart</Typography>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={showComponents}
+                                onChange={(e) => setShowComponents(e.target.checked)}
+                              />
+                            }
+                            label={<Typography variant="caption">Show component lines</Typography>}
                           />
-                          Show component lines
-                        </label>
-                      </div>
-                      <FatigueChart
-                        data={results.calculations}
-                        showThresholds={true}
-                        showComponents={showComponents}
-                      />
-                    </div>
-                  )}
+                        </Box>
+                        <FatigueChart
+                          data={results.calculations}
+                          showThresholds={true}
+                          showComponents={showComponents}
+                        />
+                      </Box>
+                    </Collapse>
 
-                  {/* Role Comparison Toggle */}
-                  <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-slate-700">Compare Multiple Roles</p>
-                        <p className="text-xs text-slate-500">Check compliance for different worker types on the same pattern</p>
-                      </div>
-                      <button
-                        onClick={() => setCompareRoles(!compareRoles)}
-                        className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                          compareRoles ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                        }`}
-                      >
-                        {compareRoles ? 'Comparing...' : 'Compare Roles'}
-                      </button>
-                    </div>
-
-                    {/* Role Selection for Comparison */}
-                    {compareRoles && (
-                      <div className="mt-3 pt-3 border-t border-slate-200">
-                        <p className="text-xs text-slate-600 mb-2">Select roles to compare:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {Object.entries(ROLE_PRESETS).filter(([key]) => key !== 'custom').map(([key, role]) => {
-                            const roleKey = key as RoleKey;
-                            const isSelected = selectedRolesForCompare.includes(roleKey);
-                            return (
-                              <button
-                                key={key}
-                                onClick={() => toggleCompareRole(roleKey)}
-                                className={`px-2 py-1 text-xs rounded transition-colors ${
-                                  isSelected
-                                    ? 'bg-violet-600 text-white'
-                                    : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
-                                }`}
-                                title={role.description}
-                              >
-                                {role.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Role Comparison Results */}
-                  {compareRoles && roleComparisonResults && roleComparisonResults.length > 0 && (
-                    <div className="mb-6 p-4 bg-violet-50 rounded-lg border border-violet-200">
-                      <h4 className="text-sm font-semibold text-violet-900 mb-3">Role Compliance Summary</h4>
-                      <div className="space-y-2">
-                        {roleComparisonResults.map(result => (
-                          <div
-                            key={result.roleKey}
-                            className={`p-3 rounded-lg flex items-center justify-between ${
-                              result.isCompliant
-                                ? 'bg-green-100 border border-green-300'
-                                : 'bg-red-100 border border-red-300'
-                            }`}
-                          >
-                            <div>
-                              <span className={`font-medium ${result.isCompliant ? 'text-green-800' : 'text-red-800'}`}>
-                                {result.roleName}
-                              </span>
-                              <span className="text-xs ml-2 opacity-75">
-                                (W:{result.workload} A:{result.attention})
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-right text-xs">
-                                <p className={result.isCompliant ? 'text-green-700' : 'text-red-700'}>
-                                  Peak: {result.maxRisk} • Avg: {result.avgRisk}
-                                </p>
-                                {result.highRiskDays > 0 && (
-                                  <p className="text-red-600">{result.highRiskDays} high-risk day(s)</p>
-                                )}
-                              </div>
-                              <span className={`text-lg ${result.isCompliant ? 'text-green-600' : 'text-red-600'}`}>
-                                {result.isCompliant ? '✓' : '✗'}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-violet-700 mt-3">
-                        Compliance = Peak FRI {'<'} 1.2 (below critical threshold)
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Summary Cards */}
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.avgRisk).level)}`}>
-                      <p className="text-xs font-medium opacity-75">Average FRI</p>
-                      <p className="text-2xl font-bold">{results.summary.avgRisk}</p>
-                    </div>
-                    <div className={`p-4 rounded-lg border ${getRiskColor(getRiskLevel(results.summary.maxRisk).level)}`}>
-                      <p className="text-xs font-medium opacity-75">Peak FRI</p>
-                      <p className="text-2xl font-bold">{results.summary.maxRisk}</p>
-                    </div>
-                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
-                      <p className="text-xs font-medium text-slate-600">Total Hours</p>
-                      <p className="text-2xl font-bold text-slate-800">{results.summary.totalHours}h</p>
-                    </div>
-                    <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
-                      <p className="text-xs font-medium text-slate-600">High Risk Shifts</p>
-                      <p className="text-2xl font-bold text-slate-800">{results.summary.highRiskCount}</p>
-                    </div>
-                  </div>
-
-                  {/* Component Breakdown */}
-                  <div className="mb-6 p-4 bg-slate-50 rounded-lg">
-                    <h4 className="text-sm font-medium text-slate-700 mb-3">Average Component Scores</h4>
-                    <RiskBar value={results.summary.avgCumulative} label="Cumulative Fatigue" color="bg-blue-500" />
-                    <RiskBar value={results.summary.avgTiming} label="Timing Component" color="bg-purple-500" />
-                    <RiskBar value={results.summary.avgJobBreaks} label="Job/Breaks Component" color="bg-amber-500" />
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600 font-medium">Combined FRI</span>
-                        <span className="font-bold text-slate-800">{results.summary.avgRisk}</span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        FRI = Cumulative × Timing × Job/Breaks
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Risk Level Legend */}
-                  <div className="mb-4 p-3 bg-slate-50 rounded-lg">
-                    <p className="text-xs font-medium text-slate-600 mb-2">Risk Level Guide (HSE RR446)</p>
-                    <div className="flex gap-2 text-xs flex-wrap">
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded">{'<1.0 Low'}</span>
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">1.0-1.1 Mod</span>
-                      <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">1.1-1.2 Elev</span>
-                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded">{'>1.2 Critical'}</span>
-                    </div>
-                  </div>
-
-                  {/* Per-Shift Results */}
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {results.calculations.map((calc) => (
-                      <div
-                        key={calc.id}
-                        className={`rounded-lg border overflow-hidden ${getRiskColor(calc.riskLevel.level)}`}
-                      >
-                        <div
-                          className="p-3 cursor-pointer"
-                          onClick={() => setExpandedShift(expandedShift === calc.id ? null : calc.id)}
+                    {/* Role Comparison Toggle */}
+                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                          <Typography variant="subtitle2">Compare Multiple Roles</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Check compliance for different worker types on the same pattern
+                          </Typography>
+                        </Box>
+                        <Button
+                          variant={compareRoles ? 'contained' : 'outlined'}
+                          color="secondary"
+                          onClick={() => setCompareRoles(!compareRoles)}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {expandedShift === calc.id ? (
-                                <ChevronUp className="w-4 h-4 opacity-50" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 opacity-50" />
-                              )}
-                              <div>
-                                <span className="font-medium">Day {calc.day}</span>
-                                <span className="text-xs ml-1.5 opacity-75 bg-white/30 px-1.5 py-0.5 rounded">{calc.dayOfWeek}</span>
-                                <span className="text-sm ml-2 opacity-75">
-                                  {calc.startTime} - {calc.endTime}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-bold text-lg">{calc.riskIndex}</span>
-                              <span className="text-xs ml-1 opacity-75">FRI</span>
-                            </div>
-                          </div>
-                          <div className="text-xs mt-1 opacity-75">
-                            Duration: {calc.dutyLength}h • {calc.riskLevel.label}
-                          </div>
-                        </div>
+                          {compareRoles ? 'Comparing...' : 'Compare Roles'}
+                        </Button>
+                      </Box>
 
-                        {/* Expanded Component Details */}
-                        {expandedShift === calc.id && (
-                          <div className="px-3 pb-3 pt-0 border-t border-current/20">
-                            <div className="grid grid-cols-3 gap-2 text-xs mt-2">
-                              <div className="bg-white/50 rounded p-2">
-                                <p className="opacity-75">Cumulative</p>
-                                <p className="font-bold">{calc.cumulative}</p>
-                              </div>
-                              <div className="bg-white/50 rounded p-2">
-                                <p className="opacity-75">Timing</p>
-                                <p className="font-bold">{calc.timing}</p>
-                              </div>
-                              <div className="bg-white/50 rounded p-2">
-                                <p className="opacity-75">Job/Breaks</p>
-                                <p className="font-bold">{calc.jobBreaks}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+                      <Collapse in={compareRoles}>
+                        <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                            Select roles to compare:
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {Object.entries(ROLE_PRESETS).filter(([key]) => key !== 'custom').map(([key, role]) => {
+                              const roleKey = key as RoleKey;
+                              const isSelected = selectedRolesForCompare.includes(roleKey);
+                              return (
+                                <Chip
+                                  key={key}
+                                  label={role.name}
+                                  size="small"
+                                  onClick={() => toggleCompareRole(roleKey)}
+                                  variant={isSelected ? 'filled' : 'outlined'}
+                                  color={isSelected ? 'secondary' : 'default'}
+                                  sx={{ cursor: 'pointer' }}
+                                />
+                              );
+                            })}
+                          </Box>
+                        </Box>
+                      </Collapse>
+                    </Paper>
+
+                    {/* Role Comparison Results */}
+                    <Collapse in={compareRoles && roleComparisonResults !== null}>
+                      {roleComparisonResults && roleComparisonResults.length > 0 && (
+                        <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'secondary.50' }}>
+                          <Typography variant="subtitle2" color="secondary.dark" sx={{ mb: 2 }}>Role Compliance Summary</Typography>
+                          {roleComparisonResults.map(result => (
+                            <Paper
+                              key={result.roleKey}
+                              variant="outlined"
+                              sx={{
+                                p: 1.5,
+                                mb: 1,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                bgcolor: result.isCompliant ? 'success.50' : 'error.50',
+                                borderColor: result.isCompliant ? 'success.300' : 'error.300',
+                              }}
+                            >
+                              <Box>
+                                <Typography variant="body2" fontWeight={600} color={result.isCompliant ? 'success.dark' : 'error.dark'}>
+                                  {result.roleName}
+                                </Typography>
+                                <Typography variant="caption" sx={{ opacity: 0.75 }}>
+                                  (W:{result.workload} A:{result.attention})
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Box sx={{ textAlign: 'right' }}>
+                                  <Typography variant="caption" color={result.isCompliant ? 'success.dark' : 'error.dark'}>
+                                    Peak: {result.maxRisk} | Avg: {result.avgRisk}
+                                  </Typography>
+                                  {result.highRiskDays > 0 && (
+                                    <Typography variant="caption" color="error.main" sx={{ display: 'block' }}>
+                                      {result.highRiskDays} high-risk day(s)
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Typography variant="h6" color={result.isCompliant ? 'success.main' : 'error.main'}>
+                                  {result.isCompliant ? '✓' : '✗'}
+                                </Typography>
+                              </Box>
+                            </Paper>
+                          ))}
+                          <Typography variant="caption" color="secondary.dark">
+                            Compliance = Peak FRI {'<'} 1.2 (below critical threshold)
+                          </Typography>
+                        </Paper>
+                      )}
+                    </Collapse>
+
+                    {/* Summary Cards */}
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                      <Grid size={{ xs: 6 }}>
+                        <Paper sx={{ p: 2, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
+                          <Typography variant="caption" sx={{ opacity: 0.8 }}>Average FRI</Typography>
+                          <Typography variant="h4" fontWeight={700}>{results.summary.avgRisk}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Paper sx={{ p: 2, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
+                          <Typography variant="caption" sx={{ opacity: 0.8 }}>Peak FRI</Typography>
+                          <Typography variant="h4" fontWeight={700}>{results.summary.maxRisk}</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Paper variant="outlined" sx={{ p: 2 }}>
+                          <Typography variant="caption" color="text.secondary">Total Hours</Typography>
+                          <Typography variant="h4" fontWeight={700}>{results.summary.totalHours}h</Typography>
+                        </Paper>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Paper variant="outlined" sx={{ p: 2 }}>
+                          <Typography variant="caption" color="text.secondary">High Risk Shifts</Typography>
+                          <Typography variant="h4" fontWeight={700}>{results.summary.highRiskCount}</Typography>
+                        </Paper>
+                      </Grid>
+                    </Grid>
+
+                    {/* Component Breakdown */}
+                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 2 }}>Average Component Scores</Typography>
+                      <RiskBar value={results.summary.avgCumulative} label="Cumulative Fatigue" color="#3b82f6" />
+                      <RiskBar value={results.summary.avgTiming} label="Timing Component" color="#8b5cf6" />
+                      <RiskBar value={results.summary.avgJobBreaks} label="Job/Breaks Component" color="#f59e0b" />
+                      <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" fontWeight={600}>Combined FRI</Typography>
+                          <Typography variant="body2" fontWeight={700}>{results.summary.avgRisk}</Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          FRI = Cumulative x Timing x Job/Breaks
+                        </Typography>
+                      </Box>
+                    </Paper>
+
+                    {/* Risk Level Legend */}
+                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                      <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        Risk Level Guide (HSE RR446)
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Chip size="small" label="<1.0 Low" sx={getRiskChipSx('low')} />
+                        <Chip size="small" label="1.0-1.1 Mod" sx={getRiskChipSx('moderate')} />
+                        <Chip size="small" label="1.1-1.2 Elev" sx={getRiskChipSx('elevated')} />
+                        <Chip size="small" label=">1.2 Critical" sx={getRiskChipSx('critical')} />
+                      </Box>
+                    </Paper>
+
+                    {/* Per-Shift Results */}
+                    <Box sx={{ maxHeight: 320, overflow: 'auto' }}>
+                      {results.calculations.map((calc) => (
+                        <Paper
+                          key={calc.id}
+                          variant="outlined"
+                          sx={{ mb: 1, overflow: 'hidden', border: 1, ...getRiskCardSx(calc.riskLevel.level) }}
+                        >
+                          <Box
+                            onClick={() => setExpandedShift(expandedShift === calc.id ? null : calc.id)}
+                            sx={{ p: 1.5, cursor: 'pointer' }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ opacity: 0.5 }}>
+                                  {expandedShift === calc.id ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                </Box>
+                                <Box>
+                                  <Typography variant="body2" fontWeight={600} component="span">Day {calc.day}</Typography>
+                                  <Chip size="small" label={calc.dayOfWeek} sx={{ ml: 1, height: 20, fontSize: '0.65rem', bgcolor: 'rgba(255,255,255,0.3)' }} />
+                                  <Typography variant="body2" sx={{ ml: 1, opacity: 0.8 }} component="span">
+                                    {calc.startTime} - {calc.endTime}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="h6" fontWeight={700} component="span">{calc.riskIndex}</Typography>
+                                <Typography variant="caption" sx={{ ml: 0.5, opacity: 0.8 }}>FRI</Typography>
+                              </Box>
+                            </Box>
+                            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                              Duration: {calc.dutyLength}h | {calc.riskLevel.label}
+                            </Typography>
+                          </Box>
+
+                          <Collapse in={expandedShift === calc.id}>
+                            <Box sx={{ px: 1.5, pb: 1.5, borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                              <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                                <Grid size={{ xs: 4 }}>
+                                  <Paper sx={{ p: 1, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Cumulative</Typography>
+                                    <Typography variant="body2" fontWeight={700}>{calc.cumulative}</Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid size={{ xs: 4 }}>
+                                  <Paper sx={{ p: 1, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Timing</Typography>
+                                    <Typography variant="body2" fontWeight={700}>{calc.timing}</Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid size={{ xs: 4 }}>
+                                  <Paper sx={{ p: 1, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Job/Breaks</Typography>
+                                    <Typography variant="body2" fontWeight={700}>{calc.jobBreaks}</Typography>
+                                  </Paper>
+                                </Grid>
+                              </Grid>
+                            </Box>
+                          </Collapse>
+                        </Paper>
+                      ))}
+                    </Box>
+                  </>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Box>
 
       {/* Save Pattern Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Save Shift Pattern</h2>
-              <button
-                onClick={() => {
-                  setShowSaveModal(false);
-                  setSaveError(null);
-                }}
-                className="text-slate-500 hover:text-slate-700"
+      <Dialog open={showSaveModal} onClose={() => { setShowSaveModal(false); setSaveError(null); }} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Save Shift Pattern
+          <IconButton onClick={() => { setShowSaveModal(false); setSaveError(null); }} size="small">
+            <X className="w-5 h-5" />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {saveError && (
+              <Alert severity="error">{saveError}</Alert>
+            )}
+
+            <TextField
+              label="Pattern Name"
+              value={savePatternName}
+              onChange={(e) => setSavePatternName(e.target.value)}
+              placeholder="e.g., Day Shift Mon-Fri"
+              required
+              fullWidth
+            />
+
+            <FormControl fullWidth required>
+              <InputLabel>Assign to Project</InputLabel>
+              <Select
+                value={saveProjectId || ''}
+                label="Assign to Project"
+                onChange={(e) => setSaveProjectId(e.target.value ? Number(e.target.value) : null)}
               >
-                <span className="text-2xl">&times;</span>
-              </button>
-            </div>
+                <MenuItem value="">Select project...</MenuItem>
+                {projects.map(project => (
+                  <MenuItem key={project.id} value={project.id}>{project.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            <div className="p-4 space-y-4">
-              {saveError && (
-                <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
-                  {saveError}
-                </div>
-              )}
+            <FormControl fullWidth>
+              <InputLabel>Duty Type</InputLabel>
+              <Select
+                value={saveDutyType}
+                label="Duty Type"
+                onChange={(e) => setSaveDutyType(e.target.value as string)}
+              >
+                <MenuItem value="Non-Possession">Non-Possession</MenuItem>
+                <MenuItem value="Possession">Possession</MenuItem>
+                <MenuItem value="Office">Office</MenuItem>
+                <MenuItem value="Lookout">Lookout</MenuItem>
+                <MenuItem value="Machine">Machine</MenuItem>
+                <MenuItem value="Protection">Protection</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
 
-              {/* Pattern Name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Pattern Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={savePatternName}
-                  onChange={(e) => setSavePatternName(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                  placeholder="e.g., Day Shift Mon-Fri"
-                />
-              </div>
-
-              {/* Project Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Assign to Project <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={saveProjectId || ''}
-                  onChange={(e) => setSaveProjectId(e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                >
-                  <option value="">Select project...</option>
-                  {projects.map(project => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Duty Type */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Duty Type
-                </label>
-                <select
-                  value={saveDutyType}
-                  onChange={(e) => setSaveDutyType(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                >
-                  <option value="Non-Possession">Non-Possession</option>
-                  <option value="Possession">Possession</option>
-                  <option value="Office">Office</option>
-                  <option value="Lookout">Lookout</option>
-                  <option value="Machine">Machine</option>
-                  <option value="Protection">Protection</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              {/* Night Shift Toggle */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="saveIsNight"
+            <FormControlLabel
+              control={
+                <Checkbox
                   checked={saveIsNight}
                   onChange={(e) => setSaveIsNight(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 border-slate-300 rounded"
                 />
-                <label htmlFor="saveIsNight" className="text-sm font-medium text-slate-700">
-                  Night Shift Pattern
-                </label>
-              </div>
+              }
+              label="Night Shift Pattern"
+            />
 
-              {/* Summary */}
-              <div className="bg-slate-50 p-3 rounded-lg text-sm">
-                <p className="font-medium text-slate-700 mb-1">Pattern Summary</p>
-                <p className="text-slate-600">
-                  Working days: {shifts.filter(s => !s.isRestDay).length} •
-                  Rest days: {shifts.filter(s => s.isRestDay).length}
-                </p>
-              </div>
-            </div>
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Pattern Summary</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Working days: {shifts.filter(s => !s.isRestDay).length} |
+                Rest days: {shifts.filter(s => s.isRestDay).length}
+              </Typography>
+            </Paper>
+          </Box>
+        </DialogContent>
 
-            <div className="p-4 border-t border-slate-200 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowSaveModal(false);
-                  setSaveError(null);
-                }}
-                className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSavePattern}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save Pattern'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => { setShowSaveModal(false); setSaveError(null); }} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button variant="contained" color="success" onClick={handleSavePattern} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Pattern'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
