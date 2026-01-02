@@ -665,9 +665,9 @@ export function TimelineView({
                                 {hasViolations && (
                                   <span className="flex-shrink-0 mr-0.5">
                                     {hasError ? (
-                                      <AlertCircle className="w-3 h-3 text-red-600" />
+                                      <AlertCircle className="w-2 h-2 text-red-600" />
                                     ) : hasWarning ? (
-                                      <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                      <AlertTriangle className="w-2 h-2 text-amber-600" />
                                     ) : null}
                                   </span>
                                 )}

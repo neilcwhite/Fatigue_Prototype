@@ -40,6 +40,11 @@ interface IconProps {
 // Helper to convert Tailwind size classes to pixel sizes
 const getSizeFromClass = (className?: string): number => {
   if (!className) return 24;
+  // Check smallest sizes first (more specific matches like w-2.5 before w-2)
+  if (className.includes('w-2.5') || className.includes('h-2.5')) return 10;
+  if (className.includes('w-3.5') || className.includes('h-3.5')) return 14;
+  if (className.includes('w-2') || className.includes('h-2')) return 8;
+  if (className.includes('w-3') || className.includes('h-3')) return 12;
   if (className.includes('w-4') || className.includes('h-4')) return 16;
   if (className.includes('w-5') || className.includes('h-5')) return 20;
   if (className.includes('w-6') || className.includes('h-6')) return 24;
