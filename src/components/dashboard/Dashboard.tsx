@@ -1,5 +1,16 @@
 'use client';
 
+import Box from '@mui/material/Box';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Grid from '@mui/material/Grid';
+import Tooltip from '@mui/material/Tooltip';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import {
   Calendar,
@@ -92,139 +103,300 @@ export function Dashboard({
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
-      <header className="bg-gradient-to-r from-slate-800 to-slate-900 border-b-4 border-blue-600">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div className="text-white font-semibold text-lg">
-            Network Rail <span className="text-blue-400">Fatigue Management</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="bg-slate-700 text-blue-400 px-3 py-1 rounded text-xs font-mono font-medium">
-              DASHBOARD
-            </span>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          background: 'linear-gradient(to right, #1e293b, #0f172a)',
+          borderBottom: '4px solid',
+          borderColor: 'primary.main',
+        }}
+      >
+        <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
+            Network Rail{' '}
+            <Box component="span" sx={{ color: 'primary.light' }}>
+              Fatigue Management
+            </Box>
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip
+              label="DASHBOARD"
+              size="small"
+              sx={{
+                bgcolor: 'rgba(51, 65, 85, 0.8)',
+                color: 'primary.light',
+                fontFamily: 'monospace',
+                fontWeight: 500,
+                fontSize: '0.7rem',
+              }}
+            />
             <SignOutHeader user={user} onSignOut={onSignOut} />
-          </div>
-        </div>
-      </header>
+          </Box>
+        </Toolbar>
+      </AppBar>
 
       {/* Content */}
-      <main className="p-6">
+      <Box sx={{ p: 3 }}>
         {/* Project Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Grid container spacing={3}>
           {projects.map(project => {
             const stats = getProjectStats(project.id);
             return (
-              <div 
-                key={project.id} 
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => onSelectProject(project.id)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-slate-900">{project.name}</h3>
-                    <p className="text-sm text-slate-600">{project.location}</p>
-                    <p className="text-xs text-slate-500 mt-1">{project.type}</p>
-                  </div>
-                  <div className="hover:scale-110 transition-transform" title="Compliance status">
-                    {stats.violations.length > 0 ? (
-                      <ErrorTriangle className="w-6 h-6 text-red-500" />
-                    ) : (
-                      <CheckCircle className="w-6 h-6 text-green-500" />
-                    )}
-                  </div>
-                </div>
+              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={project.id}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                  onClick={() => onSelectProject(project.id)}
+                >
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          {project.name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {project.location}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {project.type}
+                        </Typography>
+                      </Box>
+                      <Tooltip title={stats.violations.length > 0 ? 'Compliance issues' : 'Compliant'}>
+                        <Box sx={{ transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.1)' } }}>
+                          {stats.violations.length > 0 ? (
+                            <ErrorTriangle className="w-6 h-6" />
+                          ) : (
+                            <CheckCircle className="w-6 h-6" />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    </Box>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Shift Patterns:</span>
-                    <span className="font-semibold text-slate-800">{stats.shiftPatternCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Total Hours:</span>
-                    <span className="font-semibold text-slate-800">{stats.totalHours.toLocaleString()}h</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Employees:</span>
-                    <span className="font-semibold text-slate-800">{stats.employeeCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Compliance:</span>
-                    <span className={`font-semibold ${stats.violations.length > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.violations.length === 0
-                        ? 'Compliant'
-                        : `${stats.violations.length} Breach${stats.violations.length > 1 ? 'es' : ''}`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
-                    className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    Planning
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onViewSummary(project.id); }}
-                    className="flex-1 bg-violet-600 text-white py-2 rounded-md hover:bg-violet-700 transition-colors text-sm font-medium"
-                  >
-                    Summary
-                  </button>
-                </div>
-              </div>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Shift Patterns:</Typography>
+                        <Typography variant="body2" fontWeight={600}>{stats.shiftPatternCount}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Total Hours:</Typography>
+                        <Typography variant="body2" fontWeight={600}>{stats.totalHours.toLocaleString()}h</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Employees:</Typography>
+                        <Typography variant="body2" fontWeight={600}>{stats.employeeCount}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Compliance:</Typography>
+                        <Typography
+                          variant="body2"
+                          fontWeight={600}
+                          sx={{ color: stats.violations.length > 0 ? 'error.main' : 'success.main' }}
+                        >
+                          {stats.violations.length === 0
+                            ? 'Compliant'
+                            : `${stats.violations.length} Breach${stats.violations.length > 1 ? 'es' : ''}`}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                  <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                      sx={{ fontWeight: 500 }}
+                    >
+                      Planning
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      fullWidth
+                      onClick={(e) => { e.stopPropagation(); onViewSummary(project.id); }}
+                      sx={{ fontWeight: 500 }}
+                    >
+                      Summary
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
             );
           })}
 
           {/* Create New Project Card */}
-          <div 
-            onClick={onCreateProject}
-            className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-dashed border-blue-300 rounded-lg shadow-md p-6 hover:shadow-lg hover:border-blue-500 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[280px]"
-          >
-            <div className="bg-blue-600 rounded-full p-4 mb-4">
-              <Plus className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-xl font-semibold text-slate-900 mb-2">Create New Project</h3>
-            <p className="text-sm text-slate-600 text-center">Add a new project to start planning shifts</p>
-          </div>
-        </div>
+          <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+            <Card
+              onClick={onCreateProject}
+              sx={{
+                height: '100%',
+                minHeight: 280,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                border: '2px dashed',
+                borderColor: 'primary.light',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    bgcolor: 'primary.main',
+                    borderRadius: '50%',
+                    p: 2,
+                    mb: 2,
+                    display: 'inline-flex',
+                  }}
+                >
+                  <Plus className="w-8 h-8" />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                  Create New Project
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Add a new project to start planning shifts
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         {/* Action Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button 
-            onClick={onViewEmployee}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <Calendar className="w-8 h-8 text-blue-600 mb-2" />
-            <h3 className="text-xl font-semibold text-slate-900">Employee View</h3>
-            <p className="text-slate-600 mt-2">Check individual compliance and schedules</p>
-          </button>
+        <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              component="button"
+              onClick={onViewEmployee}
+              sx={{
+                width: '100%',
+                p: 3,
+                textAlign: 'left',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <Box sx={{ color: 'primary.main', mb: 1 }}>
+                <Calendar className="w-8 h-8" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Employee View
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Check individual compliance and schedules
+              </Typography>
+            </Card>
+          </Grid>
 
-          <button 
-            onClick={onViewFatigue}
-            className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <BarChart className="w-8 h-8 text-orange-600 mb-2" />
-            <h3 className="text-xl font-semibold text-slate-900">Fatigue Risk Assessment</h3>
-            <p className="text-slate-600 mt-2">HSE RR446 compliant shift pattern analysis</p>
-            <span className="inline-block mt-2 text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">
-              NEW
-            </span>
-          </button>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              component="button"
+              onClick={onViewFatigue}
+              sx={{
+                width: '100%',
+                p: 3,
+                textAlign: 'left',
+                border: '1px solid',
+                borderColor: 'warning.light',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <Box sx={{ color: 'warning.main', mb: 1 }}>
+                <BarChart className="w-8 h-8" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Fatigue Risk Assessment
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                HSE RR446 compliant shift pattern analysis
+              </Typography>
+              <Chip
+                label="NEW"
+                size="small"
+                sx={{
+                  mt: 1.5,
+                  bgcolor: 'warning.light',
+                  color: 'warning.dark',
+                  fontWeight: 500,
+                  fontSize: '0.7rem',
+                }}
+              />
+            </Card>
+          </Grid>
 
-          <button 
-            onClick={onViewTeams}
-            className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <Users className="w-8 h-8 text-purple-600 mb-2" />
-            <h3 className="text-xl font-semibold text-slate-900">Team Management</h3>
-            <p className="text-slate-600 mt-2">Create teams and assign them to shift patterns</p>
-            <span className="inline-block mt-2 text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded">
-              NEW
-            </span>
-          </button>
-        </div>
-      </main>
-    </div>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              component="button"
+              onClick={onViewTeams}
+              sx={{
+                width: '100%',
+                p: 3,
+                textAlign: 'left',
+                border: '1px solid',
+                borderColor: 'secondary.light',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <Box sx={{ color: 'secondary.main', mb: 1 }}>
+                <Users className="w-8 h-8" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Team Management
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Create teams and assign them to shift patterns
+              </Typography>
+              <Chip
+                label="NEW"
+                size="small"
+                sx={{
+                  mt: 1.5,
+                  bgcolor: 'secondary.light',
+                  color: 'secondary.dark',
+                  fontWeight: 500,
+                  fontSize: '0.7rem',
+                }}
+              />
+            </Card>
+          </Grid>
+        </Grid>
+      </Box>
+    </Box>
   );
 }

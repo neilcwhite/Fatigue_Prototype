@@ -1,6 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Alert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import MenuItem from '@mui/material/MenuItem';
+import Grid from '@mui/material/Grid';
+import CircularProgress from '@mui/material/CircularProgress';
 import { X, Clock, User, Calendar, FileText } from '@/components/ui/Icons';
 import type { AssignmentCamel, ShiftPatternCamel, EmployeeCamel } from '@/lib/types';
 
@@ -115,174 +128,182 @@ export function AssignmentEditModal({
   const effectiveStartTime = customStartTime || selectedPattern.startTime || '--:--';
   const effectiveEndTime = customEndTime || selectedPattern.endTime || '--:--';
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <h2 className="text-lg font-semibold text-slate-800">Edit Assignment</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  // Warning: will move to Custom row
+  const hasCustomStart = customStartTime && customStartTime !== selectedPattern.startTime;
+  const hasCustomEnd = customEndTime && customEndTime !== selectedPattern.endTime;
+  const willMoveToCustom = (hasCustomStart || hasCustomEnd) && !selectedPatternId.endsWith('-custom');
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: 'action.hover' }}>
+        Edit Assignment
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <X className="w-5 h-5" />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent dividers>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           {/* Employee info (read-only) */}
-          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-            <User className="w-5 h-5 text-blue-600" />
-            <div>
-              <div className="font-medium text-slate-800">{employee.name}</div>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              p: 2,
+              bgcolor: 'primary.50',
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'primary.light',
+            }}
+          >
+            <Box sx={{ color: 'primary.main' }}>
+              <User className="w-5 h-5" />
+            </Box>
+            <Box>
+              <Typography variant="subtitle2">{employee.name}</Typography>
               {employee.role && (
-                <div className="text-sm text-slate-500">{employee.role}</div>
+                <Typography variant="body2" color="text.secondary">{employee.role}</Typography>
               )}
-            </div>
-          </div>
+            </Box>
+          </Box>
 
           {/* Date (read-only) */}
-          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-            <Calendar className="w-5 h-5 text-slate-500" />
-            <div className="text-slate-700">{formatDate(assignment.date)}</div>
-          </div>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
+              p: 2,
+              bgcolor: 'action.hover',
+              borderRadius: 1,
+            }}
+          >
+            <Box sx={{ color: 'text.secondary' }}>
+              <Calendar className="w-5 h-5" />
+            </Box>
+            <Typography variant="body2">{formatDate(assignment.date)}</Typography>
+          </Box>
 
           {/* Shift Pattern selector */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Shift Pattern
-            </label>
-            <select
-              value={selectedPatternId}
-              onChange={(e) => setSelectedPatternId(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {allShiftPatterns.map(pattern => (
-                <option key={pattern.id} value={pattern.id}>
-                  {pattern.name} ({pattern.startTime || '??'} - {pattern.endTime || '??'})
-                </option>
-              ))}
-            </select>
-          </div>
+          <TextField
+            select
+            label="Shift Pattern"
+            value={selectedPatternId}
+            onChange={(e) => setSelectedPatternId(e.target.value)}
+            fullWidth
+          >
+            {allShiftPatterns.map(pattern => (
+              <MenuItem key={pattern.id} value={pattern.id}>
+                {pattern.name} ({pattern.startTime || '??'} - {pattern.endTime || '??'})
+              </MenuItem>
+            ))}
+          </TextField>
 
           {/* Custom times */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-slate-700">
-                Custom Times (Override)
-              </label>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2">Custom Times (Override)</Typography>
               {(customStartTime || customEndTime) && (
-                <button
+                <Button
+                  size="small"
                   onClick={handleClearCustomTimes}
-                  className="text-xs text-blue-600 hover:text-blue-700"
+                  sx={{ textTransform: 'none', fontSize: '0.75rem' }}
                 >
                   Clear overrides
-                </button>
+                </Button>
               )}
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <label className="block text-xs text-slate-500 mb-1">Start</label>
-                <input
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <TextField
                   type="time"
+                  label="Start"
                   value={customStartTime}
                   onChange={(e) => setCustomStartTime(e.target.value)}
-                  placeholder={selectedPattern.startTime || ''}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  fullWidth
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs text-slate-500 mb-1">End</label>
-                <input
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <TextField
                   type="time"
+                  label="End"
                   value={customEndTime}
                   onChange={(e) => setCustomEndTime(e.target.value)}
-                  placeholder={selectedPattern.endTime || ''}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  fullWidth
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-              </div>
-            </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center gap-1">
+              </Grid>
+            </Grid>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
               <Clock className="w-3 h-3" />
-              Effective: {effectiveStartTime} - {effectiveEndTime}
-            </div>
-            {/* Warning: will move to Custom row */}
-            {(() => {
-              const hasCustomStart = customStartTime && customStartTime !== selectedPattern.startTime;
-              const hasCustomEnd = customEndTime && customEndTime !== selectedPattern.endTime;
-              const willMoveToCustom = (hasCustomStart || hasCustomEnd) && !selectedPatternId.endsWith('-custom');
-              if (willMoveToCustom) {
-                return (
-                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2">
-                    <Clock className="w-3 h-3 flex-shrink-0" />
-                    <span>Custom times will move this assignment to the <strong>Custom (Ad-hoc)</strong> row</span>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
+              <Typography variant="caption" color="text.secondary">
+                Effective: {effectiveStartTime} - {effectiveEndTime}
+              </Typography>
+            </Box>
+            {willMoveToCustom && (
+              <Alert severity="warning" sx={{ mt: 1.5 }} icon={<Clock className="w-4 h-4" />}>
+                <Typography variant="caption">
+                  Custom times will move this assignment to the <strong>Custom (Ad-hoc)</strong> row
+                </Typography>
+              </Alert>
+            )}
+          </Box>
 
           {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              <div className="flex items-center gap-1">
-                <FileText className="w-4 h-4" />
-                Notes
-              </div>
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Add notes for this assignment..."
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-            />
-          </div>
+          <TextField
+            label="Notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            multiline
+            rows={3}
+            placeholder="Add notes for this assignment..."
+            fullWidth
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <Box sx={{ alignSelf: 'flex-start', mt: 1, mr: 1, color: 'text.secondary' }}>
+                    <FileText className="w-4 h-4" />
+                  </Box>
+                ),
+              },
+            }}
+          />
 
           {/* Error display */}
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <Alert severity="error">
               {error}
-            </div>
+            </Alert>
           )}
-        </div>
+        </Box>
+      </DialogContent>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
-          <button
-            onClick={handleDelete}
+      <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between', bgcolor: 'action.hover' }}>
+        <Button
+          onClick={handleDelete}
+          disabled={saving}
+          color="error"
+        >
+          Delete
+        </Button>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Button onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
             disabled={saving}
-            className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg disabled:opacity-50"
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
           >
-            Delete
-          </button>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              disabled={saving}
-              className="px-4 py-2 text-slate-600 hover:text-slate-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </Box>
+      </DialogActions>
+    </Dialog>
   );
 }

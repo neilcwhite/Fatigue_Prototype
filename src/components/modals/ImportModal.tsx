@@ -1,6 +1,22 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
 import { Upload, X, AlertTriangle, CheckCircle, FileSpreadsheet } from '@/components/ui/Icons';
 import { parseImportFile, type ImportResult, type ParsedAssignment } from '@/lib/importExport';
 
@@ -69,246 +85,250 @@ export function ImportModal({ onClose, onConfirm, projectName }: ImportModalProp
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">
-            Import Assignments - {projectName}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        Import Assignments - {projectName}
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <X className="w-5 h-5" />
+        </IconButton>
+      </DialogTitle>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-130px)]">
-          {/* Step 1: File Selection */}
-          {step === 'select' && (
-            <div>
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                className="border-2 border-dashed border-slate-300 rounded-lg p-12 text-center hover:border-blue-400 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
+      <DialogContent dividers sx={{ minHeight: 400 }}>
+        {/* Step 1: File Selection */}
+        {step === 'select' && (
+          <Box>
+            <Box
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onClick={() => fileInputRef.current?.click()}
+              sx={{
+                border: '2px dashed',
+                borderColor: 'divider',
+                borderRadius: 2,
+                p: 6,
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              <Box sx={{ color: 'text.secondary', mb: 2 }}>
+                <Upload className="w-12 h-12" />
+              </Box>
+              <Typography variant="body1" color="text.secondary" gutterBottom>
+                Drag and drop an Excel file here, or click to browse
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Supports .xlsx, .xls, and .csv files
+              </Typography>
+            </Box>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+
+            {/* Format Guide */}
+            <Paper variant="outlined" sx={{ mt: 3, p: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Expected Format
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Your file should have columns for:
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                <Paper variant="outlined" sx={{ p: 1.5 }}>
+                  <Typography variant="body2"><strong>Date</strong> (required)</Typography>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 1.5 }}>
+                  <Typography variant="body2"><strong>Employee Name</strong> (required)</Typography>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 1.5 }}>
+                  <Typography variant="body2">Shift Pattern (optional)</Typography>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 1.5 }}>
+                  <Typography variant="body2">Start/End Time (optional)</Typography>
+                </Paper>
+              </Box>
+            </Paper>
+          </Box>
+        )}
+
+        {/* Step 2: Preview */}
+        {step === 'preview' && parseResult && (
+          <Box>
+            {/* File info */}
+            <Paper variant="outlined" sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ color: 'success.main' }}>
+                <FileSpreadsheet className="w-8 h-8" />
+              </Box>
+              <Box>
+                <Typography variant="subtitle2">{file?.name}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {parseResult.assignments.length} assignments found
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* Errors */}
+            {parseResult.errors.length > 0 && (
+              <Alert
+                severity="error"
+                icon={<AlertTriangle className="w-5 h-5" />}
+                sx={{ mb: 2 }}
               >
-                <Upload className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600 mb-2">
-                  Drag and drop an Excel file here, or click to browse
-                </p>
-                <p className="text-sm text-slate-500">
-                  Supports .xlsx, .xls, and .csv files
-                </p>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
+                <Typography variant="subtitle2" gutterBottom>
+                  {parseResult.errors.length} errors found
+                </Typography>
+                <Box component="ul" sx={{ pl: 2, m: 0, maxHeight: 100, overflow: 'auto' }}>
+                  {parseResult.errors.map((err, i) => (
+                    <li key={i}><Typography variant="body2">{err}</Typography></li>
+                  ))}
+                </Box>
+              </Alert>
+            )}
 
-              {/* Format Guide */}
-              <div className="mt-6 p-4 bg-slate-50 rounded-lg">
-                <h4 className="font-medium text-slate-700 mb-2">Expected Format</h4>
-                <p className="text-sm text-slate-600 mb-3">
-                  Your file should have columns for:
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-white px-3 py-2 rounded border text-slate-700">
-                    <strong>Date</strong> (required)
-                  </div>
-                  <div className="bg-white px-3 py-2 rounded border text-slate-700">
-                    <strong>Employee Name</strong> (required)
-                  </div>
-                  <div className="bg-white px-3 py-2 rounded border text-slate-700">
-                    Shift Pattern (optional)
-                  </div>
-                  <div className="bg-white px-3 py-2 rounded border text-slate-700">
-                    Start/End Time (optional)
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Preview */}
-          {step === 'preview' && parseResult && (
-            <div>
-              {/* File info */}
-              <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
-                <FileSpreadsheet className="w-8 h-8 text-green-600" />
-                <div>
-                  <p className="font-medium text-slate-800">{file?.name}</p>
-                  <p className="text-sm text-slate-500">
-                    {parseResult.assignments.length} assignments found
-                  </p>
-                </div>
-              </div>
-
-              {/* Errors */}
-              {parseResult.errors.length > 0 && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                    <span className="font-medium text-red-800">
-                      {parseResult.errors.length} errors found
-                    </span>
-                  </div>
-                  <ul className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
-                    {parseResult.errors.map((err, i) => (
-                      <li key={i}>• {err}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Warnings */}
-              {parseResult.warnings.length > 0 && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
-                    <span className="font-medium text-amber-800">
-                      {parseResult.warnings.length} warnings
-                    </span>
-                  </div>
-                  <ul className="text-sm text-amber-700 space-y-1 max-h-32 overflow-y-auto">
-                    {parseResult.warnings.slice(0, 10).map((warn, i) => (
-                      <li key={i}>• {warn}</li>
-                    ))}
-                    {parseResult.warnings.length > 10 && (
-                      <li>...and {parseResult.warnings.length - 10} more</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              {/* Preview table */}
-              {parseResult.assignments.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 border-b">
-                    <span className="text-sm font-medium text-slate-700">
-                      Preview (first 10 rows)
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-slate-600">Date</th>
-                          <th className="px-3 py-2 text-left text-slate-600">Employee</th>
-                          <th className="px-3 py-2 text-left text-slate-600">Shift Pattern</th>
-                          <th className="px-3 py-2 text-left text-slate-600">Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {parseResult.assignments.slice(0, 10).map((a, i) => (
-                          <tr key={i} className="border-t border-slate-100">
-                            <td className="px-3 py-2 text-slate-900">{a.date}</td>
-                            <td className="px-3 py-2 text-slate-900">{a.employeeName}</td>
-                            <td className="px-3 py-2 text-slate-900">{a.shiftPatternName}</td>
-                            <td className="px-3 py-2 text-slate-900">
-                              {a.startTime && a.endTime
-                                ? `${a.startTime} - ${a.endTime}`
-                                : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {parseResult.assignments.length > 10 && (
-                    <div className="px-4 py-2 bg-slate-50 text-sm text-slate-500 border-t">
-                      ...and {parseResult.assignments.length - 10} more assignments
-                    </div>
+            {/* Warnings */}
+            {parseResult.warnings.length > 0 && (
+              <Alert
+                severity="warning"
+                icon={<AlertTriangle className="w-5 h-5" />}
+                sx={{ mb: 2 }}
+              >
+                <Typography variant="subtitle2" gutterBottom>
+                  {parseResult.warnings.length} warnings
+                </Typography>
+                <Box component="ul" sx={{ pl: 2, m: 0, maxHeight: 100, overflow: 'auto' }}>
+                  {parseResult.warnings.slice(0, 10).map((warn, i) => (
+                    <li key={i}><Typography variant="body2">{warn}</Typography></li>
+                  ))}
+                  {parseResult.warnings.length > 10 && (
+                    <li><Typography variant="body2">...and {parseResult.warnings.length - 10} more</Typography></li>
                   )}
-                </div>
-              )}
+                </Box>
+              </Alert>
+            )}
 
-              {/* Import errors from processing */}
-              {importErrors.length > 0 && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <ul className="text-sm text-red-700 space-y-1">
-                    {importErrors.map((err, i) => (
-                      <li key={i}>• {err}</li>
+            {/* Preview table */}
+            {parseResult.assignments.length > 0 && (
+              <Paper variant="outlined">
+                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography variant="subtitle2">Preview (first 10 rows)</Typography>
+                </Box>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Employee</TableCell>
+                      <TableCell>Shift Pattern</TableCell>
+                      <TableCell>Time</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {parseResult.assignments.slice(0, 10).map((a, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{a.date}</TableCell>
+                        <TableCell>{a.employeeName}</TableCell>
+                        <TableCell>{a.shiftPatternName}</TableCell>
+                        <TableCell>
+                          {a.startTime && a.endTime
+                            ? `${a.startTime} - ${a.endTime}`
+                            : '-'}
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
+                  </TableBody>
+                </Table>
+                {parseResult.assignments.length > 10 && (
+                  <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      ...and {parseResult.assignments.length - 10} more assignments
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            )}
 
-          {/* Step 3: Importing */}
-          {step === 'importing' && (
-            <div className="text-center py-12">
-              <div className="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-lg font-medium text-slate-700">Importing assignments...</p>
-              <p className="text-sm text-slate-500 mt-2">
-                {importProgress.created} of {importProgress.total} processed
-              </p>
-            </div>
-          )}
+            {/* Import errors from processing */}
+            {importErrors.length > 0 && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {importErrors.map((err, i) => (
+                  <Typography key={i} variant="body2">{err}</Typography>
+                ))}
+              </Alert>
+            )}
+          </Box>
+        )}
 
-          {/* Step 4: Complete */}
-          {step === 'complete' && (
-            <div className="text-center py-12">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <p className="text-xl font-medium text-slate-800">Import Complete!</p>
-              <p className="text-slate-600 mt-2">
-                Successfully imported {parseResult?.assignments.length || 0} assignments
-              </p>
-            </div>
-          )}
-        </div>
+        {/* Step 3: Importing */}
+        {step === 'importing' && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <CircularProgress size={48} sx={{ mb: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              Importing assignments...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {importProgress.created} of {importProgress.total} processed
+            </Typography>
+          </Box>
+        )}
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 flex justify-end gap-3">
-          {step === 'select' && (
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-800"
+        {/* Step 4: Complete */}
+        {step === 'complete' && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Box sx={{ color: 'success.main', mb: 2 }}>
+              <CheckCircle className="w-16 h-16" />
+            </Box>
+            <Typography variant="h5" gutterBottom>
+              Import Complete!
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Successfully imported {parseResult?.assignments.length || 0} assignments
+            </Typography>
+          </Box>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        {step === 'select' && (
+          <Button onClick={onClose}>Cancel</Button>
+        )}
+
+        {step === 'preview' && (
+          <>
+            <Button
+              onClick={() => {
+                setStep('select');
+                setFile(null);
+                setParseResult(null);
+                setImportErrors([]);
+              }}
             >
-              Cancel
-            </button>
-          )}
-
-          {step === 'preview' && (
-            <>
-              <button
-                onClick={() => {
-                  setStep('select');
-                  setFile(null);
-                  setParseResult(null);
-                  setImportErrors([]);
-                }}
-                className="px-4 py-2 text-slate-600 hover:text-slate-800"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleImport}
-                disabled={!parseResult || parseResult.assignments.length === 0}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Import {parseResult?.assignments.length || 0} Assignments
-              </button>
-            </>
-          )}
-
-          {step === 'complete' && (
-            <button
-              onClick={onClose}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              Back
+            </Button>
+            <Button
+              onClick={handleImport}
+              variant="contained"
+              color="secondary"
+              disabled={!parseResult || parseResult.assignments.length === 0}
+              startIcon={<Upload className="w-4 h-4" />}
             >
-              Done
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+              Import {parseResult?.assignments.length || 0} Assignments
+            </Button>
+          </>
+        )}
+
+        {step === 'complete' && (
+          <Button onClick={onClose} variant="contained">
+            Done
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -1,6 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Alert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import Grid from '@mui/material/Grid';
 import { X, AlertTriangle, Clock, Users } from '@/components/ui/Icons';
 
 interface CustomTimeModalProps {
@@ -43,175 +54,171 @@ export function CustomTimeModal({ employeeNames, date, patternName, onClose, onC
     : employeeNames[0];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            <h2 className="text-xl font-bold text-slate-900">
-              {step === 'confirm' ? 'Day Not in Shift Pattern' : 'Set Custom Work Times'}
-            </h2>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ color: 'warning.main' }}>
+            <AlertTriangle className="w-5 h-5" />
+          </Box>
+          {step === 'confirm' ? 'Day Not in Shift Pattern' : 'Set Custom Work Times'}
+        </Box>
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <X className="w-5 h-5" />
+        </IconButton>
+      </DialogTitle>
 
-        {/* Step 1: Confirmation */}
-        {step === 'confirm' && (
-          <div>
-            <div className="p-4 space-y-4">
+      {/* Step 1: Confirmation */}
+      {step === 'confirm' && (
+        <>
+          <DialogContent dividers>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               {/* Warning Box */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800 mb-1">
-                      {dayOfWeek} is not a scheduled work day
-                    </p>
-                    <p className="text-sm text-amber-700">
-                      <strong>{formattedDate}</strong> is not part of the <strong>{patternName}</strong> shift pattern.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <Alert
+                severity="warning"
+                icon={<AlertTriangle className="w-5 h-5" />}
+                sx={{ '& .MuiAlert-message': { width: '100%' } }}
+              >
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                  {dayOfWeek} is not a scheduled work day
+                </Typography>
+                <Typography variant="body2">
+                  <strong>{formattedDate}</strong> is not part of the <strong>{patternName}</strong> shift pattern.
+                </Typography>
+              </Alert>
 
               {/* Employee Info */}
-              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                <Users className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-slate-600">You're trying to assign:</p>
-                  <p className="text-sm font-semibold text-slate-800">
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 1.5,
+                  p: 2,
+                  bgcolor: 'action.hover',
+                  borderRadius: 1,
+                }}
+              >
+                <Box sx={{ color: 'text.secondary', mt: 0.25 }}>
+                  <Users className="w-5 h-5" />
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    You're trying to assign:
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
                     {employeeNames.join(', ')}
-                  </p>
-                </div>
-              </div>
+                  </Typography>
+                </Box>
+              </Box>
 
               {/* Question */}
-              <div className="text-center py-2">
-                <p className="text-base font-medium text-slate-800">
+              <Box sx={{ textAlign: 'center', py: 1 }}>
+                <Typography variant="body1" fontWeight={500}>
                   Do you need {employeeText} to work on this day?
-                </p>
-                <p className="text-sm text-slate-500 mt-1">
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   This will create a custom shift shown on the "Custom" roster row.
-                </p>
-              </div>
-            </div>
+                </Typography>
+              </Box>
+            </Box>
+          </DialogContent>
 
-            {/* Confirmation Buttons */}
-            <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 font-medium"
-              >
-                No, Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep('times')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-              >
-                Yes, Add Custom Shift
-              </button>
-            </div>
-          </div>
-        )}
+          <DialogActions sx={{ px: 3, py: 2, bgcolor: 'action.hover' }}>
+            <Button onClick={onClose} variant="outlined">
+              No, Cancel
+            </Button>
+            <Button onClick={() => setStep('times')} variant="contained">
+              Yes, Add Custom Shift
+            </Button>
+          </DialogActions>
+        </>
+      )}
 
-        {/* Step 2: Time Entry */}
-        {step === 'times' && (
-          <form onSubmit={handleSubmit}>
-            <div className="p-4 space-y-4">
+      {/* Step 2: Time Entry */}
+      {step === 'times' && (
+        <form onSubmit={handleSubmit}>
+          <DialogContent dividers>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               {/* Info Header */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <Clock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">
-                      Custom shift for {formattedDate}
-                    </p>
-                    <p className="text-sm text-blue-700 mt-0.5">
-                      Enter the start and finish times for this shift.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <Alert
+                severity="info"
+                icon={<Clock className="w-5 h-5" />}
+              >
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Custom shift for {formattedDate}
+                </Typography>
+                <Typography variant="body2">
+                  Enter the start and finish times for this shift.
+                </Typography>
+              </Alert>
 
               {error && (
-                <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
+                <Alert severity="error">
                   {error}
-                </div>
+                </Alert>
               )}
 
               {/* Employee List */}
-              <div>
-                <p className="text-sm text-slate-600 mb-1">
-                  Assigning: <strong>{employeeNames.join(', ')}</strong>
-                </p>
-              </div>
+              <Typography variant="body2" color="text.secondary">
+                Assigning: <strong>{employeeNames.join(', ')}</strong>
+              </Typography>
 
               {/* Time Inputs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Start Time <span className="text-red-500">*</span>
-                  </label>
-                  <input
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
+                  <TextField
                     type="time"
+                    label="Start Time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                    required
+                    fullWidth
                     autoFocus
+                    slotProps={{ inputLabel: { shrink: true } }}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Finish Time <span className="text-red-500">*</span>
-                  </label>
-                  <input
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <TextField
                     type="time"
+                    label="Finish Time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                    required
+                    fullWidth
+                    slotProps={{ inputLabel: { shrink: true } }}
                   />
-                </div>
-              </div>
+                </Grid>
+              </Grid>
 
               {/* Info Note */}
-              <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded">
-                This assignment will appear on a <strong>"Custom"</strong> roster row, separate from the regular shift patterns.
-              </div>
-            </div>
-
-            {/* Form Buttons */}
-            <div className="p-4 border-t border-slate-200 flex justify-between bg-slate-50">
-              <button
-                type="button"
-                onClick={() => setStep('confirm')}
-                className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium"
+              <Typography
+                variant="caption"
+                sx={{
+                  p: 1.5,
+                  bgcolor: 'action.hover',
+                  borderRadius: 1,
+                  display: 'block',
+                }}
               >
-                ← Back
-              </button>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-                >
-                  Add to Custom Roster
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+                This assignment will appear on a <strong>"Custom"</strong> roster row, separate from the regular shift patterns.
+              </Typography>
+            </Box>
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between', bgcolor: 'action.hover' }}>
+            <Button onClick={() => setStep('confirm')} color="inherit">
+              ← Back
+            </Button>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Button onClick={onClose} variant="outlined">
+                Cancel
+              </Button>
+              <Button type="submit" variant="contained">
+                Add to Custom Roster
+              </Button>
+            </Box>
+          </DialogActions>
+        </form>
+      )}
+    </Dialog>
   );
 }

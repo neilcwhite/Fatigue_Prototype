@@ -1,12 +1,33 @@
 'use client';
 
 import { useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Alert from '@mui/material/Alert';
+import MenuItem from '@mui/material/MenuItem';
+import Grid from '@mui/material/Grid';
+import CircularProgress from '@mui/material/CircularProgress';
 import { X } from '@/components/ui/Icons';
 
 interface ProjectModalProps {
   onClose: () => void;
   onSave: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<void>;
 }
+
+const PROJECT_TYPES = [
+  'Resignalling',
+  'Track Renewal',
+  'Electrification',
+  'Station Works',
+  'Maintenance',
+  'Other',
+];
 
 export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
   const [name, setName] = useState('');
@@ -19,7 +40,7 @@ export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
       setError('Project name is required');
       return;
@@ -46,114 +67,97 @@ export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900">Create New Project</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        Create New Project
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <X className="w-5 h-5" />
+        </IconButton>
+      </DialogTitle>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-4 space-y-4">
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+              <Alert severity="error" sx={{ mb: 1 }}>
                 {error}
-              </div>
+              </Alert>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Project Name *
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                placeholder="e.g., Clacton Resignalling"
-                autoFocus
-              />
-            </div>
+            <TextField
+              label="Project Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Clacton Resignalling"
+              required
+              fullWidth
+              autoFocus
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Location
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-                placeholder="e.g., Essex"
-              />
-            </div>
+            <TextField
+              label="Location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g., Essex"
+              fullWidth
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Project Type
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
-              >
-                <option value="">Select type...</option>
-                <option value="Resignalling">Resignalling</option>
-                <option value="Track Renewal">Track Renewal</option>
-                <option value="Electrification">Electrification</option>
-                <option value="Station Works">Station Works</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+            <TextField
+              select
+              label="Project Type"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>Select type...</em>
+              </MenuItem>
+              {PROJECT_TYPES.map((t) => (
+                <MenuItem key={t} value={t}>
+                  {t}
+                </MenuItem>
+              ))}
+            </TextField>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Start Date
-                </label>
-                <input
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <TextField
                   type="date"
+                  label="Start Date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                  fullWidth
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  End Date
-                </label>
-                <input
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <TextField
                   type="date"
+                  label="End Date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white"
+                  fullWidth
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-              </div>
-            </div>
-          </div>
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
 
-          <div className="p-4 border-t border-slate-200 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-md"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              disabled={saving}
-            >
-              {saving ? 'Creating...' : 'Create Project'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {saving ? 'Creating...' : 'Create Project'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }

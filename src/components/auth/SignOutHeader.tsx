@@ -1,5 +1,8 @@
 'use client';
 
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import { supabase } from '@/lib/supabase';
 import type { SupabaseUser } from '@/lib/types';
 
@@ -24,14 +27,40 @@ export function SignOutHeader({ user, onSignOut }: SignOutHeaderProps) {
   };
 
   return (
-    <div className="text-white text-sm bg-slate-800/90 backdrop-blur-sm px-3 py-1 rounded-lg shadow-lg border border-slate-700 flex items-center gap-3">
-      <p className="font-medium">{user.email}</p>
-      <button 
-        onClick={handleSignOut} 
-        className="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        bgcolor: 'rgba(30, 41, 59, 0.9)',
+        backdropFilter: 'blur(4px)',
+        px: 2,
+        py: 0.75,
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'rgba(71, 85, 105, 0.5)',
+      }}
+    >
+      <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 500 }}>
+        {user.email}
+      </Typography>
+      <Button
+        onClick={handleSignOut}
+        variant="text"
+        size="small"
+        sx={{
+          color: 'primary.light',
+          textTransform: 'none',
+          fontSize: '0.75rem',
+          minWidth: 'auto',
+          p: 0.5,
+          '&:hover': {
+            bgcolor: 'rgba(59, 130, 246, 0.1)',
+          },
+        }}
       >
         Sign out
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }

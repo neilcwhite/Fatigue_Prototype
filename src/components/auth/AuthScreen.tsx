@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Spinner } from '@/components/ui/Icons';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import { Calendar } from '@/components/ui/Icons';
 import { supabase } from '@/lib/supabase';
 import type { SupabaseUser } from '@/lib/types';
 
@@ -22,7 +29,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
       setError('Supabase not configured');
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
@@ -45,91 +52,164 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-lg">
-              <Calendar className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-white">
-            Network Rail <span className="text-blue-400">Fatigue Management</span>
-          </h1>
-          <p className="text-slate-400 text-sm">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+        p: 2,
+      }}
+    >
+      <Paper
+        elevation={8}
+        sx={{
+          width: '100%',
+          maxWidth: 400,
+          p: 4,
+          borderRadius: 3,
+          bgcolor: '#1e293b',
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        {/* Logo and Title */}
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'primary.main',
+              p: 1.5,
+              borderRadius: 2,
+              mb: 2,
+            }}
+          >
+            <Calendar className="w-8 h-8" />
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#ffffff', mb: 0.5 }}>
+            Network Rail{' '}
+            <Box component="span" sx={{ color: 'primary.light' }}>
+              Fatigue Management
+            </Box>
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#94a3b8' }}>
             HSE RR446 compliant shift planning system
-          </p>
-        </div>
+          </Typography>
+        </Box>
 
+        {/* Error Alert */}
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-300 p-3 rounded-lg text-sm">
+          <Alert
+            severity="error"
+            sx={{
+              mb: 3,
+              bgcolor: 'rgba(239, 68, 68, 0.1)',
+              color: '#fca5a5',
+              '& .MuiAlert-icon': { color: '#f87171' },
+            }}
+          >
             {error}
-          </div>
+          </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input"
-              placeholder="you@example.com"
-              required
-              disabled={loading}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input"
-              placeholder="••••••••"
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary w-full py-3 flex items-center justify-center gap-2"
+        {/* Form */}
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <TextField
+            type="email"
+            label="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
             disabled={loading}
+            fullWidth
+            variant="outlined"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                bgcolor: '#0f172a',
+                color: '#ffffff',
+                '& fieldset': { borderColor: '#475569' },
+                '&:hover fieldset': { borderColor: '#64748b' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+              },
+              '& .MuiInputLabel-root': { color: '#94a3b8' },
+              '& .MuiInputLabel-root.Mui-focused': { color: 'primary.light' },
+              '& .MuiOutlinedInput-input::placeholder': { color: '#64748b', opacity: 1 },
+            }}
+          />
+
+          <TextField
+            type="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+            disabled={loading}
+            fullWidth
+            variant="outlined"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                bgcolor: '#0f172a',
+                color: '#ffffff',
+                '& fieldset': { borderColor: '#475569' },
+                '&:hover fieldset': { borderColor: '#64748b' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+              },
+              '& .MuiInputLabel-root': { color: '#94a3b8' },
+              '& .MuiInputLabel-root.Mui-focused': { color: 'primary.light' },
+              '& .MuiOutlinedInput-input::placeholder': { color: '#64748b', opacity: 1 },
+            }}
+          />
+
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            disabled={loading}
+            fullWidth
+            sx={{
+              py: 1.5,
+              mt: 1,
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
           >
             {loading ? (
-              <>
-                <Spinner className="w-5 h-5" />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={20} color="inherit" />
                 {mode === 'signin' ? 'Signing in...' : 'Creating account...'}
-              </>
+              </Box>
             ) : (
               mode === 'signin' ? 'Sign In' : 'Create Account'
             )}
-          </button>
-        </form>
+          </Button>
+        </Box>
 
-        <div className="text-center">
-          <button
-            type="button"
+        {/* Mode Toggle */}
+        <Box sx={{ textAlign: 'center', mt: 3 }}>
+          <Button
+            variant="text"
             onClick={() => {
               setMode(mode === 'signin' ? 'signup' : 'signin');
               setError('');
             }}
-            className="text-sm text-blue-400 hover:text-blue-300"
             disabled={loading}
+            sx={{
+              color: 'primary.light',
+              textTransform: 'none',
+              '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.1)' },
+            }}
           >
-            {mode === 'signin' 
-              ? "Don't have an account? Sign up" 
+            {mode === 'signin'
+              ? "Don't have an account? Sign up"
               : 'Already have an account? Sign in'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Box>
+      </Paper>
+    </Box>
   );
 }

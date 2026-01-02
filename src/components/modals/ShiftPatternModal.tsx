@@ -1,8 +1,28 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { X, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
-import type { WeeklySchedule, ShiftDefinition, DaySchedule } from '@/lib/types';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Alert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import MenuItem from '@mui/material/MenuItem';
+import Grid from '@mui/material/Grid';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+import Chip from '@mui/material/Chip';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import Switch from '@mui/material/Switch';
+import CircularProgress from '@mui/material/CircularProgress';
+import { X, ChevronDown, Edit2 } from '@/components/ui/Icons';
+import type { WeeklySchedule, ShiftDefinition } from '@/lib/types';
 import { calculateFatigueSequence, getRiskLevel, type FatigueParams } from '@/lib/fatigue';
 
 // Per-day fatigue parameters interface
@@ -26,7 +46,6 @@ interface ShiftPatternModalProps {
     dutyType: string;
     isNight: boolean;
     weeklySchedule: WeeklySchedule;
-    // Fatigue parameters
     workload?: number;
     attention?: number;
     commuteTime?: number;
@@ -94,7 +113,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
   const [error, setError] = useState<string | null>(null);
 
   // Fatigue parameters (defaults)
-  const [showFatigueSettings, setShowFatigueSettings] = useState(false);
   const [workload, setWorkload] = useState<number>(2);
   const [attention, setAttention] = useState<number>(2);
   const [commuteTime, setCommuteTime] = useState<number>(60);
@@ -128,12 +146,10 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
   const fatigueResults = useMemo(() => {
     if (selectedDays.length === 0 || !startTime || !endTime) return [];
 
-    // Map days to day numbers (Mon=1, Tue=2, etc.)
     const dayToNumber: Record<DayKey, number> = {
       Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7
     };
 
-    // Sort selected days and create shift definitions with per-day params if enabled
     const sortedDays = [...selectedDays].sort((a, b) => dayToNumber[a] - dayToNumber[b]);
     const shifts: ShiftDefinition[] = sortedDays.map(day => {
       const dayParams = perDayParams[day];
@@ -157,7 +173,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
       };
     });
 
-    // Use global params for calculation (per-day params are embedded in shifts)
     const params: FatigueParams = {
       commuteTime: usePerDayParams ? 60 : commuteTime,
       workload: usePerDayParams ? 2 : workload,
@@ -171,7 +186,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
     return calculateFatigueSequence(shifts, params);
   }, [selectedDays, startTime, endTime, workload, attention, commuteTime, breakFrequency, breakLength, usePerDayParams, perDayParams]);
 
-  // Get max risk for color coding
   const maxRisk = useMemo(() => {
     if (fatigueResults.length === 0) return 0;
     return Math.max(...fatigueResults.map(r => r.riskIndex));
@@ -185,7 +199,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
     }
   };
 
-  // Update a specific day's fatigue params
   const updateDayParams = (day: DayKey, field: keyof DayFatigueParams, value: number) => {
     setPerDayParams(prev => ({
       ...prev,
@@ -196,7 +209,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
     }));
   };
 
-  // Copy global params to all days
   const applyGlobalToAllDays = () => {
     const globalParams: DayFatigueParams = {
       commuteIn: Math.floor(commuteTime / 2),
@@ -244,15 +256,8 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
     setSaving(true);
 
     try {
-      // Build weekly schedule with per-day fatigue params if enabled
       const weeklySchedule: WeeklySchedule = {
-        Mon: null,
-        Tue: null,
-        Wed: null,
-        Thu: null,
-        Fri: null,
-        Sat: null,
-        Sun: null,
+        Mon: null, Tue: null, Wed: null, Thu: null, Fri: null, Sat: null, Sun: null,
       };
 
       selectedDays.forEach(day => {
@@ -269,10 +274,7 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
             breakLen: dayParams.breakLen,
           };
         } else {
-          weeklySchedule[day] = {
-            startTime,
-            endTime,
-          };
+          weeklySchedule[day] = { startTime, endTime };
         }
       });
 
@@ -284,7 +286,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
         dutyType,
         isNight,
         weeklySchedule,
-        // Global fatigue parameters (used when per-day not enabled)
         workload: usePerDayParams ? undefined : workload,
         attention: usePerDayParams ? undefined : attention,
         commuteTime: usePerDayParams ? undefined : commuteTime,
@@ -300,7 +301,6 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
     }
   };
 
-  // Auto-detect night shift
   const handleStartTimeChange = (time: string) => {
     setStartTime(time);
     const hour = parseInt(time.split(':')[0]);
@@ -309,176 +309,142 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
     }
   };
 
-  // Common input style with good contrast
-  const inputStyle = "w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
-  const selectStyle = "w-full border border-slate-300 rounded-md px-3 py-2 text-slate-900 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-900">Create Shift Pattern</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        Create Shift Pattern
+        <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
+          <X className="w-5 h-5" />
+        </IconButton>
+      </DialogTitle>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="p-4 space-y-4 overflow-y-auto flex-1">
-            {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
-                {error}
-              </div>
-            )}
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers sx={{ maxHeight: '70vh' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {error && <Alert severity="error">{error}</Alert>}
 
-            {/* Presets - Fixed with visible text */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Quick Templates
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyPreset('dayShift')}
-                  className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium"
-                >
+            {/* Quick Templates */}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>Quick Templates</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Button size="small" variant="contained" onClick={() => applyPreset('dayShift')}>
                   Day Shift
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('nightShift')}
-                  className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-md font-medium"
-                >
+                </Button>
+                <Button size="small" variant="contained" color="secondary" onClick={() => applyPreset('nightShift')}>
                   Night Shift
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('weekendPossession')}
-                  className="px-3 py-1.5 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-md font-medium"
-                >
+                </Button>
+                <Button size="small" variant="contained" color="warning" onClick={() => applyPreset('weekendPossession')}>
                   Weekend Possession
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('weekdays')}
-                  className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md font-medium"
-                >
+                </Button>
+                <Button size="small" variant="contained" color="success" onClick={() => applyPreset('weekdays')}>
                   Weekdays Only
-                </button>
-              </div>
-            </div>
+                </Button>
+              </Box>
+            </Box>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Pattern Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={inputStyle}
-                placeholder="e.g., Day Shift, Night Shift"
-                style={{ color: '#1e293b' }}
-              />
-            </div>
+            {/* Pattern Name */}
+            <TextField
+              label="Pattern Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Day Shift, Night Shift"
+              required
+              fullWidth
+            />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Start Time <span className="text-red-500">*</span>
-                </label>
-                <input
+            {/* Times */}
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 6 }}>
+                <TextField
                   type="time"
+                  label="Start Time"
                   value={startTime}
                   onChange={(e) => handleStartTimeChange(e.target.value)}
-                  className={inputStyle}
-                  style={{ color: '#1e293b' }}
+                  required
+                  fullWidth
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  End Time <span className="text-red-500">*</span>
-                </label>
-                <input
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <TextField
                   type="time"
+                  label="End Time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className={inputStyle}
-                  style={{ color: '#1e293b' }}
+                  required
+                  fullWidth
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-              </div>
-            </div>
+              </Grid>
+            </Grid>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Duty Type
-                </label>
-                <select
+            {/* Duty Type and Night Shift */}
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 6 }}>
+                <TextField
+                  select
+                  label="Duty Type"
                   value={dutyType}
                   onChange={(e) => setDutyType(e.target.value)}
-                  className={selectStyle}
-                  style={{ color: '#1e293b' }}
+                  fullWidth
                 >
                   {DUTY_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
                   ))}
-                </select>
-              </div>
-              <div className="flex items-center">
-                <label className="flex items-center gap-2 cursor-pointer mt-6">
-                  <input
-                    type="checkbox"
-                    checked={isNight}
-                    onChange={(e) => setIsNight(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded"
-                  />
-                  <span className="text-sm text-slate-700 font-medium">Night Shift 🌙</span>
-                </label>
-              </div>
-            </div>
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isNight}
+                      onChange={(e) => setIsNight(e.target.checked)}
+                      color="secondary"
+                    />
+                  }
+                  label="Night Shift"
+                />
+              </Grid>
+            </Grid>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Active Days <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
+            {/* Active Days */}
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Active Days <Typography component="span" color="error">*</Typography>
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                 {DAYS.map(day => (
-                  <button
+                  <Chip
                     key={day}
-                    type="button"
+                    label={day}
                     onClick={() => toggleDay(day)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      selectedDays.includes(day)
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                    }`}
-                  >
-                    {day}
-                  </button>
+                    color={selectedDays.includes(day) ? 'primary' : 'default'}
+                    variant={selectedDays.includes(day) ? 'filled' : 'outlined'}
+                    sx={{ fontWeight: 500 }}
+                  />
                 ))}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                 Click to toggle. Employees can only be assigned on active days.
-              </p>
-            </div>
+              </Typography>
+            </Box>
 
             {/* Live Fatigue Risk Index */}
             {fatigueResults.length > 0 && (
-              <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-slate-700">Live Fatigue Risk Index (HSE RR446)</span>
-                  <span
-                    className="text-xs font-medium px-2 py-1 rounded"
-                    style={{
-                      backgroundColor: getRiskLevel(maxRisk).color + '20',
+              <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2, bgcolor: 'action.hover' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                  <Typography variant="subtitle2">Live Fatigue Risk Index (HSE RR446)</Typography>
+                  <Chip
+                    size="small"
+                    label={`Max: ${maxRisk.toFixed(3)} - ${getRiskLevel(maxRisk).label}`}
+                    sx={{
+                      bgcolor: getRiskLevel(maxRisk).color + '20',
                       color: getRiskLevel(maxRisk).color,
+                      fontWeight: 600,
                     }}
-                  >
-                    Max: {maxRisk.toFixed(3)} - {getRiskLevel(maxRisk).label}
-                  </span>
-                </div>
-                <div className="flex gap-1">
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
                   {(() => {
                     const dayToNumber: Record<DayKey, number> = {
                       Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7
@@ -489,302 +455,285 @@ export function ShiftPatternModal({ projectId, onClose, onSave }: ShiftPatternMo
                       if (!result) return null;
                       const riskLevel = getRiskLevel(result.riskIndex);
                       return (
-                        <div
+                        <Box
                           key={day}
-                          className="flex-1 text-center p-2 rounded"
-                          style={{ backgroundColor: riskLevel.color + '20' }}
+                          sx={{
+                            flex: 1,
+                            textAlign: 'center',
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor: riskLevel.color + '20',
+                          }}
                           title={`${day}: FRI=${result.riskIndex.toFixed(3)} (${riskLevel.label})`}
                         >
-                          <div className="text-xs font-medium text-slate-600">{day}</div>
-                          <div
-                            className="text-sm font-bold"
-                            style={{ color: riskLevel.color }}
-                          >
+                          <Typography variant="caption" color="text.secondary">{day}</Typography>
+                          <Typography variant="body2" fontWeight={700} sx={{ color: riskLevel.color }}>
                             {result.riskIndex.toFixed(3)}
-                          </div>
-                        </div>
+                          </Typography>
+                        </Box>
                       );
                     });
                   })()}
-                </div>
-                <p className="text-xs text-slate-500 mt-2">
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                   Risk levels: &lt;1.0 Low (green) | 1.0-1.1 Moderate (yellow) | 1.1-1.2 Elevated (orange) | &gt;1.2 High (red)
-                </p>
-              </div>
+                </Typography>
+              </Box>
             )}
 
             {/* Fatigue Settings (Collapsible) */}
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowFatigueSettings(!showFatigueSettings)}
-                className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="font-medium text-slate-700">Fatigue Risk Parameters</span>
-                {showFatigueSettings ? (
-                  <ChevronUp className="w-4 h-4 text-slate-500" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-slate-500" />
-                )}
-              </button>
-
-              {showFatigueSettings && (
-                <div className="p-4 space-y-4 bg-white border-t border-slate-200">
-                  <p className="text-xs text-slate-500 mb-3">
+            <Accordion>
+              <AccordionSummary expandIcon={<ChevronDown className="w-4 h-4" />}>
+                <Typography variant="subtitle2">Fatigue Risk Parameters</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
                     These values are used in HSE RR446 fatigue calculations for this shift pattern.
-                  </p>
+                  </Typography>
 
                   {/* Toggle between global and per-day params */}
-                  <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
-                    <div>
-                      <span className="text-sm font-medium text-slate-700">Per-Day Parameters</span>
-                      <p className="text-xs text-slate-500">Set different fatigue factors for each day</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={usePerDayParams}
-                        onChange={(e) => {
-                          setUsePerDayParams(e.target.checked);
-                          if (e.target.checked) {
-                            applyGlobalToAllDays();
-                          }
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={500}>Per-Day Parameters</Typography>
+                      <Typography variant="caption" color="text.secondary">Set different fatigue factors for each day</Typography>
+                    </Box>
+                    <Switch
+                      checked={usePerDayParams}
+                      onChange={(e) => {
+                        setUsePerDayParams(e.target.checked);
+                        if (e.target.checked) applyGlobalToAllDays();
+                      }}
+                    />
+                  </Box>
 
                   {!usePerDayParams ? (
                     /* Global Parameters */
                     <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Workload (1-5)
-                          </label>
-                          <select
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 6 }}>
+                          <TextField
+                            select
+                            label="Workload (1-5)"
                             value={workload}
                             onChange={(e) => setWorkload(parseInt(e.target.value))}
-                            className={selectStyle}
-                            style={{ color: '#1e293b' }}
+                            fullWidth
+                            size="small"
                           >
-                            <option value={1}>1 - Light</option>
-                            <option value={2}>2 - Moderate</option>
-                            <option value={3}>3 - Average</option>
-                            <option value={4}>4 - Heavy</option>
-                            <option value={5}>5 - Very Heavy</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Attention (1-5)
-                          </label>
-                          <select
+                            <MenuItem value={1}>1 - Light</MenuItem>
+                            <MenuItem value={2}>2 - Moderate</MenuItem>
+                            <MenuItem value={3}>3 - Average</MenuItem>
+                            <MenuItem value={4}>4 - Heavy</MenuItem>
+                            <MenuItem value={5}>5 - Very Heavy</MenuItem>
+                          </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <TextField
+                            select
+                            label="Attention (1-5)"
                             value={attention}
                             onChange={(e) => setAttention(parseInt(e.target.value))}
-                            className={selectStyle}
-                            style={{ color: '#1e293b' }}
+                            fullWidth
+                            size="small"
                           >
-                            <option value={1}>1 - Low</option>
-                            <option value={2}>2 - Moderate</option>
-                            <option value={3}>3 - Average</option>
-                            <option value={4}>4 - High</option>
-                            <option value={5}>5 - Very High</option>
-                          </select>
-                        </div>
-                      </div>
+                            <MenuItem value={1}>1 - Low</MenuItem>
+                            <MenuItem value={2}>2 - Moderate</MenuItem>
+                            <MenuItem value={3}>3 - Average</MenuItem>
+                            <MenuItem value={4}>4 - High</MenuItem>
+                            <MenuItem value={5}>5 - Very High</MenuItem>
+                          </TextField>
+                        </Grid>
+                      </Grid>
 
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Commute Time (minutes)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="180"
-                          value={commuteTime}
-                          onChange={(e) => setCommuteTime(parseInt(e.target.value) || 0)}
-                          className={inputStyle}
-                          style={{ color: '#1e293b' }}
-                        />
-                        <p className="text-xs text-slate-500 mt-1">Total daily commute (home to work + work to home)</p>
-                      </div>
+                      <TextField
+                        type="number"
+                        label="Commute Time (minutes)"
+                        value={commuteTime}
+                        onChange={(e) => setCommuteTime(parseInt(e.target.value) || 0)}
+                        fullWidth
+                        size="small"
+                        slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                        helperText="Total daily commute (home to work + work to home)"
+                      />
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Break Frequency (mins)
-                          </label>
-                          <input
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 6 }}>
+                          <TextField
                             type="number"
-                            min="30"
-                            max="480"
+                            label="Break Frequency (mins)"
                             value={breakFrequency}
                             onChange={(e) => setBreakFrequency(parseInt(e.target.value) || 180)}
-                            className={inputStyle}
-                            style={{ color: '#1e293b' }}
+                            fullWidth
+                            size="small"
+                            slotProps={{ htmlInput: { min: 30, max: 480 } }}
                           />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Break Length (mins)
-                          </label>
-                          <input
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <TextField
                             type="number"
-                            min="5"
-                            max="60"
+                            label="Break Length (mins)"
                             value={breakLength}
                             onChange={(e) => setBreakLength(parseInt(e.target.value) || 30)}
-                            className={inputStyle}
-                            style={{ color: '#1e293b' }}
+                            fullWidth
+                            size="small"
+                            slotProps={{ htmlInput: { min: 5, max: 60 } }}
                           />
-                        </div>
-                      </div>
+                        </Grid>
+                      </Grid>
                     </>
                   ) : (
                     /* Per-Day Parameters */
-                    <div className="space-y-2">
-                      <div className="text-xs text-slate-500 mb-2">Click a day to edit its fatigue parameters:</div>
-                      <div className="space-y-1">
-                        {selectedDays.length === 0 ? (
-                          <p className="text-sm text-slate-400 italic">Select active days above first</p>
-                        ) : (
-                          [...selectedDays].sort((a, b) => {
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                        Click a day to edit its fatigue parameters:
+                      </Typography>
+                      {selectedDays.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                          Select active days above first
+                        </Typography>
+                      ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          {[...selectedDays].sort((a, b) => {
                             const order: Record<DayKey, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
                             return order[a] - order[b];
                           }).map(day => {
                             const params = perDayParams[day];
                             const isEditing = editingDay === day;
                             return (
-                              <div key={day} className="border border-slate-200 rounded-lg overflow-hidden">
-                                <button
-                                  type="button"
+                              <Box key={day} sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+                                <Box
                                   onClick={() => setEditingDay(isEditing ? null : day)}
-                                  className="w-full px-3 py-2 flex items-center justify-between bg-slate-50 hover:bg-slate-100 text-left"
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    p: 1.5,
+                                    bgcolor: 'action.hover',
+                                    cursor: 'pointer',
+                                    '&:hover': { bgcolor: 'action.selected' },
+                                  }}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-slate-700">{day}</span>
-                                    <span className="text-xs text-slate-500">
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" fontWeight={500}>{day}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
                                       W:{params.workload} A:{params.attention} C:{params.commuteIn + params.commuteOut}m
-                                    </span>
-                                  </div>
-                                  <Edit2 className={`w-4 h-4 ${isEditing ? 'text-blue-600' : 'text-slate-400'}`} />
-                                </button>
+                                    </Typography>
+                                  </Box>
+                                  <Edit2 className={`w-4 h-4 ${isEditing ? 'text-blue-600' : ''}`} />
+                                </Box>
                                 {isEditing && (
-                                  <div className="p-3 space-y-3 bg-white border-t border-slate-200">
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Commute In (mins)</label>
-                                        <input
+                                  <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <Grid container spacing={2}>
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
                                           type="number"
-                                          min="0"
-                                          max="120"
+                                          label="Commute In (mins)"
                                           value={params.commuteIn}
                                           onChange={(e) => updateDayParams(day, 'commuteIn', parseInt(e.target.value) || 0)}
-                                          className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900"
+                                          fullWidth
+                                          size="small"
+                                          slotProps={{ htmlInput: { min: 0, max: 120 } }}
                                         />
-                                      </div>
-                                      <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Commute Out (mins)</label>
-                                        <input
+                                      </Grid>
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
                                           type="number"
-                                          min="0"
-                                          max="120"
+                                          label="Commute Out (mins)"
                                           value={params.commuteOut}
                                           onChange={(e) => updateDayParams(day, 'commuteOut', parseInt(e.target.value) || 0)}
-                                          className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900"
+                                          fullWidth
+                                          size="small"
+                                          slotProps={{ htmlInput: { min: 0, max: 120 } }}
                                         />
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Workload (1-5)</label>
-                                        <select
+                                      </Grid>
+                                    </Grid>
+                                    <Grid container spacing={2}>
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                          select
+                                          label="Workload (1-5)"
                                           value={params.workload}
                                           onChange={(e) => updateDayParams(day, 'workload', parseInt(e.target.value))}
-                                          className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900"
+                                          fullWidth
+                                          size="small"
                                         >
-                                          <option value={1}>1 - Light</option>
-                                          <option value={2}>2 - Moderate</option>
-                                          <option value={3}>3 - Average</option>
-                                          <option value={4}>4 - Heavy</option>
-                                          <option value={5}>5 - Very Heavy</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Attention (1-5)</label>
-                                        <select
+                                          <MenuItem value={1}>1 - Light</MenuItem>
+                                          <MenuItem value={2}>2 - Moderate</MenuItem>
+                                          <MenuItem value={3}>3 - Average</MenuItem>
+                                          <MenuItem value={4}>4 - Heavy</MenuItem>
+                                          <MenuItem value={5}>5 - Very Heavy</MenuItem>
+                                        </TextField>
+                                      </Grid>
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                          select
+                                          label="Attention (1-5)"
                                           value={params.attention}
                                           onChange={(e) => updateDayParams(day, 'attention', parseInt(e.target.value))}
-                                          className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900"
+                                          fullWidth
+                                          size="small"
                                         >
-                                          <option value={1}>1 - Low</option>
-                                          <option value={2}>2 - Moderate</option>
-                                          <option value={3}>3 - Average</option>
-                                          <option value={4}>4 - High</option>
-                                          <option value={5}>5 - Very High</option>
-                                        </select>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Break Freq (mins)</label>
-                                        <input
+                                          <MenuItem value={1}>1 - Low</MenuItem>
+                                          <MenuItem value={2}>2 - Moderate</MenuItem>
+                                          <MenuItem value={3}>3 - Average</MenuItem>
+                                          <MenuItem value={4}>4 - High</MenuItem>
+                                          <MenuItem value={5}>5 - Very High</MenuItem>
+                                        </TextField>
+                                      </Grid>
+                                    </Grid>
+                                    <Grid container spacing={2}>
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
                                           type="number"
-                                          min="30"
-                                          max="480"
+                                          label="Break Freq (mins)"
                                           value={params.breakFreq}
                                           onChange={(e) => updateDayParams(day, 'breakFreq', parseInt(e.target.value) || 180)}
-                                          className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900"
+                                          fullWidth
+                                          size="small"
+                                          slotProps={{ htmlInput: { min: 30, max: 480 } }}
                                         />
-                                      </div>
-                                      <div>
-                                        <label className="block text-xs font-medium text-slate-600 mb-1">Break Length (mins)</label>
-                                        <input
+                                      </Grid>
+                                      <Grid size={{ xs: 6 }}>
+                                        <TextField
                                           type="number"
-                                          min="5"
-                                          max="60"
+                                          label="Break Length (mins)"
                                           value={params.breakLen}
                                           onChange={(e) => updateDayParams(day, 'breakLen', parseInt(e.target.value) || 30)}
-                                          className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900"
+                                          fullWidth
+                                          size="small"
+                                          slotProps={{ htmlInput: { min: 5, max: 60 } }}
                                         />
-                                      </div>
-                                    </div>
-                                  </div>
+                                      </Grid>
+                                    </Grid>
+                                  </Box>
                                 )}
-                              </div>
+                              </Box>
                             );
-                          })
-                        )}
-                      </div>
-                    </div>
+                          })}
+                        </Box>
+                      )}
+                    </Box>
                   )}
-                </div>
-              )}
-            </div>
-          </div>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          </Box>
+        </DialogContent>
 
-          <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 font-medium"
-              disabled={saving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium"
-              disabled={saving}
-            >
-              {saving ? 'Creating...' : 'Create Pattern'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: 'action.hover' }}>
+          <Button onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {saving ? 'Creating...' : 'Create Pattern'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }
