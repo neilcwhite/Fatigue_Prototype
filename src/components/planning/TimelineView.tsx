@@ -1,7 +1,18 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { Edit2, Trash2, Copy, X, Check, AlertTriangle, AlertCircle } from '@/components/ui/Icons';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
+import { Edit2, Trash2, AlertTriangle, AlertCircle } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
 import type {
   ProjectCamel,
@@ -32,6 +43,15 @@ interface TimelineViewProps {
   }) => Promise<void>;
 }
 
+// Copy dialog state
+interface CopyShiftDialogState {
+  open: boolean;
+  sourceDate: string;
+  sourcePatternId: string;
+  sourcePatternName: string;
+  employeeAssignments: AssignmentCamel[];
+}
+
 export function TimelineView({
   project,
   employees,
@@ -45,15 +65,10 @@ export function TimelineView({
   onNavigateToPerson,
   onCreateAssignment,
 }: TimelineViewProps) {
-  // Selection state
-  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<number>>(new Set());
-  const [lastSelectedId, setLastSelectedId] = useState<number | null>(null);
-  const [isCopyMode, setIsCopyMode] = useState(false);
-  const [copyTargetDates, setCopyTargetDates] = useState<Set<string>>(new Set());
+  // Copy shift dialog state
+  const [copyDialog, setCopyDialog] = useState<CopyShiftDialogState | null>(null);
+  const [selectedTargetDates, setSelectedTargetDates] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Track sorted assignments for shift-click range selection
-  const sortedAssignmentsRef = useRef<AssignmentCamel[]>([]);
 
   // Generate 28 days from period start
   const dates = useMemo(() => {
@@ -69,37 +84,17 @@ export function TimelineView({
     return result;
   }, [period.startDate]);
 
-  // Update sorted assignments ref when assignments change
-  useEffect(() => {
-    sortedAssignmentsRef.current = [...assignments].sort((a, b) => {
-      // Sort by pattern, then date, then employee
-      if (a.shiftPatternId !== b.shiftPatternId) {
-        return a.shiftPatternId.localeCompare(b.shiftPatternId);
-      }
-      if (a.date !== b.date) {
-        return a.date.localeCompare(b.date);
-      }
-      return a.employeeId - b.employeeId;
-    });
-  }, [assignments]);
-
-  // Clear selection on Escape
+  // Close dialog on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSelectedAssignmentIds(new Set());
-        setLastSelectedId(null);
-        setIsCopyMode(false);
-        setCopyTargetDates(new Set());
-      }
-      // Delete selected with Delete key
-      if (e.key === 'Delete' && selectedAssignmentIds.size > 0 && !isProcessing) {
-        handleBulkDelete();
+      if (e.key === 'Escape' && copyDialog) {
+        setCopyDialog(null);
+        setSelectedTargetDates(new Set());
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedAssignmentIds, isProcessing]);
+  }, [copyDialog]);
 
   // Build compliance violations map for all employees
   const complianceByEmployee = useMemo(() => {
@@ -163,76 +158,32 @@ export function TimelineView({
     return employees.find(e => e.id === employeeId)?.name || 'Unknown';
   };
 
-  // Handle tile click for selection
-  const handleTileClick = useCallback((e: React.MouseEvent, assignment: AssignmentCamel) => {
-    e.stopPropagation();
-
-    // If in copy mode, ignore tile clicks
-    if (isCopyMode) return;
-
-    const assignmentId = assignment.id;
-
-    if (e.shiftKey && lastSelectedId !== null) {
-      // Shift+click: range selection
-      const sorted = sortedAssignmentsRef.current;
-      const lastIdx = sorted.findIndex(a => a.id === lastSelectedId);
-      const currentIdx = sorted.findIndex(a => a.id === assignmentId);
-
-      if (lastIdx !== -1 && currentIdx !== -1) {
-        const [start, end] = [Math.min(lastIdx, currentIdx), Math.max(lastIdx, currentIdx)];
-        const rangeIds = sorted.slice(start, end + 1).map(a => a.id);
-
-        if (e.ctrlKey || e.metaKey) {
-          // Add range to existing selection
-          setSelectedAssignmentIds(prev => {
-            const next = new Set(prev);
-            rangeIds.forEach(id => next.add(id));
-            return next;
-          });
-        } else {
-          // Replace selection with range
-          setSelectedAssignmentIds(new Set(rangeIds));
-        }
-      }
-    } else if (e.ctrlKey || e.metaKey) {
-      // Ctrl+click: toggle individual selection
-      setSelectedAssignmentIds(prev => {
-        const next = new Set(prev);
-        if (next.has(assignmentId)) {
-          next.delete(assignmentId);
-        } else {
-          next.add(assignmentId);
-        }
-        return next;
-      });
-      setLastSelectedId(assignmentId);
-    } else {
-      // Regular click: select only this one (or deselect if already sole selection)
-      if (selectedAssignmentIds.size === 1 && selectedAssignmentIds.has(assignmentId)) {
-        setSelectedAssignmentIds(new Set());
-        setLastSelectedId(null);
-      } else {
-        setSelectedAssignmentIds(new Set([assignmentId]));
-        setLastSelectedId(assignmentId);
-      }
+  // Handle cell click (on background, not on employee name) to open copy dialog
+  const handleCellBackgroundClick = useCallback((
+    e: React.MouseEvent,
+    patternId: string,
+    patternName: string,
+    date: string,
+    cellAssignments: AssignmentCamel[]
+  ) => {
+    // Only trigger if clicking on the cell background, not on employee tiles
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-employee-tile]')) {
+      return; // Clicked on an employee tile, not background
     }
-  }, [lastSelectedId, isCopyMode, selectedAssignmentIds]);
 
-  // Handle cell click for copy target selection
-  const handleCellClick = useCallback((e: React.MouseEvent, date: string, isValidCell: boolean) => {
-    if (!isCopyMode || !isValidCell) return;
+    // Only show dialog if there are assignments to copy
+    if (cellAssignments.length === 0) return;
 
-    e.stopPropagation();
-    setCopyTargetDates(prev => {
-      const next = new Set(prev);
-      if (next.has(date)) {
-        next.delete(date);
-      } else {
-        next.add(date);
-      }
-      return next;
+    setCopyDialog({
+      open: true,
+      sourceDate: date,
+      sourcePatternId: patternId,
+      sourcePatternName: patternName,
+      employeeAssignments: cellAssignments,
     });
-  }, [isCopyMode]);
+    setSelectedTargetDates(new Set());
+  }, []);
 
   // Handle delete with confirmation
   const handleDelete = async (assignmentId: number, employeeId: number) => {
@@ -247,49 +198,18 @@ export function TimelineView({
     }
   };
 
-  // Bulk delete
-  const handleBulkDelete = async () => {
-    if (selectedAssignmentIds.size === 0) return;
-
-    const count = selectedAssignmentIds.size;
-    if (!confirm(`Delete ${count} selected assignment${count > 1 ? 's' : ''}?`)) {
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const ids = Array.from(selectedAssignmentIds);
-      for (const id of ids) {
-        await onDeleteAssignment(id);
-      }
-      setSelectedAssignmentIds(new Set());
-      setLastSelectedId(null);
-    } catch (err) {
-      console.error('Error bulk deleting:', err);
-      alert('Failed to delete some assignments');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Enter copy mode
-  const handleStartCopy = () => {
-    setIsCopyMode(true);
-    setCopyTargetDates(new Set());
-  };
-
-  // Execute copy
+  // Execute copy to selected dates
   const handleExecuteCopy = async () => {
-    if (!onCreateAssignment || copyTargetDates.size === 0) return;
+    if (!onCreateAssignment || !copyDialog || selectedTargetDates.size === 0) return;
 
     setIsProcessing(true);
     try {
-      const selectedAssignments = assignments.filter(a => selectedAssignmentIds.has(a.id));
-      const targetDates = Array.from(copyTargetDates);
+      const targetDates = Array.from(selectedTargetDates);
+      const isCustomPattern = copyDialog.sourcePatternId.endsWith('-custom');
 
-      for (const assignment of selectedAssignments) {
+      for (const assignment of copyDialog.employeeAssignments) {
         for (const targetDate of targetDates) {
-          // Check if assignment already exists
+          // Check if assignment already exists for this employee on this date in this pattern
           const exists = assignments.some(
             a => a.employeeId === assignment.employeeId &&
                  a.shiftPatternId === assignment.shiftPatternId &&
@@ -297,23 +217,23 @@ export function TimelineView({
           );
 
           if (!exists) {
+            // For Custom pattern, preserve custom times; for regular patterns, don't include times
             await onCreateAssignment({
               employeeId: assignment.employeeId,
               projectId: assignment.projectId,
               shiftPatternId: assignment.shiftPatternId,
               date: targetDate,
-              customStartTime: assignment.customStartTime,
-              customEndTime: assignment.customEndTime,
+              ...(isCustomPattern && assignment.customStartTime && assignment.customEndTime
+                ? { customStartTime: assignment.customStartTime, customEndTime: assignment.customEndTime }
+                : {}),
             });
           }
         }
       }
 
-      // Exit copy mode and clear selection
-      setIsCopyMode(false);
-      setCopyTargetDates(new Set());
-      setSelectedAssignmentIds(new Set());
-      setLastSelectedId(null);
+      // Close dialog
+      setCopyDialog(null);
+      setSelectedTargetDates(new Set());
     } catch (err) {
       console.error('Error copying assignments:', err);
       alert('Failed to copy some assignments');
@@ -322,19 +242,30 @@ export function TimelineView({
     }
   };
 
-  // Cancel copy mode
-  const handleCancelCopy = () => {
-    setIsCopyMode(false);
-    setCopyTargetDates(new Set());
+  // Toggle date selection in dialog
+  const toggleDateSelection = (date: string) => {
+    setSelectedTargetDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
   };
 
-  // Clear selection
-  const handleClearSelection = () => {
-    setSelectedAssignmentIds(new Set());
-    setLastSelectedId(null);
-    setIsCopyMode(false);
-    setCopyTargetDates(new Set());
-  };
+  // Get valid dates for copy target (dates that are part of the shift pattern and not the source date)
+  const getValidCopyTargetDates = useMemo(() => {
+    if (!copyDialog) return [];
+    const pattern = shiftPatterns.find(p => p.id === copyDialog.sourcePatternId);
+    if (!pattern) return [];
+
+    return dates.filter(date => {
+      if (date === copyDialog.sourceDate) return false; // Exclude source date
+      return shiftPatternHasHoursForDay(pattern, date);
+    });
+  }, [copyDialog, dates, shiftPatterns]);
 
   // Format date for header
   const formatDateHeader = (dateStr: string) => {
@@ -346,18 +277,13 @@ export function TimelineView({
     };
   };
 
-  // Get tile color based on violations and selection
+  // Get tile color based on violations
   // - violations: violations on THIS specific date (fill color)
   // - futureViolations: whether employee has any violations from this date onwards (border)
   const getTileStyle = (
     violations: ComplianceViolation[],
-    isSelected: boolean,
     futureViolations?: { hasWarning: boolean; hasError: boolean }
   ) => {
-    if (isSelected) {
-      return 'bg-blue-500 text-white border-blue-600 border-2 ring-2 ring-blue-300';
-    }
-
     // Current date has a violation - change fill color
     const hasError = violations.some(v => v.severity === 'error');
     const hasWarning = violations.some(v => v.severity === 'warning');
@@ -386,8 +312,7 @@ export function TimelineView({
   };
 
   // Get just the background color for the hover buttons overlay
-  const getTileBackground = (violations: ComplianceViolation[], isSelected: boolean) => {
-    if (isSelected) return 'bg-blue-500';
+  const getTileBackground = (violations: ComplianceViolation[]) => {
     const hasError = violations.some(v => v.severity === 'error');
     const hasWarning = violations.some(v => v.severity === 'warning');
     if (hasError) return 'bg-red-100';
@@ -403,74 +328,6 @@ export function TimelineView({
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-x-auto relative">
-      {/* Bulk Operations Toolbar */}
-      {selectedAssignmentIds.size > 0 && (
-        <div className="sticky top-0 left-0 right-0 z-20 bg-blue-600 text-white px-4 py-2 flex items-center justify-between gap-4 shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="font-medium">
-              {selectedAssignmentIds.size} selected
-            </span>
-            <span className="text-blue-200 text-sm">
-              (Ctrl+click to multi-select, Shift+click for range, Esc to clear)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {!isCopyMode ? (
-              <>
-                {onCreateAssignment && (
-                  <button
-                    onClick={handleStartCopy}
-                    disabled={isProcessing}
-                    className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 rounded text-sm flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <Copy className="w-4 h-4" />
-                    Copy to...
-                  </button>
-                )}
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={isProcessing}
-                  className="px-3 py-1.5 bg-red-500 hover:bg-red-400 rounded text-sm flex items-center gap-1 disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-                <button
-                  onClick={handleClearSelection}
-                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 rounded text-sm flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  Clear
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-sm text-blue-200">
-                  Click on dates to select copy targets ({copyTargetDates.size} selected)
-                </span>
-                <button
-                  onClick={handleExecuteCopy}
-                  disabled={isProcessing || copyTargetDates.size === 0}
-                  className="px-3 py-1.5 bg-green-500 hover:bg-green-400 rounded text-sm flex items-center gap-1 disabled:opacity-50"
-                >
-                  <Check className="w-4 h-4" />
-                  Confirm Copy
-                </button>
-                <button
-                  onClick={handleCancelCopy}
-                  disabled={isProcessing}
-                  className="px-3 py-1.5 bg-slate-500 hover:bg-slate-400 rounded text-sm flex items-center gap-1"
-                >
-                  <X className="w-4 h-4" />
-                  Cancel
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="min-w-max">
         {/* Header Row */}
         <div
@@ -482,17 +339,12 @@ export function TimelineView({
           </div>
           {dates.map((date, idx) => {
             const { day, date: dateStr, isWeekend } = formatDateHeader(date);
-            const isCopyTarget = copyTargetDates.has(date);
 
             return (
               <div
                 key={idx}
                 className={`p-2 text-center text-xs border-l border-slate-200 ${
-                  isCopyMode && isCopyTarget
-                    ? 'bg-green-200 border-green-400 border-2'
-                    : isWeekend
-                      ? 'weekend-header'
-                      : 'bg-slate-50'
+                  isWeekend ? 'weekend-header' : 'bg-slate-50'
                 }`}
               >
                 <div className="font-semibold text-slate-900">{day}</div>
@@ -554,44 +406,25 @@ export function TimelineView({
                 {dates.map((date, idx) => {
                   const cellAssignments = patternAssignments.filter(a => a.date === date);
                   const isPartOfPattern = shiftPatternHasHoursForDay(pattern, date);
-                  const { isWeekend } = formatDateHeader(date);
-                  const isCopyTarget = copyTargetDates.has(date);
 
                   return (
                     <div
                       key={idx}
                       className={`border-l border-slate-200 p-1 min-h-[70px] transition-colors ${
-                        isCopyMode && isCopyTarget
-                          ? 'bg-green-100 ring-2 ring-green-400 ring-inset'
-                          : isCopyMode && isPartOfPattern
-                            ? 'bg-blue-50 hover:bg-green-50 cursor-pointer'
-                            : !isPartOfPattern
-                              ? 'weekend-hatch cursor-not-allowed'
-                              : 'hover:bg-blue-50 cursor-pointer'
+                        !isPartOfPattern
+                          ? 'weekend-hatch cursor-not-allowed'
+                          : cellAssignments.length > 0
+                            ? 'hover:bg-blue-50 cursor-pointer'
+                            : 'hover:bg-blue-50'
                       }`}
-                      onClick={(e) => handleCellClick(e, date, isPartOfPattern)}
-                      onDragOver={(e) => {
-                        // Allow dragOver on all cells (not just valid ones) so drop event fires
-                        // This enables the custom time modal for invalid cells
-                        if (!isCopyMode) {
-                          onCellDragOver(e);
-                        }
-                      }}
-                      onDrop={(e) => {
-                        if (isCopyMode) {
-                          e.preventDefault();
-                          return;
-                        }
-                        // Pass isPartOfPattern as the isValidCell parameter
-                        onCellDrop(e, pattern.id, date, isPartOfPattern);
-                      }}
+                      onClick={(e) => handleCellBackgroundClick(e, pattern.id, pattern.name, date, cellAssignments)}
+                      onDragOver={onCellDragOver}
+                      onDrop={(e) => onCellDrop(e, pattern.id, date, isPartOfPattern)}
                       title={
-                        isCopyMode
-                          ? isPartOfPattern
-                            ? 'Click to select as copy target'
-                            : 'This day is not part of the shift pattern'
-                          : !isPartOfPattern
-                            ? 'This day is not part of the shift pattern'
+                        !isPartOfPattern
+                          ? 'This day is not part of the shift pattern'
+                          : cellAssignments.length > 0
+                            ? 'Click to copy this shift to other days'
                             : 'Drop employee here to assign'
                       }
                     >
@@ -613,8 +446,6 @@ export function TimelineView({
                         })
                         .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
                         .map((assignment) => {
-                          const isSelected = selectedAssignmentIds.has(assignment.id);
-
                           const hasViolations = assignment.violations.length > 0;
                           const hasError = assignment.violations.some(v => v.severity === 'error');
                           const hasWarning = assignment.violations.some(v => v.severity === 'warning');
@@ -625,19 +456,18 @@ export function TimelineView({
 
                           // Handle chip click - navigate to employee page if any violations (current or future)
                           const handleChipClick = (e: React.MouseEvent) => {
-                            if ((hasViolations || hasFutureIssues) && onNavigateToPerson && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-                              e.stopPropagation();
+                            e.stopPropagation(); // Prevent cell click from firing
+                            if ((hasViolations || hasFutureIssues) && onNavigateToPerson) {
                               onNavigateToPerson(assignment.employeeId);
-                            } else {
-                              handleTileClick(e, assignment.original);
                             }
                           };
 
                           return (
                             <div
                               key={assignment.id}
+                              data-employee-tile
                               onClick={handleChipClick}
-                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, isSelected, futureViolations)}`}
+                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, futureViolations)}`}
                               title={
                                 hasViolations
                                   ? `${assignment.employeeName}${assignment.timeDisplay ? `\n${assignment.timeDisplay}` : ''}\n\n${getViolationTooltip(assignment.violations)}\n\nClick to view employee and resolve issues`
@@ -645,20 +475,10 @@ export function TimelineView({
                                     ? `${assignment.employeeName}${assignment.timeDisplay ? `\n${assignment.timeDisplay}` : ''}\n\n⚠️ Upcoming compliance issue - click to view`
                                     : assignment.timeDisplay
                                       ? `${assignment.employeeName}\n${assignment.timeDisplay}`
-                                      : `${assignment.employeeName}\n\nClick to select, Ctrl+click for multi-select`
+                                      : assignment.employeeName
                               }
-                              onDragOver={(e) => {
-                                if (!isCopyMode) {
-                                  onCellDragOver(e);
-                                }
-                              }}
-                              onDrop={(e) => {
-                                if (isCopyMode) {
-                                  e.preventDefault();
-                                  return;
-                                }
-                                onCellDrop(e, pattern.id, date, isPartOfPattern);
-                              }}
+                              onDragOver={onCellDragOver}
+                              onDrop={(e) => onCellDrop(e, pattern.id, date, isPartOfPattern)}
                             >
                               <div className="relative flex items-center">
                                 {/* Violation icon */}
@@ -675,30 +495,28 @@ export function TimelineView({
                                   {assignment.employeeName}
                                 </span>
                                 {/* Edit/Delete buttons - overlay on hover with solid background matching tile */}
-                                {!isCopyMode && (
-                                  <div className={`absolute right-0 top-0 bottom-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-r px-0.5 ${getTileBackground(assignment.violations, isSelected)}`}>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onEditAssignment?.(assignment.original);
-                                      }}
-                                      className={`hover:bg-white/50 rounded p-0.5 ${isSelected ? 'text-white' : ''}`}
-                                      title="Edit assignment"
-                                    >
-                                      <Edit2 className="w-2 h-2" />
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDelete(assignment.id, assignment.employeeId);
-                                      }}
-                                      className={`hover:bg-red-200 rounded p-0.5 ${isSelected ? 'text-white hover:text-red-800' : ''}`}
-                                      title="Remove from shift"
-                                    >
-                                      <Trash2 className="w-2 h-2" />
-                                    </button>
-                                  </div>
-                                )}
+                                <div className={`absolute right-0 top-0 bottom-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-r px-0.5 ${getTileBackground(assignment.violations)}`}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onEditAssignment?.(assignment.original);
+                                    }}
+                                    className="hover:bg-white/50 rounded p-0.5"
+                                    title="Edit assignment"
+                                  >
+                                    <Edit2 className="w-2 h-2" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDelete(assignment.id, assignment.employeeId);
+                                    }}
+                                    className="hover:bg-red-200 rounded p-0.5"
+                                    title="Remove from shift"
+                                  >
+                                    <Trash2 className="w-2 h-2" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           );
@@ -711,6 +529,109 @@ export function TimelineView({
           })
         )}
       </div>
+
+      {/* Copy Shift Dialog */}
+      {copyDialog && (
+        <Dialog
+          open={copyDialog.open}
+          onClose={() => {
+            setCopyDialog(null);
+            setSelectedTargetDates(new Set());
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            Copy Shift Assignments
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Copy {copyDialog.employeeAssignments.length} employee(s) from{' '}
+                <strong>{copyDialog.sourcePatternName}</strong> on{' '}
+                <strong>{formatDateHeader(copyDialog.sourceDate).day} {formatDateHeader(copyDialog.sourceDate).date}</strong>
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                {copyDialog.employeeAssignments.map(a => (
+                  <Chip
+                    key={a.id}
+                    label={getEmployeeName(a.employeeId)}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <Typography variant="subtitle2" gutterBottom>
+              Select target dates:
+            </Typography>
+
+            {getValidCopyTargetDates.length === 0 ? (
+              <Alert severity="info" sx={{ mt: 1 }}>
+                No other valid dates found for this shift pattern in the current period.
+              </Alert>
+            ) : (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, maxHeight: 200, overflow: 'auto' }}>
+                {getValidCopyTargetDates.map(date => {
+                  const { day, date: dateStr } = formatDateHeader(date);
+                  const isSelected = selectedTargetDates.has(date);
+                  return (
+                    <FormControlLabel
+                      key={date}
+                      control={
+                        <Checkbox
+                          checked={isSelected}
+                          onChange={() => toggleDateSelection(date)}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Typography variant="body2">
+                          {day} {dateStr}
+                        </Typography>
+                      }
+                      sx={{
+                        border: 1,
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        borderRadius: 1,
+                        px: 1,
+                        py: 0.5,
+                        m: 0,
+                        bgcolor: isSelected ? 'primary.50' : 'transparent',
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+            )}
+
+            {selectedTargetDates.size > 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                {selectedTargetDates.size} date(s) selected. Existing assignments will be preserved.
+              </Alert>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setCopyDialog(null);
+                setSelectedTargetDates(new Set());
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleExecuteCopy}
+              disabled={selectedTargetDates.size === 0 || isProcessing}
+            >
+              {isProcessing ? 'Copying...' : `Copy to ${selectedTargetDates.size} date(s)`}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </div>
   );
 }

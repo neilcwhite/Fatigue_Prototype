@@ -435,9 +435,7 @@ export function FatigueEntryModal({
               </Alert>
             ) : (
               <Grid container spacing={1} sx={{ maxHeight: 280, overflow: 'auto' }}>
-                {projectPatterns.map((pattern) => {
-                  const isCustom = pattern.name.toLowerCase().includes('custom') || pattern.name.toLowerCase().includes('ad hoc');
-                  return (
+                {projectPatterns.map((pattern) => (
                     <Grid size={{ xs: 4 }} key={pattern.id}>
                       <Card
                         variant="outlined"
@@ -475,30 +473,27 @@ export function FatigueEntryModal({
                             </Box>
                           </CardContent>
                         </CardActionArea>
-                        {/* Delete button - hidden for Custom pattern */}
-                        {!isCustom && (
-                          <IconButton
-                            className="delete-btn"
-                            size="small"
-                            onClick={(e) => handleDeleteClick(pattern, e)}
-                            sx={{
-                              position: 'absolute',
-                              top: 2,
-                              right: 2,
-                              opacity: 0,
-                              transition: 'opacity 0.2s',
-                              bgcolor: 'background.paper',
-                              p: 0.25,
-                              '&:hover': { bgcolor: 'error.light', color: 'error.contrastText' },
-                            }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </IconButton>
-                        )}
+                        {/* Delete button */}
+                        <IconButton
+                          className="delete-btn"
+                          size="small"
+                          onClick={(e) => handleDeleteClick(pattern, e)}
+                          sx={{
+                            position: 'absolute',
+                            top: 2,
+                            right: 2,
+                            opacity: 0,
+                            transition: 'opacity 0.2s',
+                            bgcolor: 'background.paper',
+                            p: 0.25,
+                            '&:hover': { bgcolor: 'error.light', color: 'error.contrastText' },
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </IconButton>
                       </Card>
                     </Grid>
-                  );
-                })}
+                  ))}
               </Grid>
             )}
 
