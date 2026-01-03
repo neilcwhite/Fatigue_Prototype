@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppData } from '@/hooks/useAppData';
@@ -53,6 +53,24 @@ export default function Home() {
     createShiftPattern,
     updateShiftPattern,
   } = useAppData(profile?.organisationId || null);
+
+  // Auto-select default project and employee when data loads
+  useEffect(() => {
+    // Auto-select newest project if none selected
+    if (!selectedProject && projects.length > 0) {
+      // Sort by ID descending (newest first) or use createdAt if available
+      const sortedProjects = [...projects].sort((a, b) => b.id - a.id);
+      setSelectedProject(sortedProjects[0].id);
+    }
+  }, [projects, selectedProject]);
+
+  useEffect(() => {
+    // Auto-select first employee by name if none selected
+    if (!selectedEmployee && employees.length > 0) {
+      const sortedEmployees = [...employees].sort((a, b) => a.name.localeCompare(b.name));
+      setSelectedEmployee(sortedEmployees[0].id);
+    }
+  }, [employees, selectedEmployee]);
 
   // Supabase not configured - show clear error
   if (!isSupabaseConfigured) {

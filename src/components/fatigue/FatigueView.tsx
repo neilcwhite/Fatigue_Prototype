@@ -1189,7 +1189,7 @@ export function FatigueView({
                         </Button>
                       </Box>
                     ) : (
-                      <Box>
+                      <Box sx={{ overflowX: 'auto' }}>
                         {/* Global Parameters Summary */}
                         <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1201,7 +1201,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '48px 45px 55px 95px 95px 55px 48px 50px 50px 50px 50px 65px 65px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '48px 45px 55px 95px 95px 55px 48px 50px 50px 50px 50px 60px 55px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 760 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>In</Typography>
@@ -1239,7 +1239,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '48px 45px 55px 95px 95px 55px 48px 50px 50px 50px 50px 65px 65px',
+                                gridTemplateColumns: '48px 45px 55px 95px 95px 55px 48px 50px 50px 50px 50px 60px 55px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1249,6 +1249,7 @@ export function FatigueView({
                                 borderColor: isRestDay ? 'grey.300' : (index < 2 ? 'warning.200' : 'success.200'),
                                 mb: 0.5,
                                 opacity: isRestDay ? 0.7 : 1,
+                                minWidth: 760,
                               }}
                             >
                               <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'center' }}>{dayName}</Typography>
