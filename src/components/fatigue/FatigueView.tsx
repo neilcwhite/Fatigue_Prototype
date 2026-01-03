@@ -1201,20 +1201,20 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 48px 48px 48px 48px 52px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 740 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 50px 50px 50px 50px 54px 54px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 760 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>In</Typography>
+                          <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Start</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>End</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>Out</Typography>
+                          <Tooltip title="Commute time from work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>Out</Typography></Tooltip>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Hrs</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main' }}>W</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main' }}>A</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main' }}>BF</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main' }}>BL</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>FRI</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main' }}>Worst</Typography>
+                          <Tooltip title="Workload (1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>W</Typography></Tooltip>
+                          <Tooltip title="Attention Required (1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>A</Typography></Tooltip>
+                          <Tooltip title="Break Frequency (number of breaks per shift)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
+                          <Tooltip title="Break Length (minutes per break)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BL</Typography></Tooltip>
+                          <Tooltip title="Fatigue Risk Index for current role parameters" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}>FRI</Typography></Tooltip>
+                          <Tooltip title="Worst-case FRI (Workload=5, Attention=5)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main', cursor: 'help' }}>Worst</Typography></Tooltip>
                         </Box>
 
                         {/* Day Rows */}
@@ -1239,7 +1239,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 48px 48px 48px 48px 52px 52px',
+                                gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 50px 50px 50px 50px 54px 54px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1249,7 +1249,7 @@ export function FatigueView({
                                 borderColor: isRestDay ? 'grey.300' : (index < 2 ? 'warning.200' : 'success.200'),
                                 mb: 0.5,
                                 opacity: isRestDay ? 0.7 : 1,
-                                minWidth: 740,
+                                minWidth: 760,
                               }}
                             >
                               <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'center' }}>{dayName}</Typography>
@@ -1317,7 +1317,11 @@ export function FatigueView({
                                 slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
                               >
-                                {[1, 2, 3, 4, 5].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                                <MenuItem value={1}>1 - Low</MenuItem>
+                                <MenuItem value={2}>2 - Light</MenuItem>
+                                <MenuItem value={3}>3 - Moderate</MenuItem>
+                                <MenuItem value={4}>4 - High</MenuItem>
+                                <MenuItem value={5}>5 - Very High</MenuItem>
                               </TextField>
 
                               <TextField
@@ -1329,7 +1333,11 @@ export function FatigueView({
                                 slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
                               >
-                                {[1, 2, 3, 4, 5].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                                <MenuItem value={1}>1 - Minimal</MenuItem>
+                                <MenuItem value={2}>2 - Low</MenuItem>
+                                <MenuItem value={3}>3 - Moderate</MenuItem>
+                                <MenuItem value={4}>4 - High</MenuItem>
+                                <MenuItem value={5}>5 - Constant</MenuItem>
                               </TextField>
 
                               <TextField
