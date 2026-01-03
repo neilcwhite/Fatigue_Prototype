@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Box from '@mui/material/Box';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppData } from '@/hooks/useAppData';
 import { AuthScreen } from '@/components/auth/AuthScreen';
@@ -13,6 +14,7 @@ import { FatigueView } from '@/components/fatigue/FatigueView';
 import { ProjectModal } from '@/components/modals/ProjectModal';
 import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
 import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
+import { Sidebar, DRAWER_WIDTH_EXPANDED } from '@/components/layout';
 import { Spinner } from '@/components/ui/Icons';
 import type { ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
 
@@ -191,140 +193,165 @@ export default function Home() {
     });
   };
 
+  // Handle sidebar navigation
+  const handleNavigate = (view: ViewMode) => {
+    setCurrentView(view);
+  };
+
   // Render based on current view
   return (
-    <>
-      {currentView === 'dashboard' && (
-        <Dashboard
-          user={user}
-          onSignOut={signOut}
-          projects={projects}
-          employees={employees}
-          assignments={assignments}
-          shiftPatterns={shiftPatterns}
-          onSelectProject={handleSelectProject}
-          onViewSummary={handleNavigateToSummary}
-          onViewEmployee={handleViewEmployee}
-          onViewFatigue={() => setCurrentView('fatigue')}
-          onViewTeams={() => setCurrentView('teams')}
-          onCreateProject={() => setShowProjectModal(true)}
-        />
-      )}
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Sidebar Navigation */}
+      <Sidebar
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        hasSelectedProject={!!selectedProject}
+        hasSelectedEmployee={!!selectedEmployee}
+        selectedProjectName={selectedProjectData?.name}
+        selectedEmployeeName={selectedEmployeeData?.name}
+      />
 
-      {currentView === 'planning' && selectedProjectData && (
-        <PlanningView
-          user={user}
-          onSignOut={signOut}
-          project={selectedProjectData}
-          employees={employees}
-          assignments={assignments}
-          shiftPatterns={shiftPatterns}
-          onBack={handleBackToDashboard}
-          onCreateAssignment={createAssignment}
-          onUpdateAssignment={updateAssignment}
-          onDeleteAssignment={deleteAssignment}
-          onCreateShiftPattern={() => setShowShiftPatternModal(true)}
-          onCreateShiftPatternDirect={createShiftPattern}
-          onNavigateToPerson={(empId) => {
-            setSelectedEmployee(empId);
-            setCurrentView('person');
-          }}
-        />
-      )}
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minHeight: '100vh',
+          overflow: 'auto',
+        }}
+      >
+        {currentView === 'dashboard' && (
+          <Dashboard
+            user={user}
+            onSignOut={signOut}
+            projects={projects}
+            employees={employees}
+            assignments={assignments}
+            shiftPatterns={shiftPatterns}
+            onSelectProject={handleSelectProject}
+            onViewSummary={handleNavigateToSummary}
+            onViewEmployee={handleViewEmployee}
+            onViewFatigue={() => setCurrentView('fatigue')}
+            onViewTeams={() => setCurrentView('teams')}
+            onCreateProject={() => setShowProjectModal(true)}
+          />
+        )}
 
-      {currentView === 'person' && selectedEmployeeData && (
-        <PersonView
-          user={user}
-          onSignOut={signOut}
-          onBack={handleBackToDashboard}
-          employee={selectedEmployeeData}
-          employees={employees}
-          assignments={assignments}
-          shiftPatterns={shiftPatterns}
-          projects={projects}
-          onSelectEmployee={(id) => setSelectedEmployee(id)}
-          onDeleteAssignment={deleteAssignment}
-          onUpdateAssignment={updateAssignment}
-          onUpdateShiftPattern={updateShiftPattern}
-        />
-      )}
+        {currentView === 'planning' && selectedProjectData && (
+          <PlanningView
+            user={user}
+            onSignOut={signOut}
+            project={selectedProjectData}
+            employees={employees}
+            assignments={assignments}
+            shiftPatterns={shiftPatterns}
+            onBack={handleBackToDashboard}
+            onCreateAssignment={createAssignment}
+            onUpdateAssignment={updateAssignment}
+            onDeleteAssignment={deleteAssignment}
+            onCreateShiftPattern={() => setShowShiftPatternModal(true)}
+            onCreateShiftPatternDirect={createShiftPattern}
+            onNavigateToPerson={(empId) => {
+              setSelectedEmployee(empId);
+              setCurrentView('person');
+            }}
+          />
+        )}
 
-      {currentView === 'summary' && selectedProjectData && (
-        <SummaryView
-          user={user}
-          onSignOut={signOut}
-          onBack={handleBackToDashboard}
-          project={selectedProjectData}
-          projects={projects}
-          employees={employees}
-          assignments={assignments}
-          shiftPatterns={shiftPatterns}
-          onSelectProject={(id) => setSelectedProject(id)}
-          onNavigateToPerson={handleNavigateToPerson}
-          onNavigateToPlanning={handleSelectProject}
-          onEditShiftPattern={(pattern) => setEditingShiftPattern(pattern)}
-        />
-      )}
+        {currentView === 'person' && selectedEmployeeData && (
+          <PersonView
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            employee={selectedEmployeeData}
+            employees={employees}
+            assignments={assignments}
+            shiftPatterns={shiftPatterns}
+            projects={projects}
+            onSelectEmployee={(id) => setSelectedEmployee(id)}
+            onDeleteAssignment={deleteAssignment}
+            onUpdateAssignment={updateAssignment}
+            onUpdateShiftPattern={updateShiftPattern}
+          />
+        )}
 
-      {currentView === 'fatigue' && (
-        <FatigueView
-          user={user}
-          onSignOut={signOut}
-          onBack={handleBackToDashboard}
-          projects={projects}
-          employees={employees}
-          shiftPatterns={shiftPatterns}
-          assignments={assignments}
-          onCreateShiftPattern={createShiftPattern}
-          onUpdateShiftPattern={updateShiftPattern}
-        />
-      )}
+        {currentView === 'summary' && selectedProjectData && (
+          <SummaryView
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            project={selectedProjectData}
+            projects={projects}
+            employees={employees}
+            assignments={assignments}
+            shiftPatterns={shiftPatterns}
+            onSelectProject={(id) => setSelectedProject(id)}
+            onNavigateToPerson={handleNavigateToPerson}
+            onNavigateToPlanning={handleSelectProject}
+            onEditShiftPattern={(pattern) => setEditingShiftPattern(pattern)}
+          />
+        )}
 
-      {currentView === 'teams' && (
-        <TeamsView
-          user={user}
-          onSignOut={signOut}
-          onBack={handleBackToDashboard}
-          teams={teams}
-          employees={employees}
-          projects={projects}
-          shiftPatterns={shiftPatterns}
-          onCreateTeam={createTeam}
-          onUpdateTeam={updateTeam}
-          onDeleteTeam={deleteTeam}
-          onCreateAssignment={createAssignment}
-        />
-      )}
+        {currentView === 'fatigue' && (
+          <FatigueView
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            projects={projects}
+            employees={employees}
+            shiftPatterns={shiftPatterns}
+            assignments={assignments}
+            onCreateShiftPattern={createShiftPattern}
+            onUpdateShiftPattern={updateShiftPattern}
+          />
+        )}
 
-      {/* Fallback for person view without employee selected */}
-      {currentView === 'person' && !selectedEmployeeData && (
-        <div className="min-h-screen bg-slate-900 text-white p-8">
-          <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-            &larr; Back to Dashboard
-          </button>
-          <h1 className="text-2xl font-bold mb-4">Employee View</h1>
-          <p className="text-slate-400">
-            {employees.length === 0
-              ? 'No employees available. Create employees first.'
-              : 'Select an employee to view their schedule.'}
-          </p>
-        </div>
-      )}
+        {currentView === 'teams' && (
+          <TeamsView
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            teams={teams}
+            employees={employees}
+            projects={projects}
+            shiftPatterns={shiftPatterns}
+            onCreateTeam={createTeam}
+            onUpdateTeam={updateTeam}
+            onDeleteTeam={deleteTeam}
+            onCreateAssignment={createAssignment}
+          />
+        )}
 
-      {/* Fallback for summary view without project selected */}
-      {currentView === 'summary' && !selectedProjectData && (
-        <div className="min-h-screen bg-slate-900 text-white p-8">
-          <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-            &larr; Back to Dashboard
-          </button>
-          <h1 className="text-2xl font-bold mb-4">Project Summary</h1>
-          <p className="text-slate-400">
-            {projects.length === 0
-              ? 'No projects available. Create a project first.'
-              : 'Select a project to view its summary.'}
-          </p>
-        </div>
-      )}
+        {/* Fallback for person view without employee selected */}
+        {currentView === 'person' && !selectedEmployeeData && (
+          <div className="min-h-screen bg-slate-900 text-white p-8">
+            <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
+              &larr; Back to Dashboard
+            </button>
+            <h1 className="text-2xl font-bold mb-4">Employee View</h1>
+            <p className="text-slate-400">
+              {employees.length === 0
+                ? 'No employees available. Create employees first.'
+                : 'Select an employee to view their schedule.'}
+            </p>
+          </div>
+        )}
+
+        {/* Fallback for summary view without project selected */}
+        {currentView === 'summary' && !selectedProjectData && (
+          <div className="min-h-screen bg-slate-900 text-white p-8">
+            <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
+              &larr; Back to Dashboard
+            </button>
+            <h1 className="text-2xl font-bold mb-4">Project Summary</h1>
+            <p className="text-slate-400">
+              {projects.length === 0
+                ? 'No projects available. Create a project first.'
+                : 'Select a project to view its summary.'}
+            </p>
+          </div>
+        )}
+      </Box>
 
       {/* Project Modal */}
       {showProjectModal && (
@@ -354,6 +381,6 @@ export default function Home() {
           }}
         />
       )}
-    </>
+    </Box>
   );
 }

@@ -1102,17 +1102,7 @@ export function FatigueView({
 
         {/* View Mode Toggle & Actions */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(e, val) => val && !isReadOnly && setViewMode(val)}
-            size="small"
-            sx={{ bgcolor: 'white' }}
-            disabled={isReadOnly}
-          >
-            <ToggleButton value="weekly" sx={{ px: 3 }}>7-Day Week</ToggleButton>
-            <ToggleButton value="multiweek" sx={{ px: 3 }}>Multi-Week Pattern</ToggleButton>
-          </ToggleButtonGroup>
+          <Typography variant="h6" fontWeight={600}>7-Day Week Pattern</Typography>
 
           <Box sx={{ display: 'flex', gap: 1 }}>
             {!isReadOnly && shifts.length > 0 && onCreateShiftPattern && (
