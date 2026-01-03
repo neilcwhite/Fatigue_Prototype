@@ -15,6 +15,10 @@ A Network Rail compliant shift planning and fatigue monitoring system, implement
 - **Config Validation**: Early check for Supabase environment variables with user-friendly error display
 
 ### Fatigue View Enhancements (v2.0)
+- **Modal-First Entry**: Project/pattern selection modal on entry with create-new-project capability
+- **Review Mode**: Load existing patterns in read-only mode with explicit "Edit" button
+- **Full-Width Layout**: FRI chart at top (full-width), shift builder below (full-width)
+- **Dual-Line Chart**: Shows both current role FRI (solid blue) and worst-case FRI (dotted gray)
 - **Travel Times**: Travel In/Out columns in 7-day editor for commute tracking per shift
 - **Inline FRI Display**: See calculated FRI for each working day directly in the table
 - **Worst-Case Column**: Shows FRI with Workload=5, Attention=5 for high-demand role monitoring
@@ -76,7 +80,10 @@ src/
 │   │
 │   ├── fatigue/                # Fatigue calculator
 │   │   ├── FatigueView.tsx     # Pattern builder, 7-day editor, save/update
-│   │   └── FatigueChart.tsx    # Risk visualization chart
+│   │   ├── FatigueChart.tsx    # Risk visualization chart with dual-line support
+│   │   ├── FatigueEntryModal.tsx  # Project/pattern selection modal
+│   │   └── hooks/
+│   │       └── useFatigueMode.ts  # Mode management (entry/review/edit/create)
 │   │
 │   ├── teams/                  # Team management
 │   │   └── TeamsView.tsx       # Create/manage teams
@@ -314,7 +321,42 @@ The PlanningView provides project-centric shift assignment with multiple view mo
 
 The FatigueView provides a comprehensive shift pattern editor with HSE RR446 fatigue calculations.
 
+### Entry Flow (Modal-First)
+
+When opening the Fatigue Assessment tool, a modal guides the user through:
+
+1. **Select Project**
+   - Choose from existing projects
+   - Or click "Create New Project" to add a new project (full form with name, location, type, dates)
+
+2. **Select Pattern**
+   - View existing patterns for the selected project
+   - **Review** - Load pattern in read-only mode
+   - **Edit** - Load pattern ready for modifications
+   - **Create New Pattern** - Start with a blank template
+
 ### View Modes
+
+| Mode | Description |
+|------|-------------|
+| **Entry** | Modal selection for project and pattern |
+| **Review** | Read-only view of existing pattern with "Edit" button |
+| **Edit** | Full editing capabilities for existing pattern |
+| **Create** | Building a new pattern from scratch |
+
+### Layout
+
+The view uses a full-width vertical layout:
+
+1. **Mode Banner** (review mode only) - Shows pattern name and "Edit Pattern" button
+2. **Project/Pattern Info** - Displays current project and pattern details
+3. **FRI Chart** - Full-width chart at top showing:
+   - Solid blue line: Current role FRI values
+   - Dotted gray line: Worst-case FRI (Workload=5, Attention=5)
+4. **Shift Builder** - Full-width shift input below the chart
+5. **Results Summary** - Full-width analysis and role comparison
+
+### Shift Builder Modes
 
 | Mode | Description |
 |------|-------------|
@@ -405,14 +447,20 @@ A streamlined role comparison available directly in the 7-day editor:
 
 ### Worst-Case Analysis
 
-The "Worst" column shows what the FRI would be if the shift were performed by someone with:
+The worst-case analysis shows what the FRI would be if the shift were performed by someone with:
 - **Workload = 5** (maximum physical/mental demand)
 - **Attention = 5** (maximum vigilance required)
+
+This is displayed in two ways:
+
+1. **FRI Chart** - Dotted gray line showing worst-case progression alongside the current role (solid blue)
+2. **"Worst" Column** - Per-day worst-case FRI values in the shift table
 
 This helps assess:
 - Whether the pattern is safe even for high-demand roles
 - The headroom available before critical fatigue levels
 - Risk exposure if conditions change during the shift
+- Visual comparison of current vs worst-case risk trajectory
 
 ## Security
 
