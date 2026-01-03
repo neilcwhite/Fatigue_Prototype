@@ -26,6 +26,7 @@ import Alert from '@mui/material/Alert';
 import Grid from '@mui/material/Grid';
 import Collapse from '@mui/material/Collapse';
 import LinearProgress from '@mui/material/LinearProgress';
+import Tooltip from '@mui/material/Tooltip';
 import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X, Edit } from '@/components/ui/Icons';
 import {
   calculateFatigueSequence,
