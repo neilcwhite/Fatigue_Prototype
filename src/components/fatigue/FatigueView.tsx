@@ -1127,9 +1127,11 @@ export function FatigueView({
                   <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="subtitle1" fontWeight={600}>Network Rail Week (Sat-Fri)</Typography>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button size="small" variant="outlined" color="primary" onClick={initializeWeeklyShifts}>
-                        Reset Week
-                      </Button>
+                      {!isReadOnly && (
+                        <Button size="small" variant="outlined" color="primary" onClick={initializeWeeklyShifts}>
+                          Reset Week
+                        </Button>
+                      )}
                       <Button
                         size="small"
                         variant={showSettings ? 'contained' : 'outlined'}
@@ -1169,7 +1171,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '45px 40px 50px 75px 75px 50px 45px 45px 45px 50px 45px 60px 60px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '48px 45px 55px 95px 95px 55px 48px 50px 50px 50px 50px 65px 65px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>In</Typography>
@@ -1207,7 +1209,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '45px 40px 50px 75px 75px 50px 45px 45px 45px 50px 45px 60px 60px',
+                                gridTemplateColumns: '48px 45px 55px 95px 95px 55px 48px 50px 50px 50px 50px 65px 65px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1226,6 +1228,7 @@ export function FatigueView({
                                   size="small"
                                   checked={isRestDay}
                                   onChange={() => toggleRestDay(index)}
+                                  disabled={isReadOnly}
                                   sx={{ p: 0 }}
                                 />
                               </Box>
@@ -1235,9 +1238,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.commuteIn ?? 30}
                                 onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'info.50' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
                               />
 
                               <TextField
@@ -1245,9 +1248,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.startTime || '07:00'}
                                 onChange={(e) => updateWeeklyShiftTime(index, 'startTime', e.target.value)}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { style: { padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'white' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'white' } }}
                               />
 
                               <TextField
@@ -1255,9 +1258,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.endTime || '19:00'}
                                 onChange={(e) => updateWeeklyShiftTime(index, 'endTime', e.target.value)}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { style: { padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'white' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'white' } }}
                               />
 
                               <TextField
@@ -1265,9 +1268,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.commuteOut ?? 30}
                                 onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'info.50' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
                               />
 
                               <Typography variant="body2" sx={{ textAlign: 'center', fontWeight: duration > 10 ? 600 : 400, color: duration > 10 ? 'warning.main' : 'text.primary' }}>
@@ -1279,9 +1282,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.workload ?? params.workload}
                                 onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value))}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'secondary.50' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
                               >
                                 {[1, 2, 3, 4, 5].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                               </TextField>
@@ -1291,9 +1294,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.attention ?? params.attention}
                                 onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value))}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'secondary.50' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
                               >
                                 {[1, 2, 3, 4, 5].map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
                               </TextField>
@@ -1303,9 +1306,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.breakFreq ?? params.breakFrequency}
                                 onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { min: 1, max: 8, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'success.50' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
                               />
 
                               <TextField
@@ -1313,9 +1316,9 @@ export function FatigueView({
                                 size="small"
                                 value={shift?.breakLen ?? params.breakLength}
                                 onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
-                                disabled={isRestDay}
+                                disabled={isRestDay || isReadOnly}
                                 slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay ? 'grey.200' : 'success.50' } }}
+                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
                               />
 
                               <Box sx={{ textAlign: 'center' }}>
