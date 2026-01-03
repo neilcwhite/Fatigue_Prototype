@@ -40,14 +40,14 @@ const RISK_COLORS = {
 export function FatigueChart({
   data,
   worstCaseData,
-  height = 280,
+  height = 180,
   showThresholds = true,
   showComponents = false,
   showWorstCase = false,
 }: FatigueChartProps) {
-  // Chart dimensions
-  const padding = { top: 20, right: 20, bottom: 40, left: 50 };
-  const width = 600;
+  // Chart dimensions - compact technical look
+  const padding = { top: 12, right: 30, bottom: 28, left: 36 };
+  const width = 400;
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -222,15 +222,15 @@ export function FatigueChart({
                 x2={chartWidth}
                 y2={yScale(tick)}
                 stroke="#e2e8f0"
-                strokeWidth={1}
-                strokeDasharray={tick === 1.0 || tick === 1.1 || tick === 1.2 ? "0" : "4 4"}
+                strokeWidth={0.5}
+                strokeDasharray={tick === 1.0 || tick === 1.1 || tick === 1.2 ? "0" : "2 2"}
               />
               <text
-                x={-8}
+                x={-4}
                 y={yScale(tick)}
                 textAnchor="end"
                 dominantBaseline="middle"
-                className="text-[10px] fill-slate-500"
+                className="text-[7px] fill-slate-400"
               >
                 {tick.toFixed(1)}
               </text>
@@ -247,16 +247,16 @@ export function FatigueChart({
                 x2={chartWidth}
                 y2={yScale(THRESHOLD_LOW)}
                 stroke="#eab308"
-                strokeWidth={2}
-                strokeDasharray="8 4"
+                strokeWidth={1}
+                strokeDasharray="4 2"
               />
               <text
-                x={chartWidth + 4}
+                x={chartWidth + 2}
                 y={yScale(THRESHOLD_LOW)}
                 dominantBaseline="middle"
-                className="text-[9px] fill-yellow-600 font-medium"
+                className="text-[6px] fill-yellow-600"
               >
-                Mod
+                M
               </text>
 
               {/* Elevated threshold (1.1) */}
@@ -266,16 +266,16 @@ export function FatigueChart({
                 x2={chartWidth}
                 y2={yScale(THRESHOLD_ELEVATED)}
                 stroke="#f97316"
-                strokeWidth={2}
-                strokeDasharray="8 4"
+                strokeWidth={1}
+                strokeDasharray="4 2"
               />
               <text
-                x={chartWidth + 4}
+                x={chartWidth + 2}
                 y={yScale(THRESHOLD_ELEVATED)}
                 dominantBaseline="middle"
-                className="text-[9px] fill-orange-600 font-medium"
+                className="text-[6px] fill-orange-600"
               >
-                Elev
+                E
               </text>
 
               {/* Critical threshold (1.2) */}
@@ -287,16 +287,16 @@ export function FatigueChart({
                     x2={chartWidth}
                     y2={yScale(THRESHOLD_CRITICAL)}
                     stroke="#ef4444"
-                    strokeWidth={2}
-                    strokeDasharray="8 4"
+                    strokeWidth={1}
+                    strokeDasharray="4 2"
                   />
                   <text
-                    x={chartWidth + 4}
+                    x={chartWidth + 2}
                     y={yScale(THRESHOLD_CRITICAL)}
                     dominantBaseline="middle"
-                    className="text-[9px] fill-red-600 font-medium"
+                    className="text-[6px] fill-red-600"
                   >
-                    Crit
+                    C
                   </text>
                 </>
               )}
@@ -310,25 +310,25 @@ export function FatigueChart({
                 d={componentPaths.cumulative}
                 fill="none"
                 stroke="#3b82f6"
-                strokeWidth={1.5}
-                strokeDasharray="4 2"
-                opacity={0.6}
+                strokeWidth={0.75}
+                strokeDasharray="3 2"
+                opacity={0.5}
               />
               <path
                 d={componentPaths.timing}
                 fill="none"
                 stroke="#8b5cf6"
-                strokeWidth={1.5}
-                strokeDasharray="4 2"
-                opacity={0.6}
+                strokeWidth={0.75}
+                strokeDasharray="3 2"
+                opacity={0.5}
               />
               <path
                 d={componentPaths.jobBreaks}
                 fill="none"
                 stroke="#f59e0b"
-                strokeWidth={1.5}
-                strokeDasharray="4 2"
-                opacity={0.6}
+                strokeWidth={0.75}
+                strokeDasharray="3 2"
+                opacity={0.5}
               />
             </>
           )}
@@ -342,11 +342,11 @@ export function FatigueChart({
               d={worstCaseLinePath}
               fill="none"
               stroke="#94a3b8"
-              strokeWidth={2}
+              strokeWidth={1}
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeDasharray="6 4"
-              opacity={0.8}
+              strokeDasharray="4 3"
+              opacity={0.7}
             />
           )}
 
@@ -355,7 +355,7 @@ export function FatigueChart({
             d={linePath}
             fill="none"
             stroke="#3b82f6"
-            strokeWidth={3}
+            strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -368,40 +368,32 @@ export function FatigueChart({
 
             return (
               <g key={d.day}>
-                {/* Outer ring */}
+                {/* Inner dot only - small and clean */}
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={8}
-                  fill={color}
-                  fillOpacity={0.2}
-                />
-                {/* Inner dot */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={5}
+                  r={3}
                   fill={color}
                   stroke="white"
-                  strokeWidth={2}
+                  strokeWidth={1}
                 />
                 {/* Day label */}
                 <text
                   x={cx}
-                  y={chartHeight + 20}
+                  y={chartHeight + 14}
                   textAnchor="middle"
-                  className="text-[10px] fill-slate-600"
+                  className="text-[8px] fill-slate-500"
                 >
                   D{d.day}
                 </text>
                 {/* Value label above point */}
                 <text
                   x={cx}
-                  y={cy - 14}
+                  y={cy - 8}
                   textAnchor="middle"
-                  className="text-[9px] fill-slate-700 font-medium"
+                  className="text-[7px] fill-slate-600 font-medium"
                 >
-                  {d.riskIndex.toFixed(3)}
+                  {d.riskIndex.toFixed(2)}
                 </text>
               </g>
             );
@@ -430,74 +422,69 @@ export function FatigueChart({
           {/* Axis labels */}
           <text
             x={chartWidth / 2}
-            y={chartHeight + 35}
+            y={chartHeight + 24}
             textAnchor="middle"
-            className="text-[11px] fill-slate-500 font-medium"
+            className="text-[8px] fill-slate-400"
           >
-            Day of Pattern
+            Day
           </text>
           <text
             x={-chartHeight / 2}
-            y={-35}
+            y={-26}
             textAnchor="middle"
             transform="rotate(-90)"
-            className="text-[11px] fill-slate-500 font-medium"
+            className="text-[8px] fill-slate-400"
           >
-            Fatigue Risk Index (FRI)
+            FRI
           </text>
         </g>
       </svg>
 
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-3 pt-3 border-t border-slate-100">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-green-500" />
-          <span className="text-[10px] text-slate-600">{'<1.0 Low'}</span>
+      {/* Compact Legend */}
+      <div className="flex items-center justify-center gap-2 mt-1 pt-1 border-t border-slate-100">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-[8px] text-slate-500">{'<1.0'}</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-yellow-500" />
-          <span className="text-[10px] text-slate-600">1.0-1.1 Moderate</span>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-yellow-500" />
+          <span className="text-[8px] text-slate-500">1.0-1.1</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-orange-500" />
-          <span className="text-[10px] text-slate-600">1.1-1.2 Elevated</span>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-orange-500" />
+          <span className="text-[8px] text-slate-500">1.1-1.2</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-[10px] text-slate-600">{'>1.2 Critical'}</span>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-[8px] text-slate-500">{'>1.2'}</span>
         </div>
+        {showWorstCase && (
+          <>
+            <span className="text-slate-300">|</span>
+            <div className="flex items-center gap-1">
+              <svg width="12" height="6" className="overflow-visible">
+                <line x1="0" y1="3" x2="12" y2="3" stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 2" />
+              </svg>
+              <span className="text-[8px] text-slate-500">Worst</span>
+            </div>
+          </>
+        )}
       </div>
-
-      {/* Worst case legend */}
-      {showWorstCase && (
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-[10px] text-slate-500">Current Role</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <svg width="16" height="8" className="overflow-visible">
-              <line x1="0" y1="4" x2="16" y2="4" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" />
-            </svg>
-            <span className="text-[10px] text-slate-500">Worst Case (W:5, A:5)</span>
-          </div>
-        </div>
-      )}
 
       {/* Component legend if showing components */}
       {showComponents && (
-        <div className="flex items-center justify-center gap-4 mt-2">
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 bg-blue-500" style={{ borderStyle: 'dashed' }} />
-            <span className="text-[10px] text-slate-500">Cumulative</span>
+        <div className="flex items-center justify-center gap-2 mt-1">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-0.5 bg-blue-500" style={{ borderStyle: 'dashed' }} />
+            <span className="text-[7px] text-slate-500">Cum</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 bg-purple-500" style={{ borderStyle: 'dashed' }} />
-            <span className="text-[10px] text-slate-500">Timing</span>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-0.5 bg-purple-500" style={{ borderStyle: 'dashed' }} />
+            <span className="text-[7px] text-slate-500">Time</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-0.5 bg-amber-500" style={{ borderStyle: 'dashed' }} />
-            <span className="text-[10px] text-slate-500">Job/Breaks</span>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-0.5 bg-amber-500" style={{ borderStyle: 'dashed' }} />
+            <span className="text-[7px] text-slate-500">Job</span>
           </div>
         </div>
       )}

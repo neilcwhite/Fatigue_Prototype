@@ -1078,50 +1078,6 @@ export function FatigueView({
           </Paper>
         )}
 
-        {/* FRI Chart - Full Width at Top */}
-        {results && (
-          <Paper elevation={2} sx={{ mb: 3 }}>
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="subtitle1" fontWeight={600}>FRI Progression Chart</Typography>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={showComponents}
-                      onChange={(e) => setShowComponents(e.target.checked)}
-                    />
-                  }
-                  label={<Typography variant="caption">Show component lines</Typography>}
-                />
-                <Button size="small" variant="outlined" startIcon={<Download className="w-3 h-3" />} onClick={handleExportCSV}>
-                  CSV
-                </Button>
-                <Button size="small" variant="outlined" color="warning" startIcon={<FileText className="w-3 h-3" />} onClick={handlePrint}>
-                  Report
-                </Button>
-              </Box>
-            </Box>
-            <Box sx={{ p: 2 }}>
-              <FatigueChart
-                data={results.calculations}
-                worstCaseData={worstCaseResults ? results.calculations.map(calc => {
-                  const worst = worstCaseResults.get(calc.day);
-                  return {
-                    ...calc,
-                    riskIndex: worst?.riskIndex ?? calc.riskIndex,
-                    riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel,
-                  };
-                }) : undefined}
-                height={200}
-                showThresholds={true}
-                showComponents={showComponents}
-                showWorstCase={true}
-              />
-            </Box>
-          </Paper>
-        )}
-
         {/* View Mode Toggle & Actions */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <ToggleButtonGroup
@@ -1160,9 +1116,10 @@ export function FatigueView({
           </Box>
         </Box>
 
-        {/* Shift Builder - Full Width */}
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12 }}>
+        {/* Two Column Layout - Shift Builder + Chart */}
+        <Grid container spacing={2}>
+          {/* Left Panel - Shift Builder */}
+          <Grid size={{ xs: 12, lg: 7 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* 7-Day Weekly View */}
               {viewMode === 'weekly' && (
@@ -1924,244 +1881,106 @@ export function FatigueView({
             </Box>
           </Grid>
 
-          {/* Results Panel - Full Width */}
-          <Grid size={{ xs: 12 }}>
-            <Paper elevation={2} ref={resultsRef}>
-              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Typography variant="subtitle1" fontWeight={600}>Fatigue Risk Analysis</Typography>
-              </Box>
-
-              <Box sx={{ p: 2 }}>
-                {!results ? (
-                  <Box sx={{ textAlign: 'center', py: 6 }}>
-                    <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>No shifts to analyze</Typography>
-                    <Typography variant="body2" color="text.secondary">Add shifts above to see fatigue risk calculations</Typography>
+          {/* Right Panel - Chart & Results */}
+          <Grid size={{ xs: 12, lg: 5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* FRI Chart */}
+              <Paper elevation={2}>
+                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2" fontWeight={600}>FRI Chart</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          size="small"
+                          checked={showComponents}
+                          onChange={(e) => setShowComponents(e.target.checked)}
+                        />
+                      }
+                      label={<Typography variant="caption">Components</Typography>}
+                      sx={{ mr: 0 }}
+                    />
+                    <Button size="small" variant="text" onClick={handleExportCSV} sx={{ minWidth: 'auto', px: 1 }}>
+                      <Download className="w-3 h-3" />
+                    </Button>
+                    <Button size="small" variant="text" color="warning" onClick={handlePrint} sx={{ minWidth: 'auto', px: 1 }}>
+                      <FileText className="w-3 h-3" />
+                    </Button>
                   </Box>
-                ) : (
-                  <>
-                    {/* Role Comparison Toggle */}
-                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                          <Typography variant="subtitle2">Compare Multiple Roles</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Check compliance for different worker types on the same pattern
-                          </Typography>
-                        </Box>
-                        <Button
-                          variant={compareRoles ? 'contained' : 'outlined'}
-                          color="secondary"
-                          onClick={() => setCompareRoles(!compareRoles)}
-                        >
-                          {compareRoles ? 'Comparing...' : 'Compare Roles'}
-                        </Button>
-                      </Box>
-
-                      <Collapse in={compareRoles}>
-                        <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                            Select roles to compare:
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {Object.entries(ROLE_PRESETS).filter(([key]) => key !== 'custom').map(([key, role]) => {
-                              const roleKey = key as RoleKey;
-                              const isSelected = selectedRolesForCompare.includes(roleKey);
-                              return (
-                                <Chip
-                                  key={key}
-                                  label={role.name}
-                                  size="small"
-                                  onClick={() => toggleCompareRole(roleKey)}
-                                  variant={isSelected ? 'filled' : 'outlined'}
-                                  color={isSelected ? 'secondary' : 'default'}
-                                  sx={{ cursor: 'pointer' }}
-                                />
-                              );
-                            })}
-                          </Box>
-                        </Box>
-                      </Collapse>
-                    </Paper>
-
-                    {/* Role Comparison Results */}
-                    <Collapse in={compareRoles && roleComparisonResults !== null}>
-                      {roleComparisonResults && roleComparisonResults.length > 0 && (
-                        <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'secondary.50' }}>
-                          <Typography variant="subtitle2" color="secondary.dark" sx={{ mb: 2 }}>Role Compliance Summary</Typography>
-                          {roleComparisonResults.map(result => (
-                            <Paper
-                              key={result.roleKey}
-                              variant="outlined"
-                              sx={{
-                                p: 1.5,
-                                mb: 1,
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                bgcolor: result.isCompliant ? 'success.50' : 'error.50',
-                                borderColor: result.isCompliant ? 'success.300' : 'error.300',
-                              }}
-                            >
-                              <Box>
-                                <Typography variant="body2" fontWeight={600} color={result.isCompliant ? 'success.dark' : 'error.dark'}>
-                                  {result.roleName}
-                                </Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.75 }}>
-                                  (W:{result.workload} A:{result.attention})
-                                </Typography>
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Box sx={{ textAlign: 'right' }}>
-                                  <Typography variant="caption" color={result.isCompliant ? 'success.dark' : 'error.dark'}>
-                                    Peak: {result.maxRisk} | Avg: {result.avgRisk}
-                                  </Typography>
-                                  {result.highRiskDays > 0 && (
-                                    <Typography variant="caption" color="error.main" sx={{ display: 'block' }}>
-                                      {result.highRiskDays} high-risk day(s)
-                                    </Typography>
-                                  )}
-                                </Box>
-                                <Typography variant="h6" color={result.isCompliant ? 'success.main' : 'error.main'}>
-                                  {result.isCompliant ? '✓' : '✗'}
-                                </Typography>
-                              </Box>
-                            </Paper>
-                          ))}
-                          <Typography variant="caption" color="secondary.dark">
-                            Compliance = Peak FRI {'<'} 1.2 (below critical threshold)
-                          </Typography>
-                        </Paper>
-                      )}
-                    </Collapse>
-
-                    {/* Summary Cards */}
-                    <Grid container spacing={2} sx={{ mb: 3 }}>
-                      <Grid size={{ xs: 6 }}>
-                        <Paper sx={{ p: 2, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
-                          <Typography variant="caption" sx={{ opacity: 0.8 }}>Average FRI</Typography>
-                          <Typography variant="h4" fontWeight={700}>{results.summary.avgRisk}</Typography>
-                        </Paper>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Paper sx={{ p: 2, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
-                          <Typography variant="caption" sx={{ opacity: 0.8 }}>Peak FRI</Typography>
-                          <Typography variant="h4" fontWeight={700}>{results.summary.maxRisk}</Typography>
-                        </Paper>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Paper variant="outlined" sx={{ p: 2 }}>
-                          <Typography variant="caption" color="text.secondary">Total Hours</Typography>
-                          <Typography variant="h4" fontWeight={700}>{results.summary.totalHours}h</Typography>
-                        </Paper>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Paper variant="outlined" sx={{ p: 2 }}>
-                          <Typography variant="caption" color="text.secondary">High Risk Shifts</Typography>
-                          <Typography variant="h4" fontWeight={700}>{results.summary.highRiskCount}</Typography>
-                        </Paper>
-                      </Grid>
-                    </Grid>
-
-                    {/* Component Breakdown */}
-                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 2 }}>Average Component Scores</Typography>
-                      <RiskBar value={results.summary.avgCumulative} label="Cumulative Fatigue" color="#3b82f6" />
-                      <RiskBar value={results.summary.avgTiming} label="Timing Component" color="#8b5cf6" />
-                      <RiskBar value={results.summary.avgJobBreaks} label="Job/Breaks Component" color="#f59e0b" />
-                      <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" fontWeight={600}>Combined FRI</Typography>
-                          <Typography variant="body2" fontWeight={700}>{results.summary.avgRisk}</Typography>
-                        </Box>
-                        <Typography variant="caption" color="text.secondary">
-                          FRI = Cumulative x Timing x Job/Breaks
-                        </Typography>
-                      </Box>
-                    </Paper>
-
-                    {/* Risk Level Legend */}
-                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-                      <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                        Risk Level Guide (HSE RR446)
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip size="small" label="<1.0 Low" sx={getRiskChipSx('low')} />
-                        <Chip size="small" label="1.0-1.1 Mod" sx={getRiskChipSx('moderate')} />
-                        <Chip size="small" label="1.1-1.2 Elev" sx={getRiskChipSx('elevated')} />
-                        <Chip size="small" label=">1.2 Critical" sx={getRiskChipSx('critical')} />
-                      </Box>
-                    </Paper>
-
-                    {/* Per-Shift Results */}
-                    <Box sx={{ maxHeight: 320, overflow: 'auto' }}>
-                      {results.calculations.map((calc) => (
-                        <Paper
-                          key={calc.id}
-                          variant="outlined"
-                          sx={{ mb: 1, overflow: 'hidden', border: 1, ...getRiskCardSx(calc.riskLevel.level) }}
-                        >
-                          <Box
-                            onClick={() => setExpandedShift(expandedShift === calc.id ? null : calc.id)}
-                            sx={{ p: 1.5, cursor: 'pointer' }}
-                          >
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Box sx={{ opacity: 0.5 }}>
-                                  {expandedShift === calc.id ? (
-                                    <ChevronUp className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4" />
-                                  )}
-                                </Box>
-                                <Box>
-                                  <Typography variant="body2" fontWeight={600} component="span">Day {calc.day}</Typography>
-                                  <Chip size="small" label={calc.dayOfWeek} sx={{ ml: 1, height: 20, fontSize: '0.65rem', bgcolor: 'rgba(255,255,255,0.3)' }} />
-                                  <Typography variant="body2" sx={{ ml: 1, opacity: 0.8 }} component="span">
-                                    {calc.startTime} - {calc.endTime}
-                                  </Typography>
-                                </Box>
-                              </Box>
-                              <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="h6" fontWeight={700} component="span">{calc.riskIndex}</Typography>
-                                <Typography variant="caption" sx={{ ml: 0.5, opacity: 0.8 }}>FRI</Typography>
-                              </Box>
-                            </Box>
-                            <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                              Duration: {calc.dutyLength}h | {calc.riskLevel.label}
-                            </Typography>
-                          </Box>
-
-                          <Collapse in={expandedShift === calc.id}>
-                            <Box sx={{ px: 1.5, pb: 1.5, borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-                              <Grid container spacing={1} sx={{ mt: 0.5 }}>
-                                <Grid size={{ xs: 4 }}>
-                                  <Paper sx={{ p: 1, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
-                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Cumulative</Typography>
-                                    <Typography variant="body2" fontWeight={700}>{calc.cumulative}</Typography>
-                                  </Paper>
-                                </Grid>
-                                <Grid size={{ xs: 4 }}>
-                                  <Paper sx={{ p: 1, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
-                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Timing</Typography>
-                                    <Typography variant="body2" fontWeight={700}>{calc.timing}</Typography>
-                                  </Paper>
-                                </Grid>
-                                <Grid size={{ xs: 4 }}>
-                                  <Paper sx={{ p: 1, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
-                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Job/Breaks</Typography>
-                                    <Typography variant="body2" fontWeight={700}>{calc.jobBreaks}</Typography>
-                                  </Paper>
-                                </Grid>
-                              </Grid>
-                            </Box>
-                          </Collapse>
-                        </Paper>
-                      ))}
+                </Box>
+                <Box sx={{ p: 1 }}>
+                  {results ? (
+                    <FatigueChart
+                      data={results.calculations}
+                      worstCaseData={worstCaseResults ? results.calculations.map(calc => {
+                        const worst = worstCaseResults.get(calc.day);
+                        return {
+                          ...calc,
+                          riskIndex: worst?.riskIndex ?? calc.riskIndex,
+                          riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel,
+                        };
+                      }) : undefined}
+                      height={180}
+                      showThresholds={true}
+                      showComponents={showComponents}
+                      showWorstCase={true}
+                    />
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
                     </Box>
-                  </>
-                )}
-              </Box>
-            </Paper>
+                  )}
+                </Box>
+              </Paper>
+
+              {/* Results Summary */}
+              <Paper elevation={2} ref={resultsRef}>
+                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography variant="subtitle2" fontWeight={600}>Analysis</Typography>
+                </Box>
+
+                <Box sx={{ p: 1.5 }}>
+                  {!results ? (
+                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography variant="body2" color="text.secondary">No shifts to analyze</Typography>
+                    </Box>
+                  ) : (
+                    <>
+                      {/* Summary Cards - Compact */}
+                      <Grid container spacing={1} sx={{ mb: 2 }}>
+                        <Grid size={{ xs: 6 }}>
+                          <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
+                            <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Avg FRI</Typography>
+                            <Typography variant="h6" fontWeight={700}>{results.summary.avgRisk}</Typography>
+                          </Paper>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
+                            <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Peak FRI</Typography>
+                            <Typography variant="h6" fontWeight={700}>{results.summary.maxRisk}</Typography>
+                          </Paper>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Paper variant="outlined" sx={{ p: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Hours</Typography>
+                            <Typography variant="h6" fontWeight={700}>{results.summary.totalHours}h</Typography>
+                          </Paper>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Paper variant="outlined" sx={{ p: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>High Risk</Typography>
+                            <Typography variant="h6" fontWeight={700} color={results.summary.highRiskCount > 0 ? 'error.main' : 'success.main'}>
+                              {results.summary.highRiskCount}
+                            </Typography>
+                          </Paper>
+                        </Grid>
+                      </Grid>
+
+                    </>
+                  )}
+                </Box>
+              </Paper>
+            </Box>
           </Grid>
         </Grid>
       </Box>
