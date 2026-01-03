@@ -1201,7 +1201,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '42px 38px 44px 90px 90px 44px 38px 38px 38px 38px 38px 48px 48px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 680 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 48px 48px 48px 48px 52px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 740 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main' }}>In</Typography>
@@ -1239,7 +1239,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '42px 38px 44px 90px 90px 44px 38px 38px 38px 38px 38px 48px 48px',
+                                gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 48px 48px 48px 48px 52px 52px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1249,7 +1249,7 @@ export function FatigueView({
                                 borderColor: isRestDay ? 'grey.300' : (index < 2 ? 'warning.200' : 'success.200'),
                                 mb: 0.5,
                                 opacity: isRestDay ? 0.7 : 1,
-                                minWidth: 680,
+                                minWidth: 740,
                               }}
                             >
                               <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'center' }}>{dayName}</Typography>
