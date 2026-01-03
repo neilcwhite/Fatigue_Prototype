@@ -52,6 +52,7 @@ export default function Home() {
     deleteTeam,
     createShiftPattern,
     updateShiftPattern,
+    deleteShiftPattern,
   } = useAppData(profile?.organisationId || null);
 
   // Auto-select default project and employee when data loads
@@ -321,6 +322,8 @@ export default function Home() {
             assignments={assignments}
             onCreateShiftPattern={createShiftPattern}
             onUpdateShiftPattern={updateShiftPattern}
+            onDeleteShiftPattern={deleteShiftPattern}
+            onUpdateAssignment={updateAssignment}
           />
         )}
 

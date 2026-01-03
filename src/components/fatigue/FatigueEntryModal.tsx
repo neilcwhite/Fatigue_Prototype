@@ -22,17 +22,20 @@ import StepLabel from '@mui/material/StepLabel';
 import Card from '@mui/material/Card';
 import CardActionArea from '@mui/material/CardActionArea';
 import CardContent from '@mui/material/CardContent';
-import { X, ArrowLeft, Plus } from '@/components/ui/Icons';
-import type { ProjectCamel, ShiftPatternCamel } from '@/lib/types';
+import { X, ArrowLeft, Plus, Trash2 } from '@/components/ui/Icons';
+import type { ProjectCamel, ShiftPatternCamel, AssignmentCamel } from '@/lib/types';
 
 interface FatigueEntryModalProps {
   open: boolean;
   onClose: () => void;
   projects: ProjectCamel[];
   shiftPatterns: ShiftPatternCamel[];
+  assignments: AssignmentCamel[];
   onSelectPattern: (pattern: ShiftPatternCamel, project: ProjectCamel, mode: 'review' | 'edit') => void;
   onCreateNewPattern: (project: ProjectCamel) => void;
   onCreateProject: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
+  onDeleteShiftPattern: (id: string) => Promise<void>;
+  onUpdateAssignment: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
 }
 
 const PROJECT_TYPES = [
@@ -51,9 +54,12 @@ export function FatigueEntryModal({
   onClose,
   projects,
   shiftPatterns,
+  assignments,
   onSelectPattern,
   onCreateNewPattern,
   onCreateProject,
+  onDeleteShiftPattern,
+  onUpdateAssignment,
 }: FatigueEntryModalProps) {
   const [step, setStep] = useState<ModalStep>('select-project');
   const [selectedProject, setSelectedProject] = useState<ProjectCamel | null>(null);
@@ -66,6 +72,13 @@ export function FatigueEntryModal({
   const [newProjectEndDate, setNewProjectEndDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    pattern: ShiftPatternCamel;
+    futureAssignments: AssignmentCamel[];
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Filter patterns for selected project
   const projectPatterns = useMemo(() => {
@@ -148,6 +161,55 @@ export function FatigueEntryModal({
   const handleCreateNewPattern = () => {
     if (selectedProject) {
       onCreateNewPattern(selectedProject);
+    }
+  };
+
+  // Get Custom (Ad-hoc) pattern for this project
+  const customPattern = useMemo(() => {
+    if (!selectedProject) return null;
+    return shiftPatterns.find(
+      p => p.projectId === selectedProject.id &&
+      (p.name.toLowerCase().includes('custom') || p.name.toLowerCase().includes('ad hoc'))
+    );
+  }, [selectedProject, shiftPatterns]);
+
+  const handleDeleteClick = (pattern: ShiftPatternCamel, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+
+    const today = new Date().toISOString().split('T')[0];
+    const futureAssignments = assignments.filter(
+      a => a.shiftPatternId === pattern.id && a.date >= today
+    );
+
+    if (futureAssignments.length === 0) {
+      // No future assignments - delete directly
+      handleConfirmDelete(pattern, []);
+    } else {
+      // Has future assignments - show confirmation
+      setDeleteConfirm({ pattern, futureAssignments });
+    }
+  };
+
+  const handleConfirmDelete = async (pattern: ShiftPatternCamel, futureAssignments: AssignmentCamel[], moveToCustom = false) => {
+    setDeleting(true);
+    setError(null);
+
+    try {
+      if (moveToCustom && customPattern && futureAssignments.length > 0) {
+        // Move future assignments to Custom pattern
+        for (const assignment of futureAssignments) {
+          await onUpdateAssignment(assignment.id, { shiftPatternId: customPattern.id });
+        }
+      }
+
+      // Delete the pattern
+      await onDeleteShiftPattern(pattern.id);
+      setDeleteConfirm(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete pattern';
+      setError(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -372,47 +434,118 @@ export function FatigueEntryModal({
                 No shift patterns found for this project. Create your first pattern to start assessing fatigue.
               </Alert>
             ) : (
-              <Grid container spacing={1.5} sx={{ maxHeight: 250, overflow: 'auto' }}>
-                {projectPatterns.map((pattern) => (
-                  <Grid size={{ xs: 6 }} key={pattern.id}>
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        height: '100%',
-                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
-                      }}
-                    >
-                      <CardActionArea onClick={() => handlePatternSelect(pattern)} sx={{ height: '100%' }}>
-                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                          <Typography variant="subtitle2" noWrap fontWeight="medium">
-                            {pattern.name}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" noWrap display="block">
-                            {pattern.startTime} - {pattern.endTime}
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
-                            <Chip
-                              label={pattern.dutyType}
-                              size="small"
-                              variant="outlined"
-                              sx={{ height: 20, fontSize: '0.7rem' }}
-                            />
-                            {pattern.isNight && (
+              <Grid container spacing={1} sx={{ maxHeight: 280, overflow: 'auto' }}>
+                {projectPatterns.map((pattern) => {
+                  const isCustom = pattern.name.toLowerCase().includes('custom') || pattern.name.toLowerCase().includes('ad hoc');
+                  return (
+                    <Grid size={{ xs: 4 }} key={pattern.id}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          height: '100%',
+                          position: 'relative',
+                          '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                          '&:hover .delete-btn': { opacity: 1 },
+                        }}
+                      >
+                        <CardActionArea onClick={() => handlePatternSelect(pattern)} sx={{ height: '100%' }}>
+                          <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                            <Typography variant="caption" noWrap fontWeight="medium" display="block">
+                              {pattern.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap display="block" sx={{ fontSize: '0.65rem' }}>
+                              {pattern.startTime} - {pattern.endTime}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
                               <Chip
-                                label="Night"
+                                label={pattern.dutyType}
                                 size="small"
-                                color="info"
                                 variant="outlined"
-                                sx={{ height: 20, fontSize: '0.7rem' }}
+                                sx={{ height: 18, fontSize: '0.6rem' }}
                               />
-                            )}
-                          </Box>
-                        </CardContent>
-                      </CardActionArea>
-                    </Card>
-                  </Grid>
-                ))}
+                              {pattern.isNight && (
+                                <Chip
+                                  label="Night"
+                                  size="small"
+                                  color="info"
+                                  variant="outlined"
+                                  sx={{ height: 18, fontSize: '0.6rem' }}
+                                />
+                              )}
+                            </Box>
+                          </CardContent>
+                        </CardActionArea>
+                        {/* Delete button - hidden for Custom pattern */}
+                        {!isCustom && (
+                          <IconButton
+                            className="delete-btn"
+                            size="small"
+                            onClick={(e) => handleDeleteClick(pattern, e)}
+                            sx={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 2,
+                              opacity: 0,
+                              transition: 'opacity 0.2s',
+                              bgcolor: 'background.paper',
+                              p: 0.25,
+                              '&:hover': { bgcolor: 'error.light', color: 'error.contrastText' },
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </IconButton>
+                        )}
+                      </Card>
+                    </Grid>
+                  );
+                })}
               </Grid>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            {deleteConfirm && (
+              <Alert
+                severity="warning"
+                sx={{ mt: 2 }}
+                action={
+                  <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                    {customPattern && (
+                      <Button
+                        size="small"
+                        color="inherit"
+                        disabled={deleting}
+                        onClick={() => handleConfirmDelete(deleteConfirm.pattern, deleteConfirm.futureAssignments, true)}
+                      >
+                        {deleting ? 'Moving...' : 'Move to Custom & Delete'}
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      color="error"
+                      disabled={deleting}
+                      onClick={() => handleConfirmDelete(deleteConfirm.pattern, deleteConfirm.futureAssignments, false)}
+                    >
+                      {deleting ? 'Deleting...' : 'Delete Anyway'}
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => setDeleteConfirm(null)}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </Button>
+                  </Box>
+                }
+              >
+                <Typography variant="body2" fontWeight="medium">
+                  "{deleteConfirm.pattern.name}" has {deleteConfirm.futureAssignments.length} future assignment(s)
+                </Typography>
+                <Typography variant="caption">
+                  {customPattern
+                    ? 'You can move these to the Custom pattern before deleting, or delete anyway (assignments will be removed).'
+                    : 'Deleting will remove these future assignments. Past assignments are preserved.'}
+                </Typography>
+              </Alert>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>

@@ -247,8 +247,8 @@ export function SummaryView({
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid size={{ xs: 12, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ color: 'primary.main' }}>
                   <Clock className="w-8 h-8" />
                 </Box>
@@ -260,8 +260,8 @@ export function SummaryView({
             </Card>
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ color: 'success.main' }}>
                   <Users className="w-8 h-8" />
                 </Box>
@@ -273,8 +273,8 @@ export function SummaryView({
             </Card>
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ color: 'secondary.main' }}>
                   <Calendar className="w-8 h-8" />
                 </Box>
@@ -288,7 +288,6 @@ export function SummaryView({
           <Grid size={{ xs: 12, md: 3 }}>
             <Card
               sx={{
-                height: '100%',
                 borderLeft: 4,
                 borderColor: complianceResult.hasErrors
                   ? 'error.main'
@@ -303,7 +302,7 @@ export function SummaryView({
               }}
               onClick={complianceResult.violations.length > 0 ? scrollToCompliance : undefined}
             >
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box
                   sx={{
                     color: complianceResult.hasErrors
@@ -336,9 +335,6 @@ export function SummaryView({
                   >
                     {complianceResult.errorCount + complianceResult.warningCount}
                   </Typography>
-                  {complianceResult.errorCount > 0 && (
-                    <Typography variant="caption" color="error">{complianceResult.errorCount} errors</Typography>
-                  )}
                 </Box>
               </CardContent>
             </Card>

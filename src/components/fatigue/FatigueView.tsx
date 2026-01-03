@@ -63,6 +63,8 @@ interface FatigueViewProps {
   assignments?: AssignmentCamel[];
   onCreateShiftPattern?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
+  onDeleteShiftPattern?: (id: string) => Promise<void>;
+  onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onCreateProject?: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
 }
 
@@ -207,6 +209,8 @@ export function FatigueView({
   assignments = [],
   onCreateShiftPattern,
   onUpdateShiftPattern,
+  onDeleteShiftPattern,
+  onUpdateAssignment,
   onCreateProject,
 }: FatigueViewProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -1046,9 +1050,12 @@ export function FatigueView({
         onClose={() => setShowEntryModal(false)}
         projects={projects}
         shiftPatterns={shiftPatterns}
+        assignments={assignments}
         onSelectPattern={handleSelectPatternFromModal}
         onCreateNewPattern={handleCreateNewPatternFromModal}
         onCreateProject={handleCreateProjectFromModal}
+        onDeleteShiftPattern={onDeleteShiftPattern || (async () => {})}
+        onUpdateAssignment={onUpdateAssignment || (async () => {})}
       />
 
       {/* Header */}
