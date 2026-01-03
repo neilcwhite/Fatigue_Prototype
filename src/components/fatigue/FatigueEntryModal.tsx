@@ -80,10 +80,23 @@ export function FatigueEntryModal({
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Filter patterns for selected project
+  // Filter patterns for selected project and sort (Custom always last)
   const projectPatterns = useMemo(() => {
     if (!selectedProject) return [];
-    return shiftPatterns.filter(p => p.projectId === selectedProject.id);
+    return shiftPatterns
+      .filter(p => p.projectId === selectedProject.id)
+      .sort((a, b) => {
+        // Custom (Ad hoc) always goes to bottom
+        const aIsCustom = a.name.toLowerCase().includes('custom') || a.name.toLowerCase().includes('ad hoc');
+        const bIsCustom = b.name.toLowerCase().includes('custom') || b.name.toLowerCase().includes('ad hoc');
+        if (aIsCustom && !bIsCustom) return 1;
+        if (!aIsCustom && bIsCustom) return -1;
+        // Otherwise sort by creation date (oldest first)
+        if (a.createdAt && b.createdAt) {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        return 0;
+      });
   }, [selectedProject, shiftPatterns]);
 
   // Get pattern count per project for display

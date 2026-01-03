@@ -331,6 +331,8 @@ export function checkMultipleShiftsSameDay(
 
 /**
  * Check rolling 7-day weekly hours
+ * For each assignment date, check the 7-day window ENDING on that date
+ * (i.e., how many hours has this person worked in the last 7 days including today)
  */
 export function checkWeeklyHours(
   employeeId: number,
@@ -338,31 +340,33 @@ export function checkWeeklyHours(
   patternMap: Map<string, ShiftPatternCamel>
 ): ComplianceViolation[] {
   const violations: ComplianceViolation[] = [];
-  
+
   if (assignments.length === 0) return violations;
-  
+
   // Sort by date
-  const sorted = [...assignments].sort((a, b) => 
+  const sorted = [...assignments].sort((a, b) =>
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
-  
-  // Check rolling 7-day window from each assignment date
+
+  // Check rolling 7-day window ENDING on each assignment date
+  // This ensures we catch "Amy is working her 6th day in a row and approaching limits"
   const checkedWindows = new Set<string>();
-  
+
   sorted.forEach(assignment => {
-    const windowStart = new Date(assignment.date);
-    const windowKey = windowStart.toISOString().split('T')[0];
-    
-    // Skip if we've already checked a window starting near this date
+    const windowEnd = new Date(assignment.date);
+    const windowKey = windowEnd.toISOString().split('T')[0];
+
+    // Skip if we've already checked this exact date
     if (checkedWindows.has(windowKey)) return;
     checkedWindows.add(windowKey);
-    
-    const windowEnd = new Date(windowStart);
-    windowEnd.setDate(windowEnd.getDate() + 6);
-    
+
+    // Window starts 6 days before (so 7 days total including today)
+    const windowStart = new Date(windowEnd);
+    windowStart.setDate(windowStart.getDate() - 6);
+
     let totalHours = 0;
     const windowDates: string[] = [];
-    
+
     sorted.forEach(a => {
       const aDate = new Date(a.date);
       if (aDate >= windowStart && aDate <= windowEnd) {
@@ -374,14 +378,14 @@ export function checkWeeklyHours(
         }
       }
     });
-    
+
     if (totalHours > COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS) {
       violations.push({
         type: 'MAX_WEEKLY_HOURS',
         severity: 'error',
         employeeId,
         date: assignment.date,
-        message: `${totalHours.toFixed(1)}h in 7-day period (maximum ${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS}h)`,
+        message: `${totalHours.toFixed(1)}h in last 7 days (maximum ${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS}h)`,
         value: Math.round(totalHours * 10) / 10,
         limit: COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS,
         windowEnd: windowEnd.toISOString().split('T')[0],
@@ -393,14 +397,14 @@ export function checkWeeklyHours(
         severity: 'warning',
         employeeId,
         date: assignment.date,
-        message: `${totalHours.toFixed(1)}h in 7-day period - approaching ${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS}h limit`,
+        message: `${totalHours.toFixed(1)}h in last 7 days - approaching ${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS}h limit`,
         value: Math.round(totalHours * 10) / 10,
         limit: COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS,
         windowEnd: windowEnd.toISOString().split('T')[0],
       });
     }
   });
-  
+
   return violations;
 }
 
@@ -711,11 +715,8 @@ export function validateNewAssignment(
   // Check weekly hours
   const weeklyViolations = checkWeeklyHours(employeeId, allAssignments, patternMap);
   violations.push(...weeklyViolations.filter(v => {
-    // Only include if this assignment is in the violation window
-    const vDate = new Date(v.date);
-    const aDate = new Date(date);
-    const windowEnd = v.windowEnd ? new Date(v.windowEnd) : new Date(vDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-    return aDate >= vDate && aDate <= windowEnd;
+    // Only include violations on the date we're adding
+    return v.date === date;
   }));
   
   return violations;
