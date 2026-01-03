@@ -14,7 +14,7 @@ export interface FatigueModeState {
 
 export interface UseFatigueModeReturn extends FatigueModeState {
   enterReviewMode: (pattern: ShiftPatternCamel, project: ProjectCamel) => void;
-  enterEditMode: () => void;
+  enterEditMode: (pattern?: ShiftPatternCamel, project?: ProjectCamel) => void;
   enterCreateMode: (project: ProjectCamel) => void;
   resetToEntry: () => void;
   setLoadedPattern: (pattern: ShiftPatternCamel | null) => void;
@@ -39,11 +39,14 @@ export function useFatigueMode(): UseFatigueModeReturn {
     });
   }, []);
 
-  const enterEditMode = useCallback(() => {
+  const enterEditMode = useCallback((pattern?: ShiftPatternCamel, project?: ProjectCamel) => {
     setState(prev => ({
       ...prev,
       mode: 'edit',
       isReadOnly: false,
+      // If pattern/project provided (direct edit from modal), use them; otherwise keep existing
+      loadedPattern: pattern ?? prev.loadedPattern,
+      loadedProject: project ?? prev.loadedProject,
     }));
   }, []);
 

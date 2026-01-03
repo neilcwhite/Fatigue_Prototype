@@ -694,13 +694,36 @@ export function FatigueView({
 
     loadedShifts.sort((a, b) => a.day - b.day);
     setStartDayOfWeek(1);
+
+    // If no shifts were loaded (pattern has no schedule data), initialize blank week
+    if (loadedShifts.length === 0) {
+      // Create default 7-day week with pattern's default times or fallback to 07:00-19:00
+      const defaultStart = pattern.startTime || '07:00';
+      const defaultEnd = pattern.endTime || '19:00';
+      for (let day = 1; day <= 7; day++) {
+        const isRest = day === 1 || day === 2; // Sat, Sun are rest by default
+        loadedShifts.push({
+          id: Date.now() + day,
+          day,
+          startTime: defaultStart,
+          endTime: defaultEnd,
+          isRestDay: isRest,
+          commuteIn: Math.floor((pattern.commuteTime || params.commuteTime) / 2),
+          commuteOut: Math.ceil((pattern.commuteTime || params.commuteTime) / 2),
+          workload: pattern.workload ?? params.workload,
+          attention: pattern.attention ?? params.attention,
+          breakFreq: pattern.breakFrequency ?? params.breakFrequency,
+          breakLen: pattern.breakLength ?? params.breakLength,
+        });
+      }
+    }
+
     setShifts(loadedShifts);
 
     if (selectMode === 'review') {
       enterReviewMode(pattern, project);
     } else {
-      enterEditMode();
-      setLoadedPattern(pattern);
+      enterEditMode(pattern, project);
     }
   };
 
@@ -1060,7 +1083,7 @@ export function FatigueView({
               size="small"
               variant="outlined"
               startIcon={<Edit className="w-4 h-4" />}
-              onClick={enterEditMode}
+              onClick={() => enterEditMode()}
             >
               Edit Pattern
             </Button>
