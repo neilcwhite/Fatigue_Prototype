@@ -12,8 +12,20 @@ import { Calendar } from '@/components/ui/Icons';
 import { supabase } from '@/lib/supabase';
 import type { SupabaseUser } from '@/lib/types';
 
+// Approved email domains that can sign up without admin approval
+const APPROVED_DOMAINS = ['thespencergroup.co.uk'];
+
+// Admin email to receive signup notifications
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@thespencergroup.co.uk';
+
 interface AuthScreenProps {
   onLogin: (user: SupabaseUser) => void;
+}
+
+// Helper to check if email domain is approved
+function isApprovedDomain(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return APPROVED_DOMAINS.some(d => domain === d);
 }
 
 export function AuthScreen({ onLogin }: AuthScreenProps) {
@@ -22,6 +34,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,15 +45,60 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
 
     setLoading(true);
     setError('');
+    setPendingApproval(false);
 
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        // Check if email domain is approved for auto-signup
+        const approved = isApprovedDomain(email);
+
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              pending_approval: !approved,
+              requested_at: new Date().toISOString(),
+            }
+          }
+        });
         if (error) throw error;
+
+        if (!approved) {
+          // Non-approved domain - show pending message and send notification
+          setPendingApproval(true);
+
+          // Call API to send notification email to admin
+          try {
+            await fetch('/api/notify-signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email,
+                userId: data.user?.id,
+                requestedAt: new Date().toISOString()
+              }),
+            });
+          } catch {
+            // Notification failed but signup succeeded - continue
+            console.error('Failed to send signup notification');
+          }
+
+          return; // Don't proceed to login
+        }
+
         if (data.user) onLogin(data.user);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        // Check if user is pending approval
+        if (data.user?.user_metadata?.pending_approval) {
+          setError('Your account is pending approval. You will receive an email once approved.');
+          await supabase.auth.signOut();
+          return;
+        }
+
         if (data.user) onLogin(data.user);
       }
     } catch (err) {
@@ -99,6 +157,27 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
             HSE RR446 compliant shift planning system
           </Typography>
         </Box>
+
+        {/* Pending Approval Message */}
+        {pendingApproval && (
+          <Alert
+            severity="info"
+            sx={{
+              mb: 3,
+              bgcolor: 'rgba(59, 130, 246, 0.1)',
+              color: '#93c5fd',
+              '& .MuiAlert-icon': { color: '#60a5fa' },
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+              Account Created - Pending Approval
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              Your account has been created but requires admin approval before you can access the system.
+              An administrator has been notified and will review your request.
+            </Typography>
+          </Alert>
+        )}
 
         {/* Error Alert */}
         {error && (

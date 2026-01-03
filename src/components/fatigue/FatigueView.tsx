@@ -1097,56 +1097,59 @@ export function FatigueView({
       )}
 
       <Box sx={{ p: 3 }}>
-        {/* Project/Pattern Info Banner */}
+        {/* Condensed Header - Project info, title, pattern info, and actions in one row */}
         {loadedProject && (
-          <Paper variant="outlined" sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary">Project</Typography>
-              <Typography variant="h6">{loadedProject.name}</Typography>
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
+            {/* Project Info */}
+            <Box sx={{ minWidth: 180 }}>
+              <Typography variant="caption" color="text.secondary">Project</Typography>
+              <Typography variant="subtitle1" fontWeight={600}>{loadedProject.name}</Typography>
               {loadedProject.location && (
                 <Typography variant="caption" color="text.secondary">{loadedProject.location}</Typography>
               )}
             </Box>
+
+            {/* Title */}
+            <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>7-Day Week Pattern</Typography>
+
+            {/* Actions */}
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {!isReadOnly && shifts.length > 0 && onCreateShiftPattern && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="small"
+                  startIcon={<Download className="w-4 h-4" />}
+                  onClick={() => { setSaveProjectId(selectedProjectId); setShowSaveModal(true); }}
+                >
+                  Save as New Pattern
+                </Button>
+              )}
+              {!isReadOnly && shifts.length > 0 && selectedPatternId && onUpdateShiftPattern && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  onClick={handleUpdateExistingPattern}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Update Pattern'}
+                </Button>
+              )}
+            </Box>
+
+            {/* Pattern Info */}
             {loadedPattern && (
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="subtitle2" color="text.secondary">Pattern</Typography>
-                <Typography variant="h6">{loadedPattern.name}</Typography>
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                  <Chip label={loadedPattern.dutyType} size="small" variant="outlined" />
-                  {loadedPattern.isNight && <Chip label="Night" size="small" color="info" variant="outlined" />}
+              <Box sx={{ textAlign: 'right', minWidth: 140 }}>
+                <Typography variant="subtitle1" fontWeight={600}>{loadedPattern.name}</Typography>
+                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                  <Chip label={loadedPattern.dutyType} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                  {loadedPattern.isNight && <Chip label="Night" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />}
                 </Box>
               </Box>
             )}
           </Paper>
         )}
-
-        {/* View Mode Toggle & Actions */}
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight={600}>7-Day Week Pattern</Typography>
-
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {!isReadOnly && shifts.length > 0 && onCreateShiftPattern && (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<Download className="w-4 h-4" />}
-                onClick={() => { setSaveProjectId(selectedProjectId); setShowSaveModal(true); }}
-              >
-                Save as New Pattern
-              </Button>
-            )}
-            {!isReadOnly && shifts.length > 0 && selectedPatternId && onUpdateShiftPattern && (
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleUpdateExistingPattern}
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Update Pattern'}
-              </Button>
-            )}
-          </Box>
-        </Box>
 
         {/* Two Column Layout - Shift Builder + Chart */}
         <Grid container spacing={2}>
@@ -1212,7 +1215,7 @@ export function FatigueView({
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Hrs</Typography>
                           <Tooltip title="Workload (1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>W</Typography></Tooltip>
                           <Tooltip title="Attention Required (1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>A</Typography></Tooltip>
-                          <Tooltip title="Break Frequency (number of breaks per shift)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
+                          <Tooltip title="Minutes between breaks" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
                           <Tooltip title="Break Length (minutes per break)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BL</Typography></Tooltip>
                           <Tooltip title="Fatigue Risk Index for current role parameters" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}>FRI</Typography></Tooltip>
                           <Tooltip title="Worst-case FRI (Workload=5, Attention=5)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main', cursor: 'help' }}>Worst</Typography></Tooltip>
@@ -1265,15 +1268,17 @@ export function FatigueView({
                                 />
                               </Box>
 
-                              <TextField
-                                type="number"
-                                size="small"
-                                value={shift?.commuteIn ?? 30}
-                                onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
-                                disabled={isRestDay || isReadOnly}
-                                slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
-                              />
+                              <Tooltip title="Commute time to work (minutes)" arrow>
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift?.commuteIn ?? 30}
+                                  onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
+                                  disabled={isRestDay || isReadOnly}
+                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
+                                />
+                              </Tooltip>
 
                               <TextField
                                 type="time"
@@ -1295,71 +1300,81 @@ export function FatigueView({
                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'white' } }}
                               />
 
-                              <TextField
-                                type="number"
-                                size="small"
-                                value={shift?.commuteOut ?? 30}
-                                onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
-                                disabled={isRestDay || isReadOnly}
-                                slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
-                              />
+                              <Tooltip title="Commute time from work (minutes)" arrow>
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift?.commuteOut ?? 30}
+                                  onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
+                                  disabled={isRestDay || isReadOnly}
+                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
+                                />
+                              </Tooltip>
 
                               <Typography variant="body2" sx={{ textAlign: 'center', fontWeight: duration > 10 ? 600 : 400, color: duration > 10 ? 'warning.main' : 'text.primary' }}>
                                 {isRestDay ? '-' : duration.toFixed(1)}
                               </Typography>
 
-                              <TextField
-                                select
-                                size="small"
-                                value={shift?.workload ?? params.workload}
-                                onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value))}
-                                disabled={isRestDay || isReadOnly}
-                                slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
-                              >
-                                <MenuItem value={1}>1 - Low</MenuItem>
-                                <MenuItem value={2}>2 - Light</MenuItem>
-                                <MenuItem value={3}>3 - Moderate</MenuItem>
-                                <MenuItem value={4}>4 - High</MenuItem>
-                                <MenuItem value={5}>5 - Very High</MenuItem>
-                              </TextField>
+                              <Tooltip title="Workload: 1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High" arrow>
+                                <TextField
+                                  select
+                                  size="small"
+                                  value={shift?.workload ?? params.workload}
+                                  onChange={(e) => updateWeeklyShiftParam(index, 'workload', parseInt(e.target.value))}
+                                  disabled={isRestDay || isReadOnly}
+                                  slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
+                                >
+                                  <MenuItem value={1}>1 - Low</MenuItem>
+                                  <MenuItem value={2}>2 - Light</MenuItem>
+                                  <MenuItem value={3}>3 - Moderate</MenuItem>
+                                  <MenuItem value={4}>4 - High</MenuItem>
+                                  <MenuItem value={5}>5 - Very High</MenuItem>
+                                </TextField>
+                              </Tooltip>
 
-                              <TextField
-                                select
-                                size="small"
-                                value={shift?.attention ?? params.attention}
-                                onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value))}
-                                disabled={isRestDay || isReadOnly}
-                                slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
-                              >
-                                <MenuItem value={1}>1 - Minimal</MenuItem>
-                                <MenuItem value={2}>2 - Low</MenuItem>
-                                <MenuItem value={3}>3 - Moderate</MenuItem>
-                                <MenuItem value={4}>4 - High</MenuItem>
-                                <MenuItem value={5}>5 - Constant</MenuItem>
-                              </TextField>
+                              <Tooltip title="Attention: 1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant" arrow>
+                                <TextField
+                                  select
+                                  size="small"
+                                  value={shift?.attention ?? params.attention}
+                                  onChange={(e) => updateWeeklyShiftParam(index, 'attention', parseInt(e.target.value))}
+                                  disabled={isRestDay || isReadOnly}
+                                  slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
+                                >
+                                  <MenuItem value={1}>1 - Minimal</MenuItem>
+                                  <MenuItem value={2}>2 - Low</MenuItem>
+                                  <MenuItem value={3}>3 - Moderate</MenuItem>
+                                  <MenuItem value={4}>4 - High</MenuItem>
+                                  <MenuItem value={5}>5 - Constant</MenuItem>
+                                </TextField>
+                              </Tooltip>
 
-                              <TextField
-                                type="number"
-                                size="small"
-                                value={shift?.breakFreq ?? params.breakFrequency}
-                                onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
-                                disabled={isRestDay || isReadOnly}
-                                slotProps={{ htmlInput: { min: 1, max: 8, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
-                              />
+                              <Tooltip title="Minutes between breaks" arrow>
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift?.breakFreq ?? params.breakFrequency}
+                                  onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
+                                  disabled={isRestDay || isReadOnly}
+                                  slotProps={{ htmlInput: { min: 1, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
+                                />
+                              </Tooltip>
 
-                              <TextField
-                                type="number"
-                                size="small"
-                                value={shift?.breakLen ?? params.breakLength}
-                                onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
-                                disabled={isRestDay || isReadOnly}
-                                slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' } } }}
-                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
-                              />
+                              <Tooltip title="Break length (minutes per break)" arrow>
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={shift?.breakLen ?? params.breakLength}
+                                  onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
+                                  disabled={isRestDay || isReadOnly}
+                                  slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' } } }}
+                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
+                                />
+                              </Tooltip>
 
                               <Box sx={{ textAlign: 'center' }}>
                                 {isRestDay ? (
