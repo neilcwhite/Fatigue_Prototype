@@ -378,13 +378,6 @@ export function PlanningView({
         sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #2563eb', flexShrink: 0 }}
       >
         <Toolbar sx={{ px: 3, py: 1.5 }}>
-          <Button
-            startIcon={<ChevronLeft className="w-4 h-4" />}
-            onClick={onBack}
-            sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', mr: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
-          >
-            Back
-          </Button>
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
               {project.name} <Box component="span" sx={{ color: '#60a5fa' }}>Planning</Box>

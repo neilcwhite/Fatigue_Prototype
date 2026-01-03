@@ -184,13 +184,6 @@ export function SummaryView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Button
-            onClick={onBack}
-            startIcon={<ChevronLeft className="w-4 h-4" />}
-            sx={{ color: 'grey.400', mr: 2, '&:hover': { color: 'white' } }}
-          >
-            Back
-          </Button>
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="span">
               {project.name}{' '}
