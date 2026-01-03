@@ -28,7 +28,7 @@ import Collapse from '@mui/material/Collapse';
 import LinearProgress from '@mui/material/LinearProgress';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X } from '@/components/ui/Icons';
+import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X, Edit } from '@/components/ui/Icons';
 import {
   calculateFatigueSequence,
   getRiskLevel,
@@ -39,6 +39,8 @@ import {
 } from '@/lib/fatigue';
 import type { ShiftDefinition, ProjectCamel, EmployeeCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
 import { FatigueChart } from './FatigueChart';
+import { FatigueEntryModal } from './FatigueEntryModal';
+import { useFatigueMode } from './hooks/useFatigueMode';
 import { getRiskColor } from '@/lib/utils';
 
 interface Shift extends ShiftDefinition {
@@ -62,6 +64,7 @@ interface FatigueViewProps {
   assignments?: AssignmentCamel[];
   onCreateShiftPattern?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
+  onCreateProject?: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
 }
 
 const TEMPLATES = {
@@ -205,6 +208,7 @@ export function FatigueView({
   assignments = [],
   onCreateShiftPattern,
   onUpdateShiftPattern,
+  onCreateProject,
 }: FatigueViewProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -215,6 +219,21 @@ export function FatigueView({
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const [viewMode, setViewMode] = useState<'weekly' | 'multiweek'>('weekly');
+
+  // Mode management for entry modal and read-only state
+  const {
+    mode,
+    isReadOnly,
+    loadedPattern,
+    loadedProject,
+    enterReviewMode,
+    enterEditMode,
+    enterCreateMode,
+    resetToEntry,
+    setLoadedPattern,
+  } = useFatigueMode();
+
+  const [showEntryModal, setShowEntryModal] = useState(true);
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
@@ -609,6 +628,87 @@ export function FatigueView({
     return shifts.find(s => s.day === dayNum);
   };
 
+  // Entry modal handlers
+  const handleSelectPatternFromModal = (pattern: ShiftPatternCamel, project: ProjectCamel, mode: 'review' | 'edit') => {
+    setSelectedProjectId(project.id);
+    setSelectedPatternId(pattern.id);
+    setShowEntryModal(false);
+
+    // Load the pattern
+    const loadedShifts: Shift[] = [];
+    if (pattern.weeklySchedule) {
+      const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+      const schedule = pattern.weeklySchedule;
+
+      Object.entries(schedule).forEach(([dayName, daySchedule]) => {
+        if (daySchedule && daySchedule.startTime && daySchedule.endTime) {
+          const dayNum = dayMap[dayName] || 1;
+          loadedShifts.push({
+            id: Date.now() + dayNum,
+            day: dayNum,
+            startTime: daySchedule.startTime,
+            endTime: daySchedule.endTime,
+            commuteIn: daySchedule.commuteIn ?? Math.floor((pattern.commuteTime || params.commuteTime) / 2),
+            commuteOut: daySchedule.commuteOut ?? Math.ceil((pattern.commuteTime || params.commuteTime) / 2),
+            workload: daySchedule.workload ?? pattern.workload ?? params.workload,
+            attention: daySchedule.attention ?? pattern.attention ?? params.attention,
+            breakFreq: daySchedule.breakFreq ?? pattern.breakFrequency ?? params.breakFrequency,
+            breakLen: daySchedule.breakLen ?? pattern.breakLength ?? params.breakLength,
+          });
+        }
+      });
+    } else if (pattern.startTime && pattern.endTime) {
+      for (let day = 1; day <= 5; day++) {
+        loadedShifts.push({
+          id: Date.now() + day,
+          day,
+          startTime: pattern.startTime,
+          endTime: pattern.endTime,
+          commuteIn: Math.floor((pattern.commuteTime || params.commuteTime) / 2),
+          commuteOut: Math.ceil((pattern.commuteTime || params.commuteTime) / 2),
+          workload: pattern.workload ?? params.workload,
+          attention: pattern.attention ?? params.attention,
+          breakFreq: pattern.breakFrequency ?? params.breakFrequency,
+          breakLen: pattern.breakLength ?? params.breakLength,
+        });
+      }
+    }
+
+    loadedShifts.sort((a, b) => a.day - b.day);
+    setStartDayOfWeek(1);
+    setShifts(loadedShifts);
+
+    if (mode === 'review') {
+      enterReviewMode(pattern, project);
+    } else {
+      enterEditMode();
+      setLoadedPattern(pattern);
+    }
+  };
+
+  const handleCreateNewPatternFromModal = (project: ProjectCamel) => {
+    setSelectedProjectId(project.id);
+    setSelectedPatternId(null);
+    setShowEntryModal(false);
+    enterCreateMode(project);
+    initializeWeeklyShifts();
+  };
+
+  const handleCreateProjectFromModal = async (name: string, location?: string, type?: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
+    if (!onCreateProject) {
+      throw new Error('Project creation not available');
+    }
+    return onCreateProject(name, location, type, startDate, endDate);
+  };
+
+  const handleBackToEntry = () => {
+    setShifts([]);
+    setSelectedProjectId(null);
+    setSelectedPatternId(null);
+    resetToEntry();
+    setShowEntryModal(true);
+  };
+
   const handleSavePattern = async () => {
     if (!savePatternName.trim()) {
       setSaveError('Pattern name is required');
@@ -898,15 +998,26 @@ export function FatigueView({
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Entry Modal */}
+      <FatigueEntryModal
+        open={showEntryModal}
+        onClose={() => setShowEntryModal(false)}
+        projects={projects}
+        shiftPatterns={shiftPatterns}
+        onSelectPattern={handleSelectPatternFromModal}
+        onCreateNewPattern={handleCreateNewPatternFromModal}
+        onCreateProject={handleCreateProjectFromModal}
+      />
+
       {/* Header */}
       <AppBar position="static" sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #f97316' }}>
         <Toolbar>
           <Button
             startIcon={<ChevronLeft className="w-4 h-4" />}
-            onClick={onBack}
+            onClick={mode === 'entry' ? onBack : handleBackToEntry}
             sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', mr: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
           >
-            Back
+            {mode === 'entry' ? 'Back' : 'Change Pattern'}
           </Button>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Fatigue <Box component="span" sx={{ color: '#fb923c' }}>Risk Assessment</Box>
@@ -920,22 +1031,113 @@ export function FatigueView({
         </Toolbar>
       </AppBar>
 
+      {/* Mode Banner - shows in review mode */}
+      {isReadOnly && (
+        <Alert
+          severity="info"
+          sx={{ borderRadius: 0 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              variant="outlined"
+              startIcon={<Edit className="w-4 h-4" />}
+              onClick={enterEditMode}
+            >
+              Edit Pattern
+            </Button>
+          }
+        >
+          <Typography variant="body2">
+            <strong>Review Mode</strong> - Viewing {loadedPattern?.name} from {loadedProject?.name}. Click "Edit Pattern" to make changes.
+          </Typography>
+        </Alert>
+      )}
+
       <Box sx={{ p: 3 }}>
+        {/* Project/Pattern Info Banner */}
+        {loadedProject && (
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">Project</Typography>
+              <Typography variant="h6">{loadedProject.name}</Typography>
+              {loadedProject.location && (
+                <Typography variant="caption" color="text.secondary">{loadedProject.location}</Typography>
+              )}
+            </Box>
+            {loadedPattern && (
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="subtitle2" color="text.secondary">Pattern</Typography>
+                <Typography variant="h6">{loadedPattern.name}</Typography>
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <Chip label={loadedPattern.dutyType} size="small" variant="outlined" />
+                  {loadedPattern.isNight && <Chip label="Night" size="small" color="info" variant="outlined" />}
+                </Box>
+              </Box>
+            )}
+          </Paper>
+        )}
+
+        {/* FRI Chart - Full Width at Top */}
+        {results && (
+          <Paper elevation={2} sx={{ mb: 3 }}>
+            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="subtitle1" fontWeight={600}>FRI Progression Chart</Typography>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={showComponents}
+                      onChange={(e) => setShowComponents(e.target.checked)}
+                    />
+                  }
+                  label={<Typography variant="caption">Show component lines</Typography>}
+                />
+                <Button size="small" variant="outlined" startIcon={<Download className="w-3 h-3" />} onClick={handleExportCSV}>
+                  CSV
+                </Button>
+                <Button size="small" variant="outlined" color="warning" startIcon={<FileText className="w-3 h-3" />} onClick={handlePrint}>
+                  Report
+                </Button>
+              </Box>
+            </Box>
+            <Box sx={{ p: 2 }}>
+              <FatigueChart
+                data={results.calculations}
+                worstCaseData={worstCaseResults ? results.calculations.map(calc => {
+                  const worst = worstCaseResults.get(calc.day);
+                  return {
+                    ...calc,
+                    riskIndex: worst?.riskIndex ?? calc.riskIndex,
+                    riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel,
+                  };
+                }) : undefined}
+                height={200}
+                showThresholds={true}
+                showComponents={showComponents}
+                showWorstCase={true}
+              />
+            </Box>
+          </Paper>
+        )}
+
         {/* View Mode Toggle & Actions */}
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <ToggleButtonGroup
             value={viewMode}
             exclusive
-            onChange={(e, val) => val && setViewMode(val)}
+            onChange={(e, val) => val && !isReadOnly && setViewMode(val)}
             size="small"
             sx={{ bgcolor: 'white' }}
+            disabled={isReadOnly}
           >
             <ToggleButton value="weekly" sx={{ px: 3 }}>7-Day Week</ToggleButton>
             <ToggleButton value="multiweek" sx={{ px: 3 }}>Multi-Week Pattern</ToggleButton>
           </ToggleButtonGroup>
 
           <Box sx={{ display: 'flex', gap: 1 }}>
-            {shifts.length > 0 && onCreateShiftPattern && (
+            {!isReadOnly && shifts.length > 0 && onCreateShiftPattern && (
               <Button
                 variant="contained"
                 color="success"
@@ -945,7 +1147,7 @@ export function FatigueView({
                 Save as New Pattern
               </Button>
             )}
-            {shifts.length > 0 && selectedPatternId && onUpdateShiftPattern && (
+            {!isReadOnly && shifts.length > 0 && selectedPatternId && onUpdateShiftPattern && (
               <Button
                 variant="contained"
                 color="secondary"
@@ -958,9 +1160,9 @@ export function FatigueView({
           </Box>
         </Box>
 
+        {/* Shift Builder - Full Width */}
         <Grid container spacing={3}>
-          {/* Left Panel - Input */}
-          <Grid size={{ xs: 12, lg: 6 }}>
+          <Grid size={{ xs: 12 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* 7-Day Weekly View */}
               {viewMode === 'weekly' && (
@@ -1722,64 +1924,21 @@ export function FatigueView({
             </Box>
           </Grid>
 
-          {/* Right Panel - Results */}
-          <Grid size={{ xs: 12, lg: 6 }}>
+          {/* Results Panel - Full Width */}
+          <Grid size={{ xs: 12 }}>
             <Paper elevation={2} ref={resultsRef}>
-              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
                 <Typography variant="subtitle1" fontWeight={600}>Fatigue Risk Analysis</Typography>
-                {results && (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      size="small"
-                      variant={showChart ? 'contained' : 'outlined'}
-                      color={showChart ? 'primary' : 'inherit'}
-                      startIcon={<BarChart className="w-3 h-3" />}
-                      onClick={() => setShowChart(!showChart)}
-                    >
-                      Chart
-                    </Button>
-                    <Button size="small" variant="outlined" startIcon={<Download className="w-3 h-3" />} onClick={handleExportCSV}>
-                      CSV
-                    </Button>
-                    <Button size="small" variant="outlined" color="warning" startIcon={<FileText className="w-3 h-3" />} onClick={handlePrint}>
-                      Report
-                    </Button>
-                  </Box>
-                )}
               </Box>
 
               <Box sx={{ p: 2 }}>
                 {!results ? (
                   <Box sx={{ textAlign: 'center', py: 6 }}>
                     <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>No shifts to analyze</Typography>
-                    <Typography variant="body2" color="text.secondary">Add shifts on the left to see fatigue risk calculations</Typography>
+                    <Typography variant="body2" color="text.secondary">Add shifts above to see fatigue risk calculations</Typography>
                   </Box>
                 ) : (
                   <>
-                    {/* Chart */}
-                    <Collapse in={showChart}>
-                      <Box sx={{ mb: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                          <Typography variant="subtitle2">FRI Progression Chart</Typography>
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={showComponents}
-                                onChange={(e) => setShowComponents(e.target.checked)}
-                              />
-                            }
-                            label={<Typography variant="caption">Show component lines</Typography>}
-                          />
-                        </Box>
-                        <FatigueChart
-                          data={results.calculations}
-                          showThresholds={true}
-                          showComponents={showComponents}
-                        />
-                      </Box>
-                    </Collapse>
-
                     {/* Role Comparison Toggle */}
                     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

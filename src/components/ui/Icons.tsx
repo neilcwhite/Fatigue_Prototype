@@ -32,6 +32,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface IconProps {
   className?: string;
@@ -252,6 +254,27 @@ export const Copy = ({ className = "w-6 h-6" }: IconProps) => (
 
 export const Check = ({ className = "w-6 h-6" }: IconProps) => (
   <CheckIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const ArrowLeft = ({ className = "w-6 h-6" }: IconProps) => (
+  <ArrowBackIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const Eye = ({ className = "w-6 h-6" }: IconProps) => (
+  <VisibilityIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const Edit = ({ className = "w-6 h-6" }: IconProps) => (
+  <EditIcon
     className={className}
     sx={{ fontSize: getSizeFromClass(className) }}
   />

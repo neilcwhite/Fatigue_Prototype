@@ -17,9 +17,11 @@ interface FatigueDataPoint {
 
 interface FatigueChartProps {
   data: FatigueDataPoint[];
+  worstCaseData?: FatigueDataPoint[];
   height?: number;
   showThresholds?: boolean;
   showComponents?: boolean;
+  showWorstCase?: boolean;
 }
 
 // Risk threshold constants (HSE RR446)
@@ -37,9 +39,11 @@ const RISK_COLORS = {
 
 export function FatigueChart({
   data,
+  worstCaseData,
   height = 280,
   showThresholds = true,
   showComponents = false,
+  showWorstCase = false,
 }: FatigueChartProps) {
   // Chart dimensions
   const padding = { top: 20, right: 20, bottom: 40, left: 50 };
@@ -64,9 +68,12 @@ export function FatigueChart({
     const dayRange = maxDay - minDay || 1;
 
     // Y-axis: include some padding above max value
+    // Also consider worst case data for proper scaling
     const values = data.map(d => d.riskIndex);
-    const dataMaxY = Math.max(...values, THRESHOLD_CRITICAL);
-    const dataMinY = Math.min(...values, THRESHOLD_LOW - 0.2);
+    const worstCaseValues = worstCaseData?.map(d => d.riskIndex) || [];
+    const allValues = [...values, ...worstCaseValues];
+    const dataMaxY = Math.max(...allValues, THRESHOLD_CRITICAL);
+    const dataMinY = Math.min(...allValues, THRESHOLD_LOW - 0.2);
     const maxY = Math.ceil(dataMaxY * 10) / 10 + 0.1;
     const minY = Math.floor(dataMinY * 10) / 10;
     const yRange = maxY - minY || 0.5;
@@ -80,7 +87,7 @@ export function FatigueChart({
     };
 
     return { xScale, yScale, maxY, minY };
-  }, [data, chartWidth, chartHeight]);
+  }, [data, worstCaseData, chartWidth, chartHeight]);
 
   // Generate Y-axis ticks
   const yTicks = useMemo(() => {
@@ -130,6 +137,15 @@ export function FatigueChart({
       jobBreaks: `M ${jobPath}`,
     };
   }, [data, showComponents, xScale, yScale]);
+
+  // Generate worst case line path
+  const worstCaseLinePath = useMemo(() => {
+    if (!worstCaseData || worstCaseData.length === 0) return '';
+
+    const sortedData = [...worstCaseData].sort((a, b) => a.day - b.day);
+    const points = sortedData.map(d => `${xScale(d.day)},${yScale(d.riskIndex)}`);
+    return `M ${points.join(' L ')}`;
+  }, [worstCaseData, xScale, yScale]);
 
   if (data.length === 0) {
     return (
@@ -320,6 +336,20 @@ export function FatigueChart({
           {/* Area fill */}
           <path d={areaPath} fill="url(#areaGradient)" />
 
+          {/* Worst case line (behind main line) */}
+          {showWorstCase && worstCaseLinePath && (
+            <path
+              d={worstCaseLinePath}
+              fill="none"
+              stroke="#94a3b8"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray="6 4"
+              opacity={0.8}
+            />
+          )}
+
           {/* Main FRI line */}
           <path
             d={linePath}
@@ -437,6 +467,22 @@ export function FatigueChart({
           <span className="text-[10px] text-slate-600">{'>1.2 Critical'}</span>
         </div>
       </div>
+
+      {/* Worst case legend */}
+      {showWorstCase && (
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <span className="text-[10px] text-slate-500">Current Role</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg width="16" height="8" className="overflow-visible">
+              <line x1="0" y1="4" x2="16" y2="4" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 2" />
+            </svg>
+            <span className="text-[10px] text-slate-500">Worst Case (W:5, A:5)</span>
+          </div>
+        </div>
+      )}
 
       {/* Component legend if showing components */}
       {showComponents && (
