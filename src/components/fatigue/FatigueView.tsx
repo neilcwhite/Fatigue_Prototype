@@ -629,25 +629,28 @@ export function FatigueView({
   };
 
   // Entry modal handlers
-  const handleSelectPatternFromModal = (pattern: ShiftPatternCamel, project: ProjectCamel, mode: 'review' | 'edit') => {
+  const handleSelectPatternFromModal = (pattern: ShiftPatternCamel, project: ProjectCamel, selectMode: 'review' | 'edit') => {
     setSelectedProjectId(project.id);
     setSelectedPatternId(pattern.id);
     setShowEntryModal(false);
 
-    // Load the pattern
+    // Load the pattern - use NR week day numbering (Sat=1, Sun=2, Mon=3, etc.)
     const loadedShifts: Shift[] = [];
     if (pattern.weeklySchedule) {
-      const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+      // NR week: Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6, Fri=7
+      const dayMap: Record<string, number> = { Sat: 1, Sun: 2, Mon: 3, Tue: 4, Wed: 5, Thu: 6, Fri: 7 };
       const schedule = pattern.weeklySchedule;
 
       Object.entries(schedule).forEach(([dayName, daySchedule]) => {
+        const dayNum = dayMap[dayName] || 1;
         if (daySchedule && daySchedule.startTime && daySchedule.endTime) {
-          const dayNum = dayMap[dayName] || 1;
+          // Working day with shift data
           loadedShifts.push({
             id: Date.now() + dayNum,
             day: dayNum,
             startTime: daySchedule.startTime,
             endTime: daySchedule.endTime,
+            isRestDay: false,
             commuteIn: daySchedule.commuteIn ?? Math.floor((pattern.commuteTime || params.commuteTime) / 2),
             commuteOut: daySchedule.commuteOut ?? Math.ceil((pattern.commuteTime || params.commuteTime) / 2),
             workload: daySchedule.workload ?? pattern.workload ?? params.workload,
@@ -655,15 +658,34 @@ export function FatigueView({
             breakFreq: daySchedule.breakFreq ?? pattern.breakFrequency ?? params.breakFrequency,
             breakLen: daySchedule.breakLen ?? pattern.breakLength ?? params.breakLength,
           });
+        } else {
+          // Rest day - no shift data
+          loadedShifts.push({
+            id: Date.now() + dayNum,
+            day: dayNum,
+            startTime: '07:00',
+            endTime: '19:00',
+            isRestDay: true,
+            commuteIn: Math.floor((pattern.commuteTime || params.commuteTime) / 2),
+            commuteOut: Math.ceil((pattern.commuteTime || params.commuteTime) / 2),
+            workload: pattern.workload ?? params.workload,
+            attention: pattern.attention ?? params.attention,
+            breakFreq: pattern.breakFrequency ?? params.breakFrequency,
+            breakLen: pattern.breakLength ?? params.breakLength,
+          });
         }
       });
     } else if (pattern.startTime && pattern.endTime) {
-      for (let day = 1; day <= 5; day++) {
+      // Fallback: Create full week with Mon-Fri working, Sat-Sun rest
+      // NR week: Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6, Fri=7
+      for (let day = 1; day <= 7; day++) {
+        const isRest = day === 1 || day === 2; // Sat, Sun are rest
         loadedShifts.push({
           id: Date.now() + day,
           day,
           startTime: pattern.startTime,
           endTime: pattern.endTime,
+          isRestDay: isRest,
           commuteIn: Math.floor((pattern.commuteTime || params.commuteTime) / 2),
           commuteOut: Math.ceil((pattern.commuteTime || params.commuteTime) / 2),
           workload: pattern.workload ?? params.workload,
@@ -678,7 +700,7 @@ export function FatigueView({
     setStartDayOfWeek(1);
     setShifts(loadedShifts);
 
-    if (mode === 'review') {
+    if (selectMode === 'review') {
       enterReviewMode(pattern, project);
     } else {
       enterEditMode();
