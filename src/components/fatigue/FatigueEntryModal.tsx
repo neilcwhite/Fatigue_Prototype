@@ -14,16 +14,15 @@ import MenuItem from '@mui/material/MenuItem';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
-import { X, ArrowLeft, Plus, Eye, Edit } from '@/components/ui/Icons';
+import Card from '@mui/material/Card';
+import CardActionArea from '@mui/material/CardActionArea';
+import CardContent from '@mui/material/CardContent';
+import { X, ArrowLeft, Plus } from '@/components/ui/Icons';
 import type { ProjectCamel, ShiftPatternCamel } from '@/lib/types';
 
 interface FatigueEntryModalProps {
@@ -139,9 +138,10 @@ export function FatigueEntryModal({
     }
   };
 
-  const handlePatternAction = (pattern: ShiftPatternCamel, mode: 'review' | 'edit') => {
+  const handlePatternSelect = (pattern: ShiftPatternCamel) => {
     if (selectedProject) {
-      onSelectPattern(pattern, selectedProject, mode);
+      // Go straight to edit mode
+      onSelectPattern(pattern, selectedProject, 'edit');
     }
   };
 
@@ -203,49 +203,44 @@ export function FatigueEntryModal({
                 No projects found. Create your first project to get started.
               </Alert>
             ) : (
-              <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+              <Grid container spacing={1.5} sx={{ maxHeight: 300, overflow: 'auto' }}>
                 {projects.map((project) => (
-                  <ListItem
-                    key={project.id}
-                    component="div"
-                    onClick={() => handleProjectSelect(project)}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      mb: 1,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                  >
-                    <ListItemText
-                      primary={project.name}
-                      secondary={
-                        <Box component="span" sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
+                  <Grid size={{ xs: 6 }} key={project.id}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        height: '100%',
+                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
+                      }}
+                    >
+                      <CardActionArea onClick={() => handleProjectSelect(project)} sx={{ height: '100%' }}>
+                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                          <Typography variant="subtitle2" noWrap fontWeight="medium">
+                            {project.name}
+                          </Typography>
                           {project.location && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" color="text.secondary" noWrap display="block">
                               {project.location}
                             </Typography>
                           )}
-                          {project.type && (
-                            <Chip label={project.type} size="small" variant="outlined" />
-                          )}
-                        </Box>
-                      }
-                    />
-                    <ListItemSecondaryAction>
-                      <Chip
-                        label={`${patternCountByProject[project.id] || 0} patterns`}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
-                    </ListItemSecondaryAction>
-                  </ListItem>
+                          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                            {project.type && (
+                              <Chip label={project.type} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            )}
+                            <Chip
+                              label={`${patternCountByProject[project.id] || 0} patterns`}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          </Box>
+                        </CardContent>
+                      </CardActionArea>
+                    </Card>
+                  </Grid>
                 ))}
-              </List>
+              </Grid>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>
@@ -369,7 +364,7 @@ export function FatigueEntryModal({
             <Divider sx={{ mb: 2 }} />
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Select an existing shift pattern to review or edit, or create a new one.
+              Select a shift pattern to edit, or create a new one.
             </Typography>
 
             {projectPatterns.length === 0 ? (
@@ -377,53 +372,47 @@ export function FatigueEntryModal({
                 No shift patterns found for this project. Create your first pattern to start assessing fatigue.
               </Alert>
             ) : (
-              <List sx={{ maxHeight: 250, overflow: 'auto' }}>
+              <Grid container spacing={1.5} sx={{ maxHeight: 250, overflow: 'auto' }}>
                 {projectPatterns.map((pattern) => (
-                  <ListItem
-                    key={pattern.id}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1,
-                      mb: 1,
-                      flexDirection: 'column',
-                      alignItems: 'stretch',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-                      <ListItemText
-                        primary={pattern.name}
-                        secondary={
-                          <Box component="span" sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
-                            <Chip label={pattern.dutyType} size="small" variant="outlined" />
+                  <Grid size={{ xs: 6 }} key={pattern.id}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        height: '100%',
+                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
+                      }}
+                    >
+                      <CardActionArea onClick={() => handlePatternSelect(pattern)} sx={{ height: '100%' }}>
+                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                          <Typography variant="subtitle2" noWrap fontWeight="medium">
+                            {pattern.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" noWrap display="block">
+                            {pattern.startTime} - {pattern.endTime}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                            <Chip
+                              label={pattern.dutyType}
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
                             {pattern.isNight && (
-                              <Chip label="Night" size="small" color="info" variant="outlined" />
+                              <Chip
+                                label="Night"
+                                size="small"
+                                color="info"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
                             )}
                           </Box>
-                        }
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5, justifyContent: 'flex-end' }}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<Eye className="w-4 h-4" />}
-                        onClick={() => handlePatternAction(pattern, 'review')}
-                      >
-                        Review
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<Edit className="w-4 h-4" />}
-                        onClick={() => handlePatternAction(pattern, 'edit')}
-                      >
-                        Edit
-                      </Button>
-                    </Box>
-                  </ListItem>
+                        </CardContent>
+                      </CardActionArea>
+                    </Card>
+                  </Grid>
                 ))}
-              </List>
+              </Grid>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>

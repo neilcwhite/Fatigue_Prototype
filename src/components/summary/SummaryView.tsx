@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import Box from '@mui/material/Box';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
@@ -18,11 +19,10 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Collapse from '@mui/material/Collapse';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
-import { ChevronLeft, AlertTriangle, CheckCircle, Users, Clock, Calendar, XCircle, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
+import { AlertTriangle, CheckCircle, Users, Clock, Calendar, XCircle, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
 import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule, SupabaseUser } from '@/lib/types';
 import {
   checkProjectCompliance,
@@ -146,6 +146,12 @@ export function SummaryView({
     shiftPatterns
       .filter(sp => sp.projectId === project.id)
       .sort((a, b) => {
+        // Custom (Ad hoc) always goes to bottom
+        const aIsCustom = a.name.toLowerCase().includes('custom') || a.name.toLowerCase().includes('ad hoc');
+        const bIsCustom = b.name.toLowerCase().includes('custom') || b.name.toLowerCase().includes('ad hoc');
+        if (aIsCustom && !bIsCustom) return 1;
+        if (!aIsCustom && bIsCustom) return -1;
+        // Otherwise sort by creation date
         if (a.createdAt && b.createdAt) {
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         }
@@ -156,6 +162,11 @@ export function SummaryView({
 
   const [showAllPatterns, setShowAllPatterns] = useState(false);
   const PATTERNS_COLLAPSED_LIMIT = 6;
+  const complianceSectionRef = useRef<HTMLDivElement>(null);
+
+  const scrollToCompliance = () => {
+    complianceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const displayedPatterns = showAllPatterns ? projectPatterns : projectPatterns.slice(0, PATTERNS_COLLAPSED_LIMIT);
 
   const getDaySchedule = (pattern: ShiftPatternCamel, dayKey: keyof WeeklySchedule): { active: boolean; hours: string } => {
@@ -187,7 +198,7 @@ export function SummaryView({
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="span">
               {project.name}{' '}
-              <Box component="span" sx={{ color: 'secondary.light' }}>Summary</Box>
+              <Box component="span" sx={{ color: 'secondary.light' }}>Project View</Box>
             </Typography>
             <Typography variant="body2" sx={{ color: 'grey.500', ml: 2 }} component="span">
               {project.location}
@@ -216,7 +227,7 @@ export function SummaryView({
             </Select>
           </FormControl>
           <Chip
-            label="PROJECT SUMMARY"
+            label="PROJECT VIEW"
             size="small"
             sx={{
               bgcolor: 'rgba(51, 65, 85, 0.8)',
@@ -236,8 +247,8 @@ export function SummaryView({
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid size={{ xs: 12, md: 3 }}>
-            <Card>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
                 <Box sx={{ color: 'primary.main' }}>
                   <Clock className="w-8 h-8" />
                 </Box>
@@ -249,8 +260,8 @@ export function SummaryView({
             </Card>
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
-            <Card>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
                 <Box sx={{ color: 'success.main' }}>
                   <Users className="w-8 h-8" />
                 </Box>
@@ -262,8 +273,8 @@ export function SummaryView({
             </Card>
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
-            <Card>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Card sx={{ height: '100%' }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
                 <Box sx={{ color: 'secondary.main' }}>
                   <Calendar className="w-8 h-8" />
                 </Box>
@@ -277,15 +288,22 @@ export function SummaryView({
           <Grid size={{ xs: 12, md: 3 }}>
             <Card
               sx={{
+                height: '100%',
                 borderLeft: 4,
                 borderColor: complianceResult.hasErrors
                   ? 'error.main'
                   : complianceResult.hasWarnings
                   ? 'warning.main'
                   : 'success.main',
+                cursor: complianceResult.violations.length > 0 ? 'pointer' : 'default',
+                transition: 'box-shadow 0.2s',
+                '&:hover': complianceResult.violations.length > 0 ? {
+                  boxShadow: 4,
+                } : {},
               }}
+              onClick={complianceResult.violations.length > 0 ? scrollToCompliance : undefined}
             >
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
                 <Box
                   sx={{
                     color: complianceResult.hasErrors
@@ -320,11 +338,6 @@ export function SummaryView({
                   </Typography>
                   {complianceResult.errorCount > 0 && (
                     <Typography variant="caption" color="error">{complianceResult.errorCount} errors</Typography>
-                  )}
-                  {complianceResult.warningCount > 0 && (
-                    <Typography variant="caption" color="warning.main" sx={{ ml: 1 }}>
-                      {complianceResult.warningCount} warnings
-                    </Typography>
                   )}
                 </Box>
               </CardContent>
@@ -458,7 +471,7 @@ export function SummaryView({
 
         {/* Compliance Issues */}
         {complianceResult.violations.length > 0 && (
-          <Paper sx={{ mb: 3 }}>
+          <Paper ref={complianceSectionRef} sx={{ mb: 3 }}>
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
               <AlertTriangle className="w-5 h-5" />
               <Typography variant="subtitle1" fontWeight={600}>
