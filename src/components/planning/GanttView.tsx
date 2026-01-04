@@ -10,6 +10,7 @@ import type {
   ShiftPatternCamel,
   NetworkRailPeriod
 } from '@/lib/types';
+import { useNotification } from '@/hooks/useNotification';
 
 interface GanttViewProps {
   project: ProjectCamel;
@@ -40,6 +41,7 @@ export function GanttView({
   onDeleteAssignment,
   onEditAssignment,
 }: GanttViewProps) {
+  const { showError } = useNotification();
   // Generate 28 days from period start
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -140,7 +142,7 @@ export function GanttView({
         await onDeleteAssignment(assignment.id);
       } catch (err) {
         console.error('Error deleting assignment:', err);
-        alert('Failed to delete assignment');
+        showError('Failed to delete assignment');
       }
     }
   };

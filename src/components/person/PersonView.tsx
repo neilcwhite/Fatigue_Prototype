@@ -26,6 +26,7 @@ import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from
 import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel, SupabaseUser } from '@/lib/types';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import { getFRIChipColor, getFRILevel } from '@/lib/utils';
+import { useNotification } from '@/hooks/useNotification';
 
 interface PersonViewProps {
   user: SupabaseUser;
@@ -81,6 +82,7 @@ export function PersonView({
   onUpdateAssignment,
   onUpdateShiftPattern,
 }: PersonViewProps) {
+  const { showSuccess, showError } = useNotification();
   // Calculate initial year and period based on today's date
   const initialPeriodInfo = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -302,9 +304,10 @@ export function PersonView({
     if (confirm(`Remove ${employee.name} from ${pattern?.name || 'shift'} on ${assignment.date}?`)) {
       try {
         await onDeleteAssignment(assignment.id);
+        showSuccess('Assignment deleted');
       } catch (err) {
         console.error('Error deleting assignment:', err);
-        alert('Failed to delete assignment');
+        showError('Failed to delete assignment');
       }
     }
   };
@@ -438,9 +441,10 @@ export function PersonView({
       });
       setEditingPatternId(null);
       setEditingParams(null);
+      showSuccess('Parameters saved');
     } catch (err) {
       console.error('Failed to update pattern:', err);
-      alert('Failed to save parameters');
+      showError('Failed to save parameters');
     }
   };
 

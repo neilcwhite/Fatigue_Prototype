@@ -158,9 +158,24 @@ export function FatigueChart({
     );
   }
 
+  // Generate accessible description
+  const accessibleDescription = data.length > 0
+    ? `Fatigue Risk Index chart showing ${data.length} data points. ` +
+      `Values range from ${Math.min(...data.map(d => d.riskIndex)).toFixed(2)} to ${Math.max(...data.map(d => d.riskIndex)).toFixed(2)}. ` +
+      `Risk levels: ${data.map(d => `Day ${d.day}: ${d.riskIndex.toFixed(2)} (${d.riskLevel.label})`).join(', ')}.`
+    : 'No data to display';
+
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4">
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+    <div className="bg-white rounded-lg border border-slate-200 p-4" role="figure" aria-label="Fatigue Risk Index Chart">
+      <svg
+        width="100%"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label={accessibleDescription}
+      >
+        <title>Fatigue Risk Index (FRI) Over Time</title>
+        <desc>{accessibleDescription}</desc>
         <defs>
           {/* Gradient for area fill */}
           <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">

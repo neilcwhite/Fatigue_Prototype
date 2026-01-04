@@ -21,6 +21,7 @@ import type {
   ShiftPatternCamel,
   NetworkRailPeriod
 } from '@/lib/types';
+import { useNotification } from '@/hooks/useNotification';
 
 interface TimelineViewProps {
   project: ProjectCamel;
@@ -65,6 +66,7 @@ export function TimelineView({
   onNavigateToPerson,
   onCreateAssignment,
 }: TimelineViewProps) {
+  const { showSuccess, showError } = useNotification();
   // Copy shift dialog state
   const [copyDialog, setCopyDialog] = useState<CopyShiftDialogState | null>(null);
   const [selectedTargetDates, setSelectedTargetDates] = useState<Set<string>>(new Set());
@@ -193,7 +195,7 @@ export function TimelineView({
         await onDeleteAssignment(assignmentId);
       } catch (err) {
         console.error('Error deleting assignment:', err);
-        alert('Failed to delete assignment');
+        showError('Failed to delete assignment');
       }
     }
   };
@@ -234,9 +236,10 @@ export function TimelineView({
       // Close dialog
       setCopyDialog(null);
       setSelectedTargetDates(new Set());
+      showSuccess('Assignments copied successfully');
     } catch (err) {
       console.error('Error copying assignments:', err);
-      alert('Failed to copy some assignments');
+      showError('Failed to copy some assignments');
     } finally {
       setIsProcessing(false);
     }

@@ -10,6 +10,7 @@ import type {
   ShiftPatternCamel,
   NetworkRailPeriod
 } from '@/lib/types';
+import { useNotification } from '@/hooks/useNotification';
 
 interface WeeklyViewProps {
   project: ProjectCamel;
@@ -37,6 +38,7 @@ export function WeeklyView({
   onDeleteAssignment,
   onEditAssignment,
 }: WeeklyViewProps) {
+  const { showError } = useNotification();
   // Current week index (0-3 for 4 weeks in a period)
   const [weekIndex, setWeekIndex] = useState(0);
 
@@ -146,7 +148,7 @@ export function WeeklyView({
         await onDeleteAssignment(assignment.id);
       } catch (err) {
         console.error('Error deleting assignment:', err);
-        alert('Failed to delete assignment');
+        showError('Failed to delete assignment');
       }
     }
   };

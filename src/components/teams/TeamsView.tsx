@@ -29,6 +29,7 @@ import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
 import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X } from '@/components/ui/Icons';
 import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
+import { useNotification } from '@/hooks/useNotification';
 
 interface TeamsViewProps {
   user: SupabaseUser;
@@ -56,6 +57,7 @@ export function TeamsView({
   onDeleteTeam,
   onCreateAssignment,
 }: TeamsViewProps) {
+  const { showSuccess, showError, showWarning } = useNotification();
   const [showModal, setShowModal] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamCamel | null>(null);
   const [teamName, setTeamName] = useState('');
@@ -88,20 +90,22 @@ export function TeamsView({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamName.trim()) {
-      alert('Please enter a team name');
+      showWarning('Please enter a team name');
       return;
     }
 
     try {
       if (editingTeam) {
         await onUpdateTeam(editingTeam.id, { name: teamName, memberIds: selectedMembers });
+        showSuccess('Team updated successfully');
       } else {
         await onCreateTeam(teamName, selectedMembers);
+        showSuccess('Team created successfully');
       }
       setShowModal(false);
     } catch (err) {
       console.error('Error saving team:', err);
-      alert('Failed to save team');
+      showError('Failed to save team');
     }
   };
 
@@ -109,9 +113,10 @@ export function TeamsView({
     if (confirm(`Delete team "${team.name}"?`)) {
       try {
         await onDeleteTeam(team.id);
+        showSuccess('Team deleted');
       } catch (err) {
         console.error('Error deleting team:', err);
-        alert('Failed to delete team');
+        showError('Failed to delete team');
       }
     }
   };
@@ -200,7 +205,7 @@ export function TeamsView({
         }
       }
 
-      alert(`Successfully created ${created} assignments for ${memberIds.length} team members over ${dates.length} days`);
+      showSuccess(`Created ${created} assignments for ${memberIds.length} team members over ${dates.length} days`);
       setShowAssignModal(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create assignments';

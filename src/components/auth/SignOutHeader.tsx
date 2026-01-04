@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { supabase } from '@/lib/supabase';
 import type { SupabaseUser } from '@/lib/types';
+import { useNotification } from '@/hooks/useNotification';
 
 interface SignOutHeaderProps {
   user: SupabaseUser;
@@ -12,6 +13,7 @@ interface SignOutHeaderProps {
 }
 
 export function SignOutHeader({ user, onSignOut }: SignOutHeaderProps) {
+  const { showError } = useNotification();
   if (!user) return null;
 
   const handleSignOut = async () => {
@@ -22,7 +24,7 @@ export function SignOutHeader({ user, onSignOut }: SignOutHeaderProps) {
       onSignOut();
     } catch (error) {
       console.error('Error signing out:', error);
-      alert('Failed to sign out. Check console for details.');
+      showError('Failed to sign out');
     }
   };
 

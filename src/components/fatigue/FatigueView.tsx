@@ -41,6 +41,7 @@ import { FatigueChart } from './FatigueChart';
 import { FatigueEntryModal } from './FatigueEntryModal';
 import { useFatigueMode } from './hooks/useFatigueMode';
 import { getRiskColor } from '@/lib/utils';
+import { useNotification } from '@/hooks/useNotification';
 
 interface Shift extends ShiftDefinition {
   id: number;
@@ -213,6 +214,7 @@ export function FatigueView({
   onUpdateAssignment,
   onCreateProject,
 }: FatigueViewProps) {
+  const { showSuccess, showError } = useNotification();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [expandedShift, setExpandedShift] = useState<number | null>(null);
@@ -536,7 +538,7 @@ export function FatigueView({
     if (expandedShiftParams === id) setExpandedShiftParams(null);
   };
 
-  const handleUpdateShift = (id: number, field: keyof Shift, value: any) => {
+  const handleUpdateShift = (id: number, field: keyof Shift, value: Shift[keyof Shift]) => {
     setShifts(shifts.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
 
@@ -849,7 +851,7 @@ export function FatigueView({
       });
 
       setSaveError(null);
-      alert('Pattern updated successfully!');
+      showSuccess('Pattern updated successfully!');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update pattern';
       setSaveError(message);
