@@ -53,6 +53,98 @@ export function validateTimeString(time: string | undefined | null): boolean {
   return timeRegex.test(time);
 }
 
+/**
+ * Validate date string format (YYYY-MM-DD)
+ */
+export function validateDateString(date: string | undefined | null): boolean {
+  if (!date) return false; // Date is required for assignments
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) return false;
+  // Verify it's a valid date
+  const parsed = new Date(date);
+  return !isNaN(parsed.getTime());
+}
+
+/**
+ * Validate a single DaySchedule entry
+ */
+interface DayScheduleEntry {
+  startTime: string;
+  endTime: string;
+  commuteIn?: number;
+  commuteOut?: number;
+  workload?: number;
+  attention?: number;
+  breakFreq?: number;
+  breakLen?: number;
+}
+
+export function validateDaySchedule(day: DayScheduleEntry | null | undefined): { valid: boolean; errors: string[] } {
+  if (!day) return { valid: true, errors: [] }; // null/undefined is allowed (rest day)
+
+  const errors: string[] = [];
+
+  // Validate time strings
+  if (!validateTimeString(day.startTime)) {
+    errors.push('Invalid start time format (use HH:MM)');
+  }
+  if (!validateTimeString(day.endTime)) {
+    errors.push('Invalid end time format (use HH:MM)');
+  }
+
+  // Validate optional numeric fields
+  if (day.commuteIn !== undefined && (day.commuteIn < 0 || day.commuteIn > 480)) {
+    errors.push('Commute in must be between 0 and 480 minutes');
+  }
+  if (day.commuteOut !== undefined && (day.commuteOut < 0 || day.commuteOut > 480)) {
+    errors.push('Commute out must be between 0 and 480 minutes');
+  }
+  if (day.workload !== undefined && (day.workload < 1 || day.workload > 5)) {
+    errors.push('Workload must be between 1 and 5');
+  }
+  if (day.attention !== undefined && (day.attention < 1 || day.attention > 5)) {
+    errors.push('Attention must be between 1 and 5');
+  }
+  if (day.breakFreq !== undefined && (day.breakFreq < 0 || day.breakFreq > 720)) {
+    errors.push('Break frequency must be between 0 and 720 minutes');
+  }
+  if (day.breakLen !== undefined && (day.breakLen < 0 || day.breakLen > 120)) {
+    errors.push('Break length must be between 0 and 120 minutes');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validate weekly schedule object
+ */
+interface WeeklyScheduleInput {
+  Sat?: DayScheduleEntry | null;
+  Sun?: DayScheduleEntry | null;
+  Mon?: DayScheduleEntry | null;
+  Tue?: DayScheduleEntry | null;
+  Wed?: DayScheduleEntry | null;
+  Thu?: DayScheduleEntry | null;
+  Fri?: DayScheduleEntry | null;
+}
+
+export function validateWeeklySchedule(schedule: WeeklyScheduleInput | undefined | null): { valid: boolean; errors: string[] } {
+  if (!schedule) return { valid: true, errors: [] }; // null/undefined is allowed
+
+  const errors: string[] = [];
+  const days = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
+
+  for (const day of days) {
+    const dayData = schedule[day];
+    const validation = validateDaySchedule(dayData);
+    if (!validation.valid) {
+      errors.push(`${day}: ${validation.errors.join(', ')}`);
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
 interface AppData {
   employees: EmployeeCamel[];
   projects: ProjectCamel[];
@@ -417,6 +509,12 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
     }
 
+    // Validate weekly schedule entries if provided
+    const scheduleValidation = validateWeeklySchedule(patternData.weeklySchedule);
+    if (!scheduleValidation.valid) {
+      throw new Error(`Invalid weekly schedule: ${scheduleValidation.errors.join('; ')}`);
+    }
+
     // Convert empty strings to null for time fields (database expects null, not "")
     const startTime = patternData.startTime || null;
     const endTime = patternData.endTime || null;
@@ -466,6 +564,14 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
     }
 
+    // Validate weekly schedule entries if provided
+    if (updateData.weeklySchedule !== undefined) {
+      const scheduleValidation = validateWeeklySchedule(updateData.weeklySchedule);
+      if (!scheduleValidation.valid) {
+        throw new Error(`Invalid weekly schedule: ${scheduleValidation.errors.join('; ')}`);
+      }
+    }
+
     // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('shift_patterns').update({
       name: updateData.name,
@@ -499,7 +605,20 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   const createAssignment = async (assignmentData: Omit<AssignmentCamel, 'id' | 'organisationId'>) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
-    
+
+    // Validate required date field
+    if (!validateDateString(assignmentData.date)) {
+      throw new Error('Invalid or missing date. Use YYYY-MM-DD format.');
+    }
+
+    // Validate optional custom time fields
+    if (assignmentData.customStartTime !== undefined && !validateTimeString(assignmentData.customStartTime)) {
+      throw new Error('Invalid custom start time format. Use HH:MM format.');
+    }
+    if (assignmentData.customEndTime !== undefined && !validateTimeString(assignmentData.customEndTime)) {
+      throw new Error('Invalid custom end time format. Use HH:MM format.');
+    }
+
     const { error } = await supabase.from('assignments').insert({
       employee_id: assignmentData.employeeId,
       project_id: assignmentData.projectId,
@@ -517,6 +636,19 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   const updateAssignment = async (id: number, updateData: Partial<AssignmentCamel>) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Validate date field if provided
+    if (updateData.date !== undefined && !validateDateString(updateData.date)) {
+      throw new Error('Invalid date format. Use YYYY-MM-DD format.');
+    }
+
+    // Validate custom time fields if provided
+    if (updateData.customStartTime !== undefined && !validateTimeString(updateData.customStartTime)) {
+      throw new Error('Invalid custom start time format. Use HH:MM format.');
+    }
+    if (updateData.customEndTime !== undefined && !validateTimeString(updateData.customEndTime)) {
+      throw new Error('Invalid custom end time format. Use HH:MM format.');
+    }
 
     // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('assignments').update({

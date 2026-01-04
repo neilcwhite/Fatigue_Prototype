@@ -15,7 +15,7 @@ import { ProjectModal } from '@/components/modals/ProjectModal';
 import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
 import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
 import { Sidebar, DRAWER_WIDTH_EXPANDED } from '@/components/layout';
-import { Spinner } from '@/components/ui/Icons';
+import { Spinner, ChevronLeft } from '@/components/ui/Icons';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
 
@@ -27,7 +27,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 export default function Home() {
-  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const { user, profile, loading: authLoading, error: authError, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
@@ -102,6 +102,32 @@ export default function Home() {
         <div className="flex items-center gap-4 text-white">
           <Spinner className="w-8 h-8" />
           <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth error state - show error with retry option
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center text-white max-w-md p-8">
+          <h1 className="text-2xl font-bold mb-4 text-red-400">Authentication Error</h1>
+          <p className="text-slate-300 mb-4">{authError}</p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+            <button
+              onClick={signOut}
+              className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -349,8 +375,9 @@ export default function Home() {
         {/* Fallback for person view without employee selected */}
         {currentView === 'person' && !selectedEmployeeData && (
           <div className="min-h-screen bg-slate-900 text-white p-8">
-            <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-              &#8592; Back to Dashboard
+            <button onClick={handleBackToDashboard} className="flex items-center gap-2 px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
+              <ChevronLeft className="w-4 h-4" />
+              Back to Dashboard
             </button>
             <h1 className="text-2xl font-bold mb-4">Employee View</h1>
             <p className="text-slate-400">
@@ -364,8 +391,9 @@ export default function Home() {
         {/* Fallback for summary view without project selected */}
         {currentView === 'summary' && !selectedProjectData && (
           <div className="min-h-screen bg-slate-900 text-white p-8">
-            <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-              &#8592; Back to Dashboard
+            <button onClick={handleBackToDashboard} className="flex items-center gap-2 px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
+              <ChevronLeft className="w-4 h-4" />
+              Back to Dashboard
             </button>
             <h1 className="text-2xl font-bold mb-4">Project Summary</h1>
             <p className="text-slate-400">
