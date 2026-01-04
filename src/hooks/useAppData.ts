@@ -145,10 +145,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       const projects: ProjectCamel[] = (projectsRes.data || []).map(p => ({
         id: p.id,
         name: p.name,
-        location: p.location,
         startDate: p.start_date,
         endDate: p.end_date,
-        type: p.type,
         organisationId: p.organisation_id,
       }));
 
@@ -297,10 +295,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('projects').update({
       name: updateData.name,
-      location: updateData.location,
       start_date: updateData.startDate,
       end_date: updateData.endDate,
-      type: updateData.type,
     }).eq('id', id).eq('organisation_id', organisationId);
 
     if (error) throw error;

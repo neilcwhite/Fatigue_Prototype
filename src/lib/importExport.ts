@@ -96,7 +96,6 @@ export function exportToExcel(data: ExportData): void {
   // Sheet 2: Summary
   const summaryData = [
     { Field: 'Project', Value: project.name },
-    { Field: 'Location', Value: project.location || '' },
     { Field: 'Period', Value: periodName || '' },
     { Field: 'Total Assignments', Value: assignments.length },
     { Field: 'Unique Employees', Value: new Set(assignments.map(a => a.employeeId)).size },

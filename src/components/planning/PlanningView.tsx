@@ -382,9 +382,6 @@ export function PlanningView({
             <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
               {project.name} <Box component="span" sx={{ color: '#60a5fa' }}>Planning</Box>
             </Typography>
-            <Typography variant="caption" sx={{ color: 'grey.500' }}>
-              {project.location} • {project.type}
-            </Typography>
           </Box>
           <Chip
             label="PLANNING VIEW"

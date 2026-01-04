@@ -200,9 +200,6 @@ export function SummaryView({
               {project.name}{' '}
               <Box component="span" sx={{ color: 'secondary.light' }}>Project View</Box>
             </Typography>
-            <Typography variant="body2" sx={{ color: 'grey.500', ml: 2 }} component="span">
-              {project.location}
-            </Typography>
           </Box>
           <Button
             variant="contained"

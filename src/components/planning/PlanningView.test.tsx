@@ -68,7 +68,6 @@ describe('PlanningView', () => {
     id: 1,
     name: 'Test Project',
     organisationId: 'org-1',
-    location: 'London',
   };
 
   const mockEmployees: EmployeeCamel[] = [
@@ -288,25 +287,6 @@ describe('PlanningView', () => {
 
     expect(screen.getByTestId('sign-out-header')).toBeInTheDocument();
     expect(screen.getByText(/test@example.com/)).toBeInTheDocument();
-  });
-
-  it('shows project location when provided', () => {
-    render(
-      <PlanningView
-        user={mockUser}
-        onSignOut={mockOnSignOut}
-        project={mockProject}
-        employees={mockEmployees}
-        assignments={mockAssignments}
-        shiftPatterns={mockShiftPatterns}
-        onBack={mockOnBack}
-        onCreateAssignment={mockOnCreateAssignment}
-        onDeleteAssignment={mockOnDeleteAssignment}
-      />
-    );
-
-    // Location is displayed with a bullet point separator
-    expect(screen.getByText(/London/)).toBeInTheDocument();
   });
 
   it('renders with empty employees array', () => {

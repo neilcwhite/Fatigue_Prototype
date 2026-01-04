@@ -218,10 +218,8 @@ export interface EmployeeCamel {
 export interface ProjectCamel {
   id: number;
   name: string;
-  location?: string;
   startDate?: string;
   endDate?: string;
-  type?: string;
   organisationId: string;
 }
 
