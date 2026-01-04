@@ -247,7 +247,7 @@ export function FatigueEntryModal({
               <ArrowLeft className="w-5 h-5" />
             </IconButton>
           )}
-          Fatigue Assessment
+          Shift Builder
         </Box>
         <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
           <X className="w-5 h-5" />

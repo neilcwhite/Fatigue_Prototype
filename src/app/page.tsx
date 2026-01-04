@@ -16,7 +16,7 @@ import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
 import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
 import { Sidebar, DRAWER_WIDTH_EXPANDED } from '@/components/layout';
 import { Spinner } from '@/components/ui/Icons';
-import type { ShiftPatternCamel, WeeklySchedule } from '@/lib/types';
+import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
 
 type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
 
@@ -176,8 +176,8 @@ export default function Home() {
   const selectedEmployeeData = employees.find(e => e.id === selectedEmployee);
 
   // Handle project creation
-  const handleCreateProject = async (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => {
-    await createProject(name, location, type, startDate, endDate);
+  const handleCreateProject = async (name: string, location?: string, type?: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
+    return await createProject(name, location, type, startDate, endDate);
   };
 
   // Handle shift pattern creation
@@ -320,6 +320,7 @@ export default function Home() {
             employees={employees}
             shiftPatterns={shiftPatterns}
             assignments={assignments}
+            onCreateProject={handleCreateProject}
             onCreateShiftPattern={createShiftPattern}
             onUpdateShiftPattern={updateShiftPattern}
             onDeleteShiftPattern={deleteShiftPattern}

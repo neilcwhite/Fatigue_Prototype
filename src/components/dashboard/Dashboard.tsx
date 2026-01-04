@@ -140,6 +140,100 @@ export function Dashboard({
 
       {/* Content */}
       <Box sx={{ p: 3 }}>
+        {/* Action Cards - Above Projects */}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              component="button"
+              onClick={onViewEmployee}
+              sx={{
+                width: '100%',
+                p: 3,
+                textAlign: 'left',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <Box sx={{ color: 'primary.main', mb: 1 }}>
+                <Calendar className="w-8 h-8" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Employee View
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Check individual compliance and schedules
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              component="button"
+              onClick={onViewFatigue}
+              sx={{
+                width: '100%',
+                p: 3,
+                textAlign: 'left',
+                border: '1px solid',
+                borderColor: 'warning.light',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <Box sx={{ color: 'warning.main', mb: 1 }}>
+                <BarChart className="w-8 h-8" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Shift Builder
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                HSE RR446 compliant shift pattern analysis
+              </Typography>
+            </Card>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Card
+              component="button"
+              onClick={onViewTeams}
+              sx={{
+                width: '100%',
+                p: 3,
+                textAlign: 'left',
+                border: '1px solid',
+                borderColor: 'secondary.light',
+                cursor: 'pointer',
+                background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+            >
+              <Box sx={{ color: 'secondary.main', mb: 1 }}>
+                <Users className="w-8 h-8" />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                Team Management
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Create teams and assign them to shift patterns
+              </Typography>
+            </Card>
+          </Grid>
+        </Grid>
+
         {/* Project Cards */}
         <Grid container spacing={3}>
           {projects.map(project => {
@@ -281,122 +375,7 @@ export function Dashboard({
           </Grid>
         </Grid>
 
-        {/* Action Cards */}
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Card
-              component="button"
-              onClick={onViewEmployee}
-              sx={{
-                width: '100%',
-                p: 3,
-                textAlign: 'left',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4,
-                },
-              }}
-            >
-              <Box sx={{ color: 'primary.main', mb: 1 }}>
-                <Calendar className="w-8 h-8" />
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                Employee View
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Check individual compliance and schedules
-              </Typography>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Card
-              component="button"
-              onClick={onViewFatigue}
-              sx={{
-                width: '100%',
-                p: 3,
-                textAlign: 'left',
-                border: '1px solid',
-                borderColor: 'warning.light',
-                cursor: 'pointer',
-                background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4,
-                },
-              }}
-            >
-              <Box sx={{ color: 'warning.main', mb: 1 }}>
-                <BarChart className="w-8 h-8" />
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                Fatigue Risk Assessment
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                HSE RR446 compliant shift pattern analysis
-              </Typography>
-              <Chip
-                label="NEW"
-                size="small"
-                sx={{
-                  mt: 1.5,
-                  bgcolor: 'warning.light',
-                  color: 'warning.dark',
-                  fontWeight: 500,
-                  fontSize: '0.7rem',
-                }}
-              />
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Card
-              component="button"
-              onClick={onViewTeams}
-              sx={{
-                width: '100%',
-                p: 3,
-                textAlign: 'left',
-                border: '1px solid',
-                borderColor: 'secondary.light',
-                cursor: 'pointer',
-                background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4,
-                },
-              }}
-            >
-              <Box sx={{ color: 'secondary.main', mb: 1 }}>
-                <Users className="w-8 h-8" />
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                Team Management
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Create teams and assign them to shift patterns
-              </Typography>
-              <Chip
-                label="NEW"
-                size="small"
-                sx={{
-                  mt: 1.5,
-                  bgcolor: 'secondary.light',
-                  color: 'secondary.dark',
-                  fontWeight: 500,
-                  fontSize: '0.7rem',
-                }}
-              />
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
+        </Box>
     </Box>
   );
 }

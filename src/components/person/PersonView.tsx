@@ -51,6 +51,22 @@ const getFRIChipSx = (fri: number | null | undefined) => {
   return { bgcolor: '#22c55e', color: 'white' };
 };
 
+// Helper to get NR compliance chip colors for MUI
+const getNRComplianceChipSx = (severity: 'error' | 'warning' | null) => {
+  if (severity === 'error') return { bgcolor: '#dc2626', color: 'white' };
+  if (severity === 'warning') return { bgcolor: '#f59e0b', color: 'white' };
+  return { bgcolor: '#22c55e', color: 'white' };
+};
+
+// Helper to get FRI cell background colors
+const getFRICellSx = (fri: number | null | undefined) => {
+  if (fri === null || fri === undefined) return { bgcolor: 'white', borderColor: 'grey.200' };
+  if (fri >= 1.2) return { bgcolor: 'error.light', borderColor: 'error.main' };
+  if (fri >= 1.1) return { bgcolor: 'warning.light', borderColor: 'warning.main' };
+  if (fri >= 1.0) return { bgcolor: 'warning.50', borderColor: 'warning.300' };
+  return { bgcolor: 'success.light', borderColor: 'success.light' };
+};
+
 export function PersonView({
   user,
   onSignOut,
@@ -834,18 +850,18 @@ export function PersonView({
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.65rem' }}>
-                <Typography variant="caption" fontWeight={500} color="text.secondary">Cell (NR):</Typography>
-                <Chip label="Error" size="small" sx={{ bgcolor: 'error.light', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="Warning" size="small" sx={{ bgcolor: 'warning.light', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="OK" size="small" sx={{ bgcolor: 'success.light', fontSize: '0.6rem', height: 18 }} />
+                <Typography variant="caption" fontWeight={500} color="text.secondary">Chip (NR):</Typography>
+                <Chip label="Error" size="small" sx={{ bgcolor: '#dc2626', color: 'white', fontSize: '0.6rem', height: 18 }} />
+                <Chip label="Warning" size="small" sx={{ bgcolor: '#f59e0b', color: 'white', fontSize: '0.6rem', height: 18 }} />
+                <Chip label="OK" size="small" sx={{ bgcolor: '#22c55e', color: 'white', fontSize: '0.6rem', height: 18 }} />
               </Box>
               {showFRI && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.65rem' }}>
-                <Typography variant="caption" fontWeight={500} color="text.secondary">Chip (FRI):</Typography>
-                <Chip label="<1.0" size="small" sx={{ bgcolor: '#22c55e', color: 'white', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="1.0-1.1" size="small" sx={{ bgcolor: '#eab308', color: 'white', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="1.1-1.2" size="small" sx={{ bgcolor: '#f97316', color: 'white', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="≥1.2" size="small" sx={{ bgcolor: '#dc2626', color: 'white', fontSize: '0.6rem', height: 18 }} />
+                <Typography variant="caption" fontWeight={500} color="text.secondary">Cell (FRI):</Typography>
+                <Chip label="<1.0" size="small" sx={{ bgcolor: 'success.light', fontSize: '0.6rem', height: 18 }} />
+                <Chip label="1.0-1.1" size="small" sx={{ bgcolor: 'warning.50', fontSize: '0.6rem', height: 18 }} />
+                <Chip label="1.1-1.2" size="small" sx={{ bgcolor: 'warning.light', fontSize: '0.6rem', height: 18 }} />
+                <Chip label="≥1.2" size="small" sx={{ bgcolor: 'error.light', fontSize: '0.6rem', height: 18 }} />
               </Box>
               )}
             </Box>
@@ -909,12 +925,8 @@ export function PersonView({
                         transition: 'all 0.2s',
                         ...(isHighlighted
                           ? { bgcolor: 'primary.light', borderColor: 'primary.main', boxShadow: 4, transform: 'scale(1.02)', zIndex: 10, animation: 'pulse 1s infinite' }
-                          : dateViolationSeverity === 'error'
-                          ? { bgcolor: 'error.light', borderColor: 'error.main' }
-                          : dateViolationSeverity === 'warning'
-                          ? { bgcolor: 'warning.light', borderColor: 'warning.main' }
-                          : isNRCompliant
-                          ? { bgcolor: 'success.light', borderColor: 'success.light' }
+                          : showFRI && hasAssignments && dateFRI !== null
+                          ? getFRICellSx(dateFRI)
                           : isWeekend
                           ? { bgcolor: 'grey.100', borderColor: 'grey.200' }
                           : isToday
@@ -941,8 +953,7 @@ export function PersonView({
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                           {dateAssignments.map(assignment => {
                             const { pattern, project } = getAssignmentInfo(assignment);
-                            const assignmentIdx = periodAssignments.findIndex(a => a.id === assignment.id);
-                            const assignmentFRI = assignmentIdx !== -1 && fatigueAnalysis ? fatigueAnalysis.results[assignmentIdx]?.riskIndex : null;
+                            const assignmentViolation = violationAssignmentSeverity.get(assignment.id) || null;
                             return (
                               <Box
                                 key={assignment.id}
@@ -950,7 +961,7 @@ export function PersonView({
                                   position: 'relative',
                                   borderRadius: 0.5,
                                   p: 0.5,
-                                  ...(showFRI ? getFRIChipSx(assignmentFRI) : { bgcolor: 'primary.main', color: 'white' }),
+                                  ...getNRComplianceChipSx(assignmentViolation),
                                 }}
                               >
                                 <Box sx={{ position: 'absolute', top: 0, right: 0, display: 'flex', gap: 0.25 }}>
@@ -1015,7 +1026,9 @@ export function PersonView({
                         alignItems: 'center',
                         borderLeft: 3,
                         borderColor: assignmentViolationSeverity === 'error' ? 'error.main' : assignmentViolationSeverity === 'warning' ? 'warning.main' : 'transparent',
-                        bgcolor: assignmentViolationSeverity === 'error' ? 'error.light' : assignmentViolationSeverity === 'warning' ? 'warning.light' : (showFRI && fri && fri >= 1.2) ? 'error.light' : (showFRI && fri && fri >= 1.1) ? 'warning.light' : 'action.hover',
+                        bgcolor: (showFRI && fri !== undefined)
+                          ? (fri >= 1.2 ? 'error.light' : fri >= 1.1 ? 'warning.light' : fri >= 1.0 ? 'warning.50' : 'success.light')
+                          : 'action.hover',
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

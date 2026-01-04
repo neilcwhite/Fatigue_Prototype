@@ -17,7 +17,7 @@ import { X } from '@/components/ui/Icons';
 
 interface ProjectModalProps {
   onClose: () => void;
-  onSave: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<void>;
+  onSave: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<void> | Promise<unknown>;
 }
 
 const PROJECT_TYPES = [

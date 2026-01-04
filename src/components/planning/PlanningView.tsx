@@ -630,7 +630,7 @@ export function PlanningView({
                         ? 'error.50'
                         : complianceStatus.status === 'warning'
                           ? 'warning.50'
-                          : 'grey.100',
+                          : 'success.50',
                     color: isSelected ? 'white' : 'text.primary',
                     border: 2,
                     borderColor: isSelected
@@ -639,7 +639,7 @@ export function PlanningView({
                         ? 'error.300'
                         : complianceStatus.status === 'warning'
                           ? 'warning.300'
-                          : 'transparent',
+                          : 'success.300',
                     '&:hover': {
                       borderColor: isSelected
                         ? 'primary.dark'
@@ -647,7 +647,7 @@ export function PlanningView({
                           ? 'error.400'
                           : complianceStatus.status === 'warning'
                             ? 'warning.400'
-                            : 'grey.300',
+                            : 'success.400',
                     },
                   }}
                   title={complianceStatus.violations.length > 0
@@ -664,6 +664,11 @@ export function PlanningView({
                     {complianceStatus.status === 'warning' && !isSelected && (
                       <Box sx={{ color: '#f59e0b', flexShrink: 0, display: 'flex' }}>
                         <AlertTriangle className="w-2.5 h-2.5" />
+                      </Box>
+                    )}
+                    {complianceStatus.status === 'ok' && !isSelected && (
+                      <Box sx={{ color: '#22c55e', flexShrink: 0, display: 'flex' }}>
+                        <CheckCircle className="w-2.5 h-2.5" />
                       </Box>
                     )}
                     <Typography variant="body2" fontWeight={600}>{employee.name}</Typography>
