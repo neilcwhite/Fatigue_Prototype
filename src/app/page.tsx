@@ -319,6 +319,7 @@ export default function Home() {
             onDeleteAssignment={deleteAssignment}
             onUpdateAssignment={updateAssignment}
             onUpdateShiftPattern={updateShiftPattern}
+            onCreateAssignment={createAssignment}
           />
         )}
 

@@ -24,6 +24,7 @@ import { useNotification } from '@/hooks/useNotification';
 import { PersonStatsBar } from './PersonStatsBar';
 import { ViolationsList } from './ViolationsList';
 import { ScheduleCalendar, getFRIChipSx, hasCustomTimes, getAssignmentDisplayName } from './ScheduleCalendar';
+import { AddShiftModal } from './AddShiftModal';
 
 interface PersonViewProps {
   user: SupabaseUser;
@@ -38,6 +39,14 @@ interface PersonViewProps {
   onDeleteAssignment: (id: number) => Promise<void>;
   onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
+  onCreateAssignment?: (data: {
+    employeeId: number;
+    projectId: number;
+    shiftPatternId: string;
+    date: string;
+    customStartTime?: string;
+    customEndTime?: string;
+  }) => Promise<void>;
 }
 
 
@@ -54,6 +63,7 @@ export function PersonView({
   onDeleteAssignment,
   onUpdateAssignment,
   onUpdateShiftPattern,
+  onCreateAssignment,
 }: PersonViewProps) {
   const { showSuccess, showError } = useNotification();
   // Calculate initial year and period based on today's date
@@ -82,6 +92,7 @@ export function PersonView({
     breakLength: number;
   } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
+  const [addShiftDate, setAddShiftDate] = useState<string | null>(null);
 
   const networkRailPeriods = useMemo(() => generateNetworkRailPeriods(selectedYear), [selectedYear]);
   const availableYears = getAvailableYears();
@@ -512,6 +523,7 @@ export function PersonView({
           showFRI={showFRI}
           onEditAssignment={onUpdateAssignment ? (assignment) => setEditingAssignment(assignment) : undefined}
           onDeleteAssignment={handleDelete}
+          onAddShift={onCreateAssignment ? (date) => setAddShiftDate(date) : undefined}
         />
 
         {/* Period Assignments List */}
@@ -724,6 +736,23 @@ export function PersonView({
           onDelete={async (id) => {
             await onDeleteAssignment(id);
             setEditingAssignment(null);
+          }}
+        />
+      )}
+
+      {/* Add Shift Modal */}
+      {addShiftDate && onCreateAssignment && (
+        <AddShiftModal
+          open={true}
+          onClose={() => setAddShiftDate(null)}
+          employee={employee}
+          date={addShiftDate}
+          projects={projects}
+          shiftPatterns={shiftPatterns}
+          onAddShift={async (data) => {
+            await onCreateAssignment(data);
+            showSuccess(`Shift added for ${employee.name}`);
+            setAddShiftDate(null);
           }}
         />
       )}

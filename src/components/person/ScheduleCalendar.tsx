@@ -50,6 +50,7 @@ interface ScheduleCalendarProps {
   showFRI: boolean;
   onEditAssignment?: (assignment: AssignmentCamel) => void;
   onDeleteAssignment: (assignment: AssignmentCamel) => void;
+  onAddShift?: (date: string) => void;
 }
 
 const formatDateHeader = (dateStr: string) => {
@@ -90,6 +91,7 @@ export function ScheduleCalendar({
   showFRI,
   onEditAssignment,
   onDeleteAssignment,
+  onAddShift,
 }: ScheduleCalendarProps) {
   const getAssignmentInfo = (assignment: AssignmentCamel) => {
     const pattern = shiftPatterns.find((p) => p.id === assignment.shiftPatternId);
@@ -242,9 +244,37 @@ export function ScheduleCalendar({
                       </Box>
 
                       {dateAssignments.length === 0 ? (
-                        <Typography variant="caption" color="text.disabled" textAlign="center" display="block">
-                          -
-                        </Typography>
+                        onAddShift ? (
+                          <Box
+                            onClick={() => onAddShift(date)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              height: '100%',
+                              minHeight: 40,
+                              cursor: 'pointer',
+                              borderRadius: 0.5,
+                              border: '2px dashed',
+                              borderColor: 'grey.300',
+                              color: 'grey.400',
+                              transition: 'all 0.2s',
+                              '&:hover': {
+                                borderColor: 'primary.main',
+                                bgcolor: 'primary.50',
+                                color: 'primary.main',
+                              },
+                            }}
+                          >
+                            <Typography variant="caption" fontWeight={500}>
+                              + Add
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.disabled" textAlign="center" display="block">
+                            -
+                          </Typography>
+                        )
                       ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                           {dateAssignments.map((assignment) => {
