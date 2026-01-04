@@ -256,17 +256,9 @@ export function Dashboard({
                 >
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                          {project.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {project.location}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {project.type}
-                        </Typography>
-                      </Box>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        {project.name}
+                      </Typography>
                       <Tooltip title={stats.violations.length > 0 ? 'Compliance issues' : 'Compliant'}>
                         <Box sx={{ transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.1)' } }}>
                           {stats.violations.length > 0 ? (

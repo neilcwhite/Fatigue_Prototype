@@ -66,7 +66,7 @@ interface AppData {
 interface UseAppDataReturn extends AppData {
   reload: () => Promise<void>;
   // Project operations
-  createProject: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
+  createProject: (name: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
   updateProject: (id: number, data: Partial<ProjectCamel>) => Promise<void>;
   deleteProject: (id: number) => Promise<void>;
   // Employee operations
@@ -268,13 +268,11 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   // ==================== PROJECT OPERATIONS ====================
 
-  const createProject = async (name: string, location?: string, type?: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
+  const createProject = async (name: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
     if (!supabase || !organisationId) throw new Error('Not configured');
 
     const { data, error } = await supabase.from('projects').insert({
       name,
-      location,
-      type,
       start_date: startDate,
       end_date: endDate,
       organisation_id: organisationId,
@@ -287,8 +285,6 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     return {
       id: data.id,
       name: data.name,
-      location: data.location,
-      type: data.type,
       startDate: data.start_date,
       endDate: data.end_date,
       organisationId: data.organisation_id,

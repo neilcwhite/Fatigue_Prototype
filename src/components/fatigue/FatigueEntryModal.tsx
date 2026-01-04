@@ -10,7 +10,6 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
-import MenuItem from '@mui/material/MenuItem';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
@@ -33,19 +32,10 @@ interface FatigueEntryModalProps {
   assignments: AssignmentCamel[];
   onSelectPattern: (pattern: ShiftPatternCamel, project: ProjectCamel, mode: 'review' | 'edit') => void;
   onCreateNewPattern: (project: ProjectCamel) => void;
-  onCreateProject: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
+  onCreateProject: (name: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
   onDeleteShiftPattern: (id: string) => Promise<void>;
   onUpdateAssignment: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
 }
-
-const PROJECT_TYPES = [
-  'Resignalling',
-  'Track Renewal',
-  'Electrification',
-  'Station Works',
-  'Maintenance',
-  'Other',
-];
 
 type ModalStep = 'select-project' | 'create-project' | 'select-pattern';
 
@@ -66,8 +56,6 @@ export function FatigueEntryModal({
 
   // Create project form state
   const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectLocation, setNewProjectLocation] = useState('');
-  const [newProjectType, setNewProjectType] = useState('');
   const [newProjectStartDate, setNewProjectStartDate] = useState('');
   const [newProjectEndDate, setNewProjectEndDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -110,8 +98,6 @@ export function FatigueEntryModal({
 
   const resetForm = () => {
     setNewProjectName('');
-    setNewProjectLocation('');
-    setNewProjectType('');
     setNewProjectStartDate('');
     setNewProjectEndDate('');
     setError(null);
@@ -141,8 +127,6 @@ export function FatigueEntryModal({
     try {
       const newProject = await onCreateProject(
         newProjectName.trim(),
-        newProjectLocation.trim() || undefined,
-        newProjectType.trim() || undefined,
         newProjectStartDate || undefined,
         newProjectEndDate || undefined
       );
@@ -293,15 +277,7 @@ export function FatigueEntryModal({
                           <Typography variant="subtitle2" noWrap fontWeight="medium">
                             {project.name}
                           </Typography>
-                          {project.location && (
-                            <Typography variant="caption" color="text.secondary" noWrap display="block">
-                              {project.location}
-                            </Typography>
-                          )}
                           <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
-                            {project.type && (
-                              <Chip label={project.type} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                            )}
                             <Chip
                               label={`${patternCountByProject[project.id] || 0} patterns`}
                               size="small"
@@ -351,31 +327,6 @@ export function FatigueEntryModal({
                 fullWidth
                 autoFocus
               />
-
-              <TextField
-                label="Location"
-                value={newProjectLocation}
-                onChange={(e) => setNewProjectLocation(e.target.value)}
-                placeholder="e.g., Essex"
-                fullWidth
-              />
-
-              <TextField
-                select
-                label="Project Type"
-                value={newProjectType}
-                onChange={(e) => setNewProjectType(e.target.value)}
-                fullWidth
-              >
-                <MenuItem value="">
-                  <em>Select type...</em>
-                </MenuItem>
-                {PROJECT_TYPES.map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {t}
-                  </MenuItem>
-                ))}
-              </TextField>
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
@@ -429,11 +380,6 @@ export function FatigueEntryModal({
               <Typography variant="body1" fontWeight="medium">
                 {selectedProject.name}
               </Typography>
-              {selectedProject.location && (
-                <Typography variant="caption" color="text.secondary">
-                  {selectedProject.location}
-                </Typography>
-              )}
             </Box>
 
             <Divider sx={{ mb: 2 }} />

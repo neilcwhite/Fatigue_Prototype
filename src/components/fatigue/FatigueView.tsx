@@ -66,7 +66,7 @@ interface FatigueViewProps {
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
   onDeleteShiftPattern?: (id: string) => Promise<void>;
   onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
-  onCreateProject?: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
+  onCreateProject?: (name: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
 }
 
 const TEMPLATES = {
@@ -751,11 +751,11 @@ export function FatigueView({
     initializeWeeklyShifts();
   };
 
-  const handleCreateProjectFromModal = async (name: string, location?: string, type?: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
+  const handleCreateProjectFromModal = async (name: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
     if (!onCreateProject) {
       throw new Error('Project creation not available');
     }
-    return onCreateProject(name, location, type, startDate, endDate);
+    return onCreateProject(name, startDate, endDate);
   };
 
   const handleBackToEntry = () => {
@@ -1122,9 +1122,6 @@ export function FatigueView({
             <Box sx={{ minWidth: 180 }}>
               <Typography variant="caption" color="text.secondary">Project</Typography>
               <Typography variant="subtitle1" fontWeight={600}>{loadedProject.name}</Typography>
-              {loadedProject.location && (
-                <Typography variant="caption" color="text.secondary">{loadedProject.location}</Typography>
-              )}
             </Box>
 
             {/* Title */}

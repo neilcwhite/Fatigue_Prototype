@@ -10,29 +10,17 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
-import MenuItem from '@mui/material/MenuItem';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import { X } from '@/components/ui/Icons';
 
 interface ProjectModalProps {
   onClose: () => void;
-  onSave: (name: string, location?: string, type?: string, startDate?: string, endDate?: string) => Promise<void> | Promise<unknown>;
+  onSave: (name: string, startDate?: string, endDate?: string) => Promise<void> | Promise<unknown>;
 }
-
-const PROJECT_TYPES = [
-  'Resignalling',
-  'Track Renewal',
-  'Electrification',
-  'Station Works',
-  'Maintenance',
-  'Other',
-];
 
 export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
   const [name, setName] = useState('');
-  const [location, setLocation] = useState('');
-  const [type, setType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -52,8 +40,6 @@ export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
     try {
       await onSave(
         name.trim(),
-        location.trim() || undefined,
-        type.trim() || undefined,
         startDate || undefined,
         endDate || undefined
       );
@@ -93,31 +79,6 @@ export function ProjectModal({ onClose, onSave }: ProjectModalProps) {
               fullWidth
               autoFocus
             />
-
-            <TextField
-              label="Location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g., Essex"
-              fullWidth
-            />
-
-            <TextField
-              select
-              label="Project Type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              fullWidth
-            >
-              <MenuItem value="">
-                <em>Select type...</em>
-              </MenuItem>
-              {PROJECT_TYPES.map((t) => (
-                <MenuItem key={t} value={t}>
-                  {t}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>

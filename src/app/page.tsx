@@ -177,8 +177,8 @@ export default function Home() {
   const selectedEmployeeData = employees.find(e => e.id === selectedEmployee);
 
   // Handle project creation
-  const handleCreateProject = async (name: string, location?: string, type?: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
-    return await createProject(name, location, type, startDate, endDate);
+  const handleCreateProject = async (name: string, startDate?: string, endDate?: string): Promise<ProjectCamel> => {
+    return await createProject(name, startDate, endDate);
   };
 
   // Handle shift pattern creation
