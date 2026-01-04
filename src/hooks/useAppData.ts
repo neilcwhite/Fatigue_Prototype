@@ -1,14 +1,57 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { 
-  EmployeeCamel, 
-  ProjectCamel, 
-  TeamCamel, 
-  ShiftPatternCamel, 
-  AssignmentCamel 
+import type {
+  EmployeeCamel,
+  ProjectCamel,
+  TeamCamel,
+  ShiftPatternCamel,
+  AssignmentCamel
 } from '@/lib/types';
+
+// ==================== VALIDATION HELPERS ====================
+
+/**
+ * Validate fatigue parameters are within acceptable bounds
+ * RR446 specifies workload/attention as 1-5 scale
+ */
+export function validateFatigueParams(params: {
+  workload?: number;
+  attention?: number;
+  commuteTime?: number;
+  breakFrequency?: number;
+  breakLength?: number;
+}): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (params.workload !== undefined && (params.workload < 1 || params.workload > 5)) {
+    errors.push('Workload must be between 1 and 5');
+  }
+  if (params.attention !== undefined && (params.attention < 1 || params.attention > 5)) {
+    errors.push('Attention must be between 1 and 5');
+  }
+  if (params.commuteTime !== undefined && (params.commuteTime < 0 || params.commuteTime > 480)) {
+    errors.push('Commute time must be between 0 and 480 minutes (8 hours)');
+  }
+  if (params.breakFrequency !== undefined && (params.breakFrequency < 0 || params.breakFrequency > 720)) {
+    errors.push('Break frequency must be between 0 and 720 minutes');
+  }
+  if (params.breakLength !== undefined && (params.breakLength < 0 || params.breakLength > 120)) {
+    errors.push('Break length must be between 0 and 120 minutes');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Validate time string format (HH:MM)
+ */
+export function validateTimeString(time: string | undefined | null): boolean {
+  if (!time) return true; // Allow null/undefined
+  const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+  return timeRegex.test(time);
+}
 
 interface AppData {
   employees: EmployeeCamel[];
@@ -171,6 +214,10 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     loadAllData(true); // Pass true for initial load to show spinner
   }, [loadAllData]);
 
+  // Debounce ref for realtime updates - prevents rapid-fire reloads during bulk operations
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const DEBOUNCE_MS = 500; // Wait 500ms after last change before reloading
+
   // Set up realtime subscriptions - scoped by table and organisation
   useEffect(() => {
     if (!supabase || !organisationId) return;
@@ -178,6 +225,17 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments'];
 
     const channel = supabase.channel(`org-${organisationId}-changes`);
+
+    // Debounced reload function - coalesces rapid changes into single reload
+    const debouncedReload = () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        loadAllData();
+        debounceTimerRef.current = null;
+      }, DEBOUNCE_MS);
+    };
 
     // Subscribe to each table, filtered by organisation_id
     tables.forEach(table => {
@@ -190,7 +248,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
           filter: `organisation_id=eq.${organisationId}`,
         },
         () => {
-          loadAllData();
+          debouncedReload();
         }
       );
     });
@@ -198,6 +256,10 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     channel.subscribe();
 
     return () => {
+      // Clean up debounce timer on unmount
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
       if (supabase) {
         supabase.removeChannel(channel);
       }

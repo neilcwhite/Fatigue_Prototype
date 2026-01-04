@@ -1,8 +1,31 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+
+// ==================== RETRY CONFIGURATION ====================
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 10000,
+  backoffMultiplier: 2,
+};
+
+/**
+ * Sleep for specified milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate exponential backoff delay
+ */
+function getBackoffDelay(attempt: number): number {
+  const delay = RETRY_CONFIG.initialDelayMs * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt);
+  return Math.min(delay, RETRY_CONFIG.maxDelayMs);
+}
 
 interface UserProfile {
   id: string;
@@ -37,147 +60,167 @@ export function useAuth(): UseAuthReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Track retry attempts to prevent infinite loops
+  const retryAttemptsRef = useRef(0);
+
   const loadProfile = useCallback(async (userId: string, userEmail: string, sessionToken?: string): Promise<void> => {
     if (!supabase) {
       return;
     }
 
-    try {
-      // Try direct fetch to Supabase REST API as a workaround for client library issues
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // SECURITY: Require a valid session token - do NOT fall back to anon key
+    // Falling back to anon key with misconfigured RLS could allow cross-tenant reads
+    if (!sessionToken) {
+      throw new Error('Session token required for profile fetch');
+    }
 
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase not configured');
-      }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-      // Use the session token for RLS policies, fall back to anon key
-      const accessToken = sessionToken || supabaseKey;
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase not configured');
+    }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, 8000);
+    let lastError: Error | null = null;
+    let profileData: ProfileData | null = null;
 
-      let profileData: ProfileData | null = null;
-
+    // Retry loop with exponential backoff
+    for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
       try {
-        const response = await fetch(
-          `${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=*`,
-          {
-            method: 'GET',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation',
-            },
-            signal: controller.signal,
-          }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        if (attempt > 0) {
+          // Wait before retrying with exponential backoff
+          const delay = getBackoffDelay(attempt - 1);
+          await sleep(delay);
         }
 
-        const data = await response.json();
-        // REST API returns an array, get first item
-        profileData = data?.[0] || null;
-      } catch (fetchErr) {
-        clearTimeout(timeoutId);
-        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
-          throw new Error('Query timed out after 8 seconds');
-        }
-        throw fetchErr;
-      }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 10000); // Increased timeout to 10 seconds
 
-      // Fetch organisation name separately if we have a profile
-      let organisationName: string | undefined;
-      if (profileData?.organisation_id) {
         try {
-          const orgResponse = await fetch(
-            `${supabaseUrl}/rest/v1/organisations?id=eq.${profileData.organisation_id}&select=name`,
+          const response = await fetch(
+            `${supabaseUrl}/rest/v1/user_profiles?id=eq.${userId}&select=*`,
             {
               method: 'GET',
               headers: {
                 'apikey': supabaseKey,
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${sessionToken}`,
                 'Content-Type': 'application/json',
+                'Prefer': 'return=representation',
               },
+              signal: controller.signal,
             }
           );
-          if (orgResponse.ok) {
-            const orgData = await orgResponse.json();
-            organisationName = orgData?.[0]?.name;
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
           }
-        } catch {
-          // Silently handle org fetch failure
+
+          const data = await response.json();
+          // REST API returns an array, get first item
+          profileData = data?.[0] || null;
+
+          // Success - break out of retry loop
+          retryAttemptsRef.current = 0;
+          break;
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+          if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+            lastError = new Error(`Request timed out (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1})`);
+          } else {
+            lastError = fetchErr instanceof Error ? fetchErr : new Error('Unknown fetch error');
+          }
+
+          // If this is the last attempt, throw the error
+          if (attempt === RETRY_CONFIG.maxRetries) {
+            throw lastError;
+          }
+          // Otherwise continue to next retry attempt
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error('Unknown error');
+        if (attempt === RETRY_CONFIG.maxRetries) {
+          throw lastError;
         }
       }
+    }
 
-      // No profile found - create one
-      if (!profileData) {
-        const orgId = crypto.randomUUID();
-
-        const { error: orgError } = await supabase.from('organisations').insert({
-          id: orgId,
-          name: 'My Organisation',
-        });
-
-        if (orgError) {
-          throw orgError;
+    // Fetch organisation name separately if we have a profile
+    let organisationName: string | undefined;
+    if (profileData?.organisation_id) {
+      try {
+        const orgResponse = await fetch(
+          `${supabaseUrl}/rest/v1/organisations?id=eq.${profileData.organisation_id}&select=name`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${sessionToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        if (orgResponse.ok) {
+          const orgData = await orgResponse.json();
+          organisationName = orgData?.[0]?.name;
         }
+      } catch {
+        // Silently handle org fetch failure - non-critical
+      }
+    }
 
-        const { data: newProfile, error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: userId,
-            email: userEmail,
-            role: 'admin',
-            organisation_id: orgId,
-          })
-          .select('*')
-          .single();
+    // No profile found - create one
+    if (!profileData) {
+      const orgId = crypto.randomUUID();
 
-        if (insertError) {
-          throw insertError;
-        }
+      const { error: orgError } = await supabase.from('organisations').insert({
+        id: orgId,
+        name: 'My Organisation',
+      });
 
-        if (newProfile) {
-          setProfile({
-            id: newProfile.id,
-            email: newProfile.email,
-            fullName: newProfile.full_name,
-            role: newProfile.role,
-            organisationId: newProfile.organisation_id,
-            organisationName: 'My Organisation',
-          });
-        }
-      } else {
-        // Profile found - use it
+      if (orgError) {
+        throw orgError;
+      }
+
+      const { data: newProfile, error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email: userEmail,
+          role: 'admin',
+          organisation_id: orgId,
+        })
+        .select('*')
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      if (newProfile) {
         setProfile({
-          id: profileData.id,
-          email: profileData.email,
-          fullName: profileData.full_name,
-          role: profileData.role,
-          organisationId: profileData.organisation_id,
-          organisationName: organisationName,
+          id: newProfile.id,
+          email: newProfile.email,
+          fullName: newProfile.full_name,
+          role: newProfile.role,
+          organisationId: newProfile.organisation_id,
+          organisationName: 'My Organisation',
         });
       }
-    } catch (err) {
-      // SECURITY: Do NOT fall back to a hardcoded profile - this bypasses tenant isolation
-      // Instead, set an error and force re-authentication
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load profile';
-      setError(errorMessage);
-      setProfile(null);
-
-      // Sign out the user to force re-authentication
-      if (supabase) {
-        await supabase.auth.signOut();
-      }
+    } else {
+      // Profile found - use it
+      setProfile({
+        id: profileData.id,
+        email: profileData.email,
+        fullName: profileData.full_name,
+        role: profileData.role,
+        organisationId: profileData.organisation_id,
+        organisationName: organisationName,
+      });
     }
   }, []);
 

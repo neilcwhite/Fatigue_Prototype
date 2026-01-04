@@ -283,8 +283,8 @@ describe('fatigue.ts', () => {
     });
 
     it('calculates template patterns correctly', () => {
-      // Test standard week template
-      const standardWeek = FATIGUE_TEMPLATES.standardWeek.shifts;
+      // Test standard week template - spread to create mutable array
+      const standardWeek = [...FATIGUE_TEMPLATES.standardWeek.shifts];
       const results = calculateFatigueSequence(standardWeek, defaultParams);
 
       expect(results).toHaveLength(5);
@@ -295,7 +295,8 @@ describe('fatigue.ts', () => {
     });
 
     it('identifies high-risk night shift patterns', () => {
-      const nightShifts = FATIGUE_TEMPLATES.nightShift.shifts;
+      // Spread to create mutable array
+      const nightShifts = [...FATIGUE_TEMPLATES.nightShift.shifts];
       const results = calculateFatigueSequence(nightShifts, defaultParams);
 
       expect(results).toHaveLength(7);

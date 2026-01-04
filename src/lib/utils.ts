@@ -2,7 +2,8 @@
 // FATIGUE MANAGEMENT SYSTEM - SHARED UTILITIES
 // ============================================
 
-import type { RiskLevel, ViolationType, ComplianceViolation } from './types';
+import type { RiskLevel, ViolationType } from './types';
+import { COMPLIANCE_LIMITS } from './compliance';
 
 // ==================== FRI COLOUR CONSTANTS ====================
 // Standardized colours for Fatigue Risk Index display across all components
@@ -113,43 +114,86 @@ interface ViolationMetadata {
 /**
  * Get metadata for compliance violation types
  * Used for consistent violation display across components
+ * Values reference COMPLIANCE_LIMITS from compliance.ts for consistency
  */
 export function getViolationMetadata(type: ViolationType): ViolationMetadata {
   switch (type) {
-    case 'MAX_SHIFT_EXCEEDED':
+    case 'MAX_SHIFT_LENGTH':
       return {
         label: 'Shift Length',
         icon: '⏱️',
         color: 'text-red-600',
-        description: 'Maximum shift duration exceeded (12 hours)',
+        description: `Maximum shift duration exceeded (${COMPLIANCE_LIMITS.MAX_SHIFT_HOURS} hours)`,
       };
-    case 'MIN_REST_VIOLATED':
+    case 'INSUFFICIENT_REST':
       return {
         label: 'Rest Period',
         icon: '🛏️',
         color: 'text-red-600',
-        description: 'Minimum rest period not met (12 hours)',
+        description: `Minimum rest period not met (${COMPLIANCE_LIMITS.MIN_REST_HOURS} hours)`,
       };
-    case 'MAX_WEEKLY_EXCEEDED':
+    case 'MAX_WEEKLY_HOURS':
       return {
         label: 'Weekly Hours',
         icon: '📅',
+        color: 'text-red-600',
+        description: `Maximum weekly hours exceeded (${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS} hours)`,
+      };
+    case 'APPROACHING_WEEKLY_LIMIT':
+      return {
+        label: 'Weekly Hours Warning',
+        icon: '📅',
         color: 'text-amber-600',
-        description: 'Maximum weekly hours exceeded (60 hours)',
+        description: `Approaching weekly hours limit (${COMPLIANCE_LIMITS.APPROACHING_WEEKLY_HOURS}+ hours)`,
       };
     case 'MAX_CONSECUTIVE_DAYS':
       return {
         label: 'Consecutive Days',
         icon: '📆',
+        color: 'text-red-600',
+        description: `Maximum consecutive working days exceeded (${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS} days)`,
+      };
+    case 'CONSECUTIVE_DAYS_WARNING':
+      return {
+        label: 'Consecutive Days Warning',
+        icon: '📆',
         color: 'text-amber-600',
-        description: 'Maximum consecutive working days exceeded (13 days)',
+        description: `Approaching consecutive days limit (${COMPLIANCE_LIMITS.CONSECUTIVE_DAYS_WARNING}+ days)`,
       };
     case 'MAX_CONSECUTIVE_NIGHTS':
       return {
         label: 'Consecutive Nights',
         icon: '🌙',
+        color: 'text-red-600',
+        description: `Maximum consecutive night shifts exceeded (${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS} nights)`,
+      };
+    case 'CONSECUTIVE_NIGHTS_WARNING':
+      return {
+        label: 'Consecutive Nights Warning',
+        icon: '🌙',
         color: 'text-amber-600',
-        description: 'Maximum consecutive night shifts exceeded (4 nights)',
+        description: `Approaching consecutive nights limit (${COMPLIANCE_LIMITS.CONSECUTIVE_NIGHTS_WARNING}+ nights)`,
+      };
+    case 'DAY_NIGHT_TRANSITION':
+      return {
+        label: 'Day/Night Transition',
+        icon: '🔄',
+        color: 'text-red-600',
+        description: 'Unsafe transition from day shift to night shift',
+      };
+    case 'MULTIPLE_SHIFTS_SAME_DAY':
+      return {
+        label: 'Multiple Shifts',
+        icon: '⚠️',
+        color: 'text-red-600',
+        description: 'Multiple shifts assigned on the same day',
+      };
+    case 'ELEVATED_FATIGUE_INDEX':
+      return {
+        label: 'High Fatigue',
+        icon: '😴',
+        color: 'text-amber-600',
+        description: 'Fatigue Risk Index is elevated',
       };
     default:
       return {
@@ -164,8 +208,8 @@ export function getViolationMetadata(type: ViolationType): ViolationMetadata {
 /**
  * Get severity color class for violations
  */
-export function getViolationSeverityColor(severity: ComplianceViolation['severity']): string {
-  return severity === 'breach'
+export function getViolationSeverityColor(severity: 'error' | 'warning'): string {
+  return severity === 'error'
     ? 'bg-red-100 text-red-800 border-red-300'
     : 'bg-amber-100 text-amber-800 border-amber-300';
 }

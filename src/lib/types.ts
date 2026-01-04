@@ -141,25 +141,43 @@ export interface FatigueResult {
 }
 
 // ==================== COMPLIANCE ====================
+// These types must match compliance.ts - single source of truth is compliance.ts
 
-export type ViolationType = 
-  | 'MAX_SHIFT_EXCEEDED'
-  | 'MIN_REST_VIOLATED'
-  | 'MAX_WEEKLY_EXCEEDED'
+export type ViolationType =
+  | 'MAX_SHIFT_LENGTH'
+  | 'INSUFFICIENT_REST'
+  | 'MAX_WEEKLY_HOURS'
+  | 'APPROACHING_WEEKLY_LIMIT'
   | 'MAX_CONSECUTIVE_DAYS'
-  | 'MAX_CONSECUTIVE_NIGHTS';
+  | 'CONSECUTIVE_DAYS_WARNING'
+  | 'CONSECUTIVE_NIGHTS_WARNING'
+  | 'MAX_CONSECUTIVE_NIGHTS'
+  | 'DAY_NIGHT_TRANSITION'
+  | 'MULTIPLE_SHIFTS_SAME_DAY'
+  | 'ELEVATED_FATIGUE_INDEX';
+
+export type ViolationSeverity = 'error' | 'warning';
 
 export interface ComplianceViolation {
   type: ViolationType;
+  severity: ViolationSeverity;
   employeeId: number;
+  employeeName?: string;
   date: string;
   message: string;
-  severity: 'warning' | 'breach';
+  value?: number;
+  limit?: number;
+  windowEnd?: string;
+  relatedDates?: string[];
 }
 
 export interface ComplianceResult {
   isCompliant: boolean;
+  hasErrors: boolean;
+  hasWarnings: boolean;
   violations: ComplianceViolation[];
+  errorCount: number;
+  warningCount: number;
 }
 
 // ==================== NETWORK RAIL PERIODS ====================

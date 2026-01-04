@@ -72,7 +72,7 @@ interface FatigueViewProps {
 const TEMPLATES = {
   ...FATIGUE_TEMPLATES,
   standard5x8: {
-    name: 'Standard 5×8h Days',
+    name: 'Standard 5x8h Days',
     shifts: [
       { day: 1, startTime: '08:00', endTime: '16:00' },
       { day: 2, startTime: '08:00', endTime: '16:00' },
@@ -82,7 +82,7 @@ const TEMPLATES = {
     ],
   },
   days4x12: {
-    name: '4×12h Day Shifts',
+    name: '4x12h Day Shifts',
     shifts: [
       { day: 1, startTime: '07:00', endTime: '19:00' },
       { day: 2, startTime: '07:00', endTime: '19:00' },
@@ -91,7 +91,7 @@ const TEMPLATES = {
     ],
   },
   nights4x12: {
-    name: '4×12h Night Shifts',
+    name: '4x12h Night Shifts',
     shifts: [
       { day: 1, startTime: '19:00', endTime: '07:00' },
       { day: 2, startTime: '19:00', endTime: '07:00' },

@@ -6,6 +6,29 @@
 import type { AssignmentCamel, ShiftPatternCamel } from './types';
 import { parseTimeToHours, calculateDutyLength } from './fatigue';
 
+// ==================== DATE HANDLING ====================
+// IMPORTANT: All date operations use UTC-safe parsing to avoid timezone issues
+// that could cause day shifts when running in different locales/timezones.
+
+/**
+ * Parse ISO date string (YYYY-MM-DD) to Date object without timezone shift.
+ * Using this instead of new Date('YYYY-MM-DD') which is locale-sensitive.
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Calculate days difference between two date strings (YYYY-MM-DD format).
+ * Returns positive number if date2 is after date1.
+ */
+function daysBetween(date1Str: string, date2Str: string): number {
+  const d1 = parseLocalDate(date1Str);
+  const d2 = parseLocalDate(date2Str);
+  return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 // ==================== COMPLIANCE LIMITS ====================
 
 export const COMPLIANCE_LIMITS = {
@@ -86,7 +109,8 @@ function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string, assignmen
     startTime = assignment.customStartTime;
     endTime = assignment.customEndTime;
   } else if (pattern.weeklySchedule) {
-    const dayOfWeek = new Date(dateStr).getDay();
+    // Use parseLocalDate instead of new Date() to avoid timezone issues
+    const dayOfWeek = parseLocalDate(dateStr).getDay();
     const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
       ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayKey = dayNames[dayOfWeek];
@@ -122,7 +146,8 @@ function getShiftTimes(pattern: ShiftPatternCamel, dateStr: string, assignment?:
     startTime = assignment.customStartTime;
     endTime = assignment.customEndTime;
   } else if (pattern.weeklySchedule) {
-    const dayOfWeek = new Date(dateStr).getDay();
+    // Use parseLocalDate instead of new Date() to avoid timezone issues
+    const dayOfWeek = parseLocalDate(dateStr).getDay();
     const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
       ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayKey = dayNames[dayOfWeek];
@@ -178,14 +203,15 @@ function calculateRestBetweenShifts(
   const prevTimes = getShiftTimes(prevPattern, prevDate, prevAssignment);
   const nextTimes = getShiftTimes(nextPattern, nextDate, nextAssignment);
 
-  if (!prevTimes || !nextTimes) return 24; // Assume OK if we can't calculate
+  // FIXED: Instead of assuming 24 hours (which masks data issues), return -1 to signal
+  // that we couldn't calculate. Callers should handle this appropriately.
+  if (!prevTimes || !nextTimes) return -1;
 
   const prevEndHour = parseTimeToHours(prevTimes.end);
   const nextStartHour = parseTimeToHours(nextTimes.start);
 
-  const prevDateObj = new Date(prevDate);
-  const nextDateObj = new Date(nextDate);
-  const daysDiff = Math.floor((nextDateObj.getTime() - prevDateObj.getTime()) / (1000 * 60 * 60 * 24));
+  // Use daysBetween helper for timezone-safe date difference calculation
+  const daysDiff = daysBetween(prevDate, nextDate);
 
   // Calculate hours between end of prev and start of next
   let restHours = (daysDiff * 24) + nextStartHour - prevEndHour;
@@ -243,9 +269,9 @@ export function checkRestPeriods(
 ): ComplianceViolation[] {
   const violations: ComplianceViolation[] = [];
 
-  // Sort by date
+  // Sort by date using timezone-safe parsing
   const sorted = [...assignments].sort((a, b) =>
-    new Date(a.date).getTime() - new Date(b.date).getTime()
+    parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
   );
 
   for (let i = 1; i < sorted.length; i++) {
@@ -260,7 +286,10 @@ export function checkRestPeriods(
     // Pass assignments to support custom times
     const restHours = calculateRestBetweenShifts(prevPattern, prev.date, currPattern, curr.date, prev, curr);
 
-    if (restHours < COMPLIANCE_LIMITS.MIN_REST_HOURS && restHours >= 0) {
+    // Skip if we couldn't calculate rest hours (missing time data)
+    if (restHours < 0) continue;
+
+    if (restHours < COMPLIANCE_LIMITS.MIN_REST_HOURS) {
       violations.push({
         type: 'INSUFFICIENT_REST',
         severity: 'error',
@@ -345,9 +374,9 @@ export function checkWeeklyHours(
 
   if (assignments.length === 0) return violations;
 
-  // Sort by date
+  // Sort by date using timezone-safe parsing
   const sorted = [...assignments].sort((a, b) =>
-    new Date(a.date).getTime() - new Date(b.date).getTime()
+    parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
   );
 
   // Check rolling 7-day window ENDING on each assignment date
@@ -355,8 +384,9 @@ export function checkWeeklyHours(
   const checkedWindows = new Set<string>();
 
   sorted.forEach(assignment => {
-    const windowEnd = new Date(assignment.date);
-    const windowKey = windowEnd.toISOString().split('T')[0];
+    // Use timezone-safe date parsing
+    const windowEnd = parseLocalDate(assignment.date);
+    const windowKey = assignment.date; // Already in YYYY-MM-DD format
 
     // Skip if we've already checked this exact date
     if (checkedWindows.has(windowKey)) return;
@@ -370,7 +400,7 @@ export function checkWeeklyHours(
     const windowDates: string[] = [];
 
     sorted.forEach(a => {
-      const aDate = new Date(a.date);
+      const aDate = parseLocalDate(a.date);
       if (aDate >= windowStart && aDate <= windowEnd) {
         const pattern = patternMap.get(a.shiftPatternId);
         if (pattern) {
@@ -432,8 +462,9 @@ export function checkConsecutiveDays(
   let streakDates: string[] = [dates[0]];
 
   for (let i = 1; i < dates.length; i++) {
-    const prevDate = new Date(dates[i - 1]);
-    const currDate = new Date(dates[i]);
+    // Use timezone-safe date parsing
+    const prevDate = parseLocalDate(dates[i - 1]);
+    const currDate = parseLocalDate(dates[i]);
     const daysDiff = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysDiff === 1) {
@@ -515,8 +546,9 @@ export function checkConsecutiveNights(
   let streakDates: string[] = [uniqueNightDates[0]];
 
   for (let i = 1; i < uniqueNightDates.length; i++) {
-    const prevDate = new Date(uniqueNightDates[i - 1]);
-    const currDate = new Date(uniqueNightDates[i]);
+    // Use timezone-safe date parsing
+    const prevDate = parseLocalDate(uniqueNightDates[i - 1]);
+    const currDate = parseLocalDate(uniqueNightDates[i]);
     const daysDiff = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysDiff === 1) {

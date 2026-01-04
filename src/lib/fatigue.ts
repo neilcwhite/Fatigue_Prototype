@@ -1,36 +1,45 @@
 // ============================================
 // HSE FATIGUE/RISK INDEX CALCULATOR
 // Based on HSE Research Report RR446 - Crown Copyright
+// "The development of a fatigue/risk index for shiftworkers"
+// https://www.hse.gov.uk/research/rrhtm/rr446.htm
 // ============================================
 
 import { ShiftDefinition, FatigueResult, RiskLevel } from './types';
 
 // ==================== CONSTANTS ====================
+// All constants below are derived from HSE Research Report RR446
+// Page and equation references are provided for traceability
 
 const CONSTANTS = {
-  // Sleep/Wake decay rates from RR446
-  SLEEP_DECAY_RATE: 0.136934833451947,
-  WAKE_DECAY_RATE: 0.686825862760272,
-  BASELINE_PVT: 3.9,
-  ASYMPTOTE_FACTOR: 0.441596758431994,
-  
-  // Circadian rhythm parameters
-  CIRCADIAN_AMPLITUDE: 0.74,
-  CIRCADIAN_PHASE: 5.23,
-  START_AMPLITUDE: 0.5,
-  START_PHASE: 1.25,
-  
-  // Shift duration risk coefficients
-  P1: -0.4287,
-  P2: 0.1501,
-  P3: 0.129,
-  P4: 0.0359,
-  P5: -0.8012,
-  P6: 0.7315,
-  
-  // Break effect constants
-  CONST1: 1.826297414,
-  CONST2: 1.146457295,
+  // Sleep/Wake homeostatic process parameters (RR446 Section 3.2, Eq. 3.1-3.2)
+  // These model the build-up of sleep pressure during wakefulness and its
+  // dissipation during sleep, based on the two-process model of sleep regulation
+  SLEEP_DECAY_RATE: 0.136934833451947,    // Rate of sleep pressure decay (tau_s) - Table 3.1
+  WAKE_DECAY_RATE: 0.686825862760272,     // Rate of fatigue build-up when awake (tau_w) - Table 3.1
+  BASELINE_PVT: 3.9,                       // Baseline PVT reaction time (ms^-1) - Section 3.3
+  ASYMPTOTE_FACTOR: 0.441596758431994,    // Upper asymptote for Process S - Eq. 3.2
+
+  // Circadian process parameters (RR446 Section 3.2, Eq. 3.3)
+  // These model the ~24-hour biological clock effects on alertness
+  CIRCADIAN_AMPLITUDE: 0.74,               // Amplitude of circadian rhythm - Table 3.1
+  CIRCADIAN_PHASE: 5.23,                   // Phase of circadian rhythm (hours) - Table 3.1
+  START_AMPLITUDE: 0.5,                    // Sleep inertia amplitude at wake - Section 3.2.3
+  START_PHASE: 1.25,                       // Sleep inertia decay time constant - Section 3.2.3
+
+  // Shift duration risk coefficients (RR446 Section 4.2, Table 4.1)
+  // Polynomial coefficients for modeling risk as function of shift duration
+  P1: -0.4287,    // Constant term
+  P2: 0.1501,     // Linear coefficient for shift duration
+  P3: 0.129,      // Quadratic coefficient for shift duration
+  P4: 0.0359,     // Cubic coefficient for shift duration
+  P5: -0.8012,    // Night shift adjustment
+  P6: 0.7315,     // Commute time factor
+
+  // Break effect constants (RR446 Section 4.3, Eq. 4.5)
+  // Model the restorative effect of breaks on fatigue
+  CONST1: 1.826297414,    // Break effect magnitude - derived from Eq. 4.5
+  CONST2: 1.146457295,    // Break effect decay rate - derived from Eq. 4.5
 } as const;
 
 // Fatigue parameters type
@@ -75,25 +84,52 @@ export function calculateDutyLength(startHour: number, endHour: number): number 
 
 /**
  * Calculate estimated bed time based on shift end
+ * RR446 Section 3.3 - Sleep timing model
+ *
+ * The relationship between shift end time and sleep onset is modeled
+ * to predict when the worker is likely to go to bed after their shift.
+ *
+ * @param endHour - Hour of day when shift ends (0-24)
+ * @returns Estimated bed time in hours
  */
 function calculateBedTime(endHour: number): number {
+  // Linear relationship derived from sleep diary data (RR446 Section 3.3.2)
   if (endHour < 24.25) return 16.3 + 0.367 * endHour;
+  // For very late shifts, assume 1 hour after shift end
   return endHour + 1;
 }
 
 /**
- * Calculate RK fit factor
+ * Calculate RK (Roenneberg-Kantermann) sleep duration fit factor
+ * RR446 Section 3.3, Eq. 3.7
+ *
+ * Models the relationship between shift timing and sleep duration,
+ * accounting for circadian phase effects on sleep efficiency.
+ *
+ * @param endHour - Hour of day when shift ends
+ * @param bedTime - Estimated bed time in hours
+ * @returns Sleep duration factor (hours)
  */
 function calculateRKFit(endHour: number, bedTime: number): number {
+  // Before 18:30, assume standard 8.13 hours of sleep opportunity
   if (endHour < 18.5) return 8.13;
-  return -2.28827436527851 + 11.7995318577367 / 
+  // Sigmoid function modeling reduced sleep with later bed times (Eq. 3.7)
+  return -2.28827436527851 + 11.7995318577367 /
     (1 + 0.472949055173571 * Math.exp(-1.77393493516727 + 0.16244804759197 * (bedTime - 20)));
 }
 
 /**
- * Calculate aircrew fit factor
+ * Calculate aircrew fit factor for sleep duration
+ * RR446 Section 3.3.3
+ *
+ * Alternative sleep duration model based on aircrew studies,
+ * showing linear decrease in sleep with later shift ends.
+ *
+ * @param endHour - Hour of day when shift ends
+ * @returns Sleep duration factor (hours), capped at 8
  */
 function calculateAircrewFit(endHour: number): number {
+  // Linear decrease: 0.285 hours less sleep per hour after 18:30
   return Math.min(8, 8 - 0.285 * (endHour - 18.5));
 }
 
