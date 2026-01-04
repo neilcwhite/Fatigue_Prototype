@@ -39,6 +39,7 @@ import {
 import type { ShiftDefinition, ProjectCamel, EmployeeCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
 import { FatigueChart } from './FatigueChart';
 import { FatigueEntryModal } from './FatigueEntryModal';
+import { FatigueHeader } from './FatigueHeader';
 import { useFatigueMode } from './hooks/useFatigueMode';
 import { getRiskColor } from '@/lib/utils';
 import { useNotification } from '@/hooks/useNotification';
@@ -1070,26 +1071,12 @@ export function FatigueView({
       />
 
       {/* Header */}
-      <AppBar position="static" sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #f97316' }}>
-        <Toolbar>
-          <Button
-            startIcon={<ChevronLeft className="w-4 h-4" />}
-            onClick={mode === 'entry' ? onBack : handleBackToEntry}
-            sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.1)', mr: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
-          >
-            {mode === 'entry' ? 'Back' : 'Change Pattern'}
-          </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Fatigue <Box component="span" sx={{ color: '#fb923c' }}>Risk Assessment</Box>
-          </Typography>
-          <Chip
-            label="HSE RR446 COMPLIANT"
-            size="small"
-            sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: '#fb923c', fontFamily: 'monospace', fontSize: '0.7rem', mr: 2 }}
-          />
-          <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
-        </Toolbar>
-      </AppBar>
+      <FatigueHeader
+        user={user}
+        mode={mode}
+        onBack={onBack}
+        onChangePattern={handleBackToEntry}
+      />
 
       {/* Mode Banner - shows in review mode */}
       {isReadOnly && (

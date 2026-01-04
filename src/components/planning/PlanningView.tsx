@@ -26,6 +26,8 @@ import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { exportToExcel, processImport, type ParsedAssignment } from '@/lib/importExport';
 import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
 import { getEmployeeComplianceStatus } from '@/lib/compliance';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import type {
   ProjectCamel,
   EmployeeCamel,
@@ -113,6 +115,9 @@ export function PlanningView({
 
   // Edit assignment modal state
   const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
+
+  // Error notification state
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Generate periods for selected year
   const networkRailPeriods = useMemo(() => {
@@ -287,19 +292,24 @@ export function PlanningView({
     }
 
     // Valid cell - create assignments normally
-    for (const employee of employeesToAssign) {
-      const existing = projectAssignments.find(
-        a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
-      );
+    try {
+      for (const employee of employeesToAssign) {
+        const existing = projectAssignments.find(
+          a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
+        );
 
-      if (!existing) {
-        await onCreateAssignment({
-          employeeId: employee.id,
-          projectId: project.id,
-          shiftPatternId,
-          date,
-        });
+        if (!existing) {
+          await onCreateAssignment({
+            employeeId: employee.id,
+            projectId: project.id,
+            shiftPatternId,
+            date,
+          });
+        }
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create assignment';
+      setErrorMessage(message);
     }
 
     clearSelection();
@@ -314,25 +324,30 @@ export function PlanningView({
 
     const { employees: emps, date } = customTimeModal;
 
-    // Ensure the Custom pattern exists and get its ID
-    const patternId = await ensureCustomPattern();
+    try {
+      // Ensure the Custom pattern exists and get its ID
+      const patternId = await ensureCustomPattern();
 
-    for (const employee of emps) {
-      // Check if already assigned to Custom pattern on this date
-      const existing = projectAssignments.find(
-        a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
-      );
+      for (const employee of emps) {
+        // Check if already assigned to Custom pattern on this date
+        const existing = projectAssignments.find(
+          a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
+        );
 
-      if (!existing) {
-        await onCreateAssignment({
-          employeeId: employee.id,
-          projectId: project.id,
-          shiftPatternId: patternId,
-          date,
-          customStartTime: startTime,
-          customEndTime: endTime,
-        });
+        if (!existing) {
+          await onCreateAssignment({
+            employeeId: employee.id,
+            projectId: project.id,
+            shiftPatternId: patternId,
+            date,
+            customStartTime: startTime,
+            customEndTime: endTime,
+          });
+        }
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create assignment';
+      setErrorMessage(message);
     }
 
     setCustomTimeModal(null);
@@ -714,6 +729,22 @@ export function PlanningView({
           onDelete={onDeleteAssignment}
         />
       )}
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={!!errorMessage}
+        autoHideDuration={6000}
+        onClose={() => setErrorMessage(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setErrorMessage(null)}
+          severity="error"
+          sx={{ width: '100%' }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

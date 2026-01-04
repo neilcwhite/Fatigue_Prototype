@@ -21,10 +21,8 @@ export interface Employee {
 export interface Project {
   id: number;
   name: string;
-  location?: string;
   start_date?: string;
   end_date?: string;
-  type?: string;
   organisation_id: string;
   created_at?: string;
   updated_at?: string;

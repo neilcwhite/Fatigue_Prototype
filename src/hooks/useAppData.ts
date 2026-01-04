@@ -79,17 +79,62 @@ interface DayScheduleEntry {
   breakLen?: number;
 }
 
+/**
+ * Parse time string (HH:MM) to minutes since midnight
+ */
+function parseTimeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Calculate shift duration in minutes, handling overnight shifts
+ */
+function calculateShiftDuration(startTime: string, endTime: string): number {
+  const startMins = parseTimeToMinutes(startTime);
+  const endMins = parseTimeToMinutes(endTime);
+
+  // If end is before start, it's an overnight shift
+  if (endMins <= startMins) {
+    return (24 * 60 - startMins) + endMins;
+  }
+  return endMins - startMins;
+}
+
 export function validateDaySchedule(day: DayScheduleEntry | null | undefined): { valid: boolean; errors: string[] } {
   if (!day) return { valid: true, errors: [] }; // null/undefined is allowed (rest day)
 
   const errors: string[] = [];
 
   // Validate time strings
-  if (!validateTimeString(day.startTime)) {
+  const startTimeValid = validateTimeString(day.startTime);
+  const endTimeValid = validateTimeString(day.endTime);
+
+  if (!startTimeValid) {
     errors.push('Invalid start time format (use HH:MM)');
   }
-  if (!validateTimeString(day.endTime)) {
+  if (!endTimeValid) {
     errors.push('Invalid end time format (use HH:MM)');
+  }
+
+  // Logical consistency checks (only if times are valid)
+  if (startTimeValid && endTimeValid && day.startTime && day.endTime) {
+    const shiftDuration = calculateShiftDuration(day.startTime, day.endTime);
+
+    // Check shift duration is reasonable (minimum 1 hour, maximum 16 hours per Network Rail limits)
+    if (shiftDuration < 60) {
+      errors.push('Shift duration must be at least 1 hour');
+    }
+    if (shiftDuration > 16 * 60) {
+      errors.push('Shift duration cannot exceed 16 hours');
+    }
+
+    // Check break frequency makes sense relative to shift length
+    if (day.breakFreq !== undefined && day.breakFreq > 0) {
+      if (day.breakFreq > shiftDuration) {
+        errors.push(`Break frequency (${day.breakFreq} mins) exceeds shift duration (${Math.round(shiftDuration)} mins)`);
+      }
+    }
   }
 
   // Validate optional numeric fields

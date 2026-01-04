@@ -1,6 +1,7 @@
 export { FatigueView } from './FatigueView';
 export { FatigueChart } from './FatigueChart';
 export { FatigueEntryModal } from './FatigueEntryModal';
+export { FatigueHeader } from './FatigueHeader';
 export { FatigueParamsPanel } from './FatigueParamsPanel';
 export { FatigueResultsSummary } from './FatigueResultsSummary';
 export { FatigueWeeklyGrid } from './FatigueWeeklyGrid';
