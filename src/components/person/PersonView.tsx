@@ -17,7 +17,7 @@ import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField';
 import Collapse from '@mui/material/Collapse';
-import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp, Edit2, Eye, EyeOff } from '@/components/ui/Icons';
+import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp, Edit2, Eye, EyeOff, Activity } from '@/components/ui/Icons';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
@@ -565,243 +565,69 @@ export function PersonView({
       </Paper>
 
       <Box sx={{ p: 2 }}>
-        {/* Stats Cards */}
-        <Grid container spacing={1.5} sx={{ mb: 2 }}>
-          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-            <Card sx={{ borderLeft: 4, borderColor: compliance.hasErrors ? 'error.main' : compliance.hasWarnings ? 'warning.main' : 'success.main' }}>
-              <CardContent sx={{ py: 1.5, px: 2 }}>
-                <Typography variant="caption" color="text.secondary">Compliance</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {compliance.hasErrors ? <XCircle className="w-4 h-4" /> : compliance.hasWarnings ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                  <Typography variant="h5" fontWeight={700} sx={{ color: compliance.hasErrors ? 'error.main' : compliance.hasWarnings ? 'warning.main' : 'success.main' }}>
-                    {compliance.violations.length}
+        {/* Compact Stats Row */}
+        <Paper sx={{ mb: 2, px: 2, py: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+            {/* Compliance */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: 3, borderColor: compliance.hasErrors ? 'error.main' : compliance.hasWarnings ? 'warning.main' : 'success.main', pl: 1 }}>
+              {compliance.hasErrors ? <XCircle className="w-4 h-4" /> : compliance.hasWarnings ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+              <Typography variant="body2" color="text.secondary">Compliance:</Typography>
+              <Typography variant="body1" fontWeight={700} sx={{ color: compliance.hasErrors ? 'error.main' : compliance.hasWarnings ? 'warning.main' : 'success.main' }}>
+                {compliance.violations.length} {compliance.violations.length === 1 ? 'issue' : 'issues'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+            {/* Period Shifts */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">Shifts:</Typography>
+              <Typography variant="body1" fontWeight={700}>{stats.totalShifts}</Typography>
+              <Typography variant="caption" color="text.secondary">({stats.nightShifts} nights)</Typography>
+            </Box>
+
+            <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+            {/* Period Hours */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">Hours:</Typography>
+              <Typography variant="body1" fontWeight={700}>{stats.totalHours}h</Typography>
+              <Typography variant="caption" color="text.secondary">
+                ({stats.totalShifts > 0 ? Math.round(stats.totalHours / stats.totalShifts * 10) / 10 : 0}h avg)
+              </Typography>
+            </Box>
+
+            <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+            {/* Projects */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">Projects:</Typography>
+              <Typography variant="body1" fontWeight={700}>{stats.uniqueProjects}</Typography>
+            </Box>
+
+            {/* Max FRI - only show if FRI enabled */}
+            {showFRI && fatigueAnalysis && (
+              <>
+                <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: 3, borderColor: fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main', pl: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Max FRI:</Typography>
+                  <Typography
+                    variant="body1"
+                    fontWeight={700}
+                    sx={{ color: fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main' }}
+                  >
+                    {fatigueAnalysis.maxFRI.toFixed(3)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    ({fatigueAnalysis.criticalShifts} critical)
                   </Typography>
                 </Box>
-                <Typography variant="caption" color="text.secondary">Issues</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+              </>
+            )}
+          </Box>
+        </Paper>
 
-          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-            <Card>
-              <CardContent sx={{ py: 1.5, px: 2 }}>
-                <Typography variant="caption" color="text.secondary">Period Shifts</Typography>
-                <Typography variant="h5" fontWeight={700}>{stats.totalShifts}</Typography>
-                <Typography variant="caption" color="text.secondary">{stats.nightShifts} nights</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-            <Card>
-              <CardContent sx={{ py: 1.5, px: 2 }}>
-                <Typography variant="caption" color="text.secondary">Period Hours</Typography>
-                <Typography variant="h5" fontWeight={700}>{stats.totalHours}h</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {stats.totalShifts > 0 ? Math.round(stats.totalHours / stats.totalShifts * 10) / 10 : 0}h avg
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-            <Card>
-              <CardContent sx={{ py: 1.5, px: 2 }}>
-                <Typography variant="caption" color="text.secondary">Projects</Typography>
-                <Typography variant="h5" fontWeight={700}>{stats.uniqueProjects}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {showFRI && (
-          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
-            <Card sx={{ borderLeft: 4, borderColor: fatigueAnalysis?.maxFRI && fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis?.maxFRI && fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main' }}>
-              <CardContent sx={{ py: 1.5, px: 2 }}>
-                <Typography variant="caption" color="text.secondary">Max Fatigue Risk</Typography>
-                {fatigueAnalysis ? (
-                  <>
-                    <Typography
-                      variant="h5"
-                      fontWeight={700}
-                      sx={{ color: fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main' }}
-                    >
-                      {fatigueAnalysis.maxFRI.toFixed(3)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {getFRILevel(fatigueAnalysis.maxFRI)} ({fatigueAnalysis.criticalShifts} critical)
-                    </Typography>
-                  </>
-                ) : (
-                  <Typography variant="h5" fontWeight={700} color="text.disabled">N/A</Typography>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-          )}
-        </Grid>
-
-        {/* Fatigue Analysis Section */}
-        {showFRI && fatigueAnalysis && fatigueAnalysis.results.length > 0 && (
-          <Paper sx={{ mb: 2 }}>
-            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BarChart className="w-4 h-4" />
-                <Typography variant="subtitle2" fontWeight={600}>Fatigue Risk Analysis (HSE RR446)</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <Chip label="Low <1.0" size="small" sx={{ bgcolor: '#22c55e', color: 'white', fontSize: '0.6rem' }} />
-                <Chip label="Mod 1.0-1.1" size="small" sx={{ bgcolor: '#eab308', color: 'white', fontSize: '0.6rem' }} />
-                <Chip label="Elev 1.1-1.2" size="small" sx={{ bgcolor: '#f97316', color: 'white', fontSize: '0.6rem' }} />
-                <Chip label="Crit ≥1.2" size="small" sx={{ bgcolor: '#dc2626', color: 'white', fontSize: '0.6rem' }} />
-              </Box>
-            </Box>
-            <Box sx={{ p: 1.5 }}>
-              <Box sx={{ display: 'flex', gap: 3, mb: 2, pb: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary">Avg:</Typography>
-                  <Chip label={fatigueAnalysis.avgFRI.toFixed(3)} size="small" sx={{ ...getFRIChipSx(fatigueAnalysis.avgFRI), fontWeight: 700, fontSize: '0.75rem' }} />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary">Max:</Typography>
-                  <Chip label={fatigueAnalysis.maxFRI.toFixed(3)} size="small" sx={{ ...getFRIChipSx(fatigueAnalysis.maxFRI), fontWeight: 700, fontSize: '0.75rem' }} />
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary">Elevated:</Typography>
-                  <Typography variant="body2" fontWeight={700} color="warning.main">{fatigueAnalysis.elevatedShifts}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="caption" color="text.secondary">Critical:</Typography>
-                  <Typography variant="body2" fontWeight={700} color="error.main">{fatigueAnalysis.criticalShifts}</Typography>
-                </Box>
-              </Box>
-
-              {/* Pattern Parameters */}
-              {periodPatterns.length > 0 && (
-                <Box>
-                  <Box
-                    onClick={() => setShowFatigueParams(!showFatigueParams)}
-                    sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', mb: 1 }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Settings className="w-4 h-4" />
-                      <Typography variant="body2" fontWeight={500}>Shift Pattern Parameters</Typography>
-                      <Typography variant="caption" color="text.secondary">({periodPatterns.length} pattern{periodPatterns.length > 1 ? 's' : ''})</Typography>
-                    </Box>
-                    {showFatigueParams ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </Box>
-                  <Collapse in={showFatigueParams}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
-                      {periodPatterns.map((pattern) => (
-                        <Paper key={pattern.id} variant="outlined" sx={{ p: 1.5 }}>
-                          {editingPatternId === pattern.id && editingParams ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="body2" fontWeight={600}>{pattern.name}</Typography>
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <Button size="small" variant="contained" color="success" onClick={handleSaveParams}>Save</Button>
-                                  <Button size="small" variant="outlined" onClick={handleCancelEdit}>Cancel</Button>
-                                </Box>
-                              </Box>
-                              <Grid container spacing={1}>
-                                <Grid size={{ xs: 2.4 }}>
-                                  <TextField
-                                    select
-                                    size="small"
-                                    label="Workload"
-                                    value={editingParams.workload}
-                                    onChange={(e) => setEditingParams({ ...editingParams, workload: parseInt(e.target.value) })}
-                                    fullWidth
-                                  >
-                                    {[1, 2, 3, 4, 5].map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-                                  </TextField>
-                                </Grid>
-                                <Grid size={{ xs: 2.4 }}>
-                                  <TextField
-                                    select
-                                    size="small"
-                                    label="Attention"
-                                    value={editingParams.attention}
-                                    onChange={(e) => setEditingParams({ ...editingParams, attention: parseInt(e.target.value) })}
-                                    fullWidth
-                                  >
-                                    {[1, 2, 3, 4, 5].map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-                                  </TextField>
-                                </Grid>
-                                <Grid size={{ xs: 2.4 }}>
-                                  <TextField
-                                    type="number"
-                                    size="small"
-                                    label="Commute"
-                                    value={editingParams.commuteTime}
-                                    onChange={(e) => setEditingParams({ ...editingParams, commuteTime: parseInt(e.target.value) || 0 })}
-                                    fullWidth
-                                    slotProps={{ htmlInput: { min: 0, max: 180 } }}
-                                  />
-                                </Grid>
-                                <Grid size={{ xs: 2.4 }}>
-                                  <TextField
-                                    type="number"
-                                    size="small"
-                                    label="Break Freq"
-                                    value={editingParams.breakFrequency}
-                                    onChange={(e) => setEditingParams({ ...editingParams, breakFrequency: parseInt(e.target.value) || 180 })}
-                                    fullWidth
-                                    slotProps={{ htmlInput: { min: 30, max: 480 } }}
-                                  />
-                                </Grid>
-                                <Grid size={{ xs: 2.4 }}>
-                                  <TextField
-                                    type="number"
-                                    size="small"
-                                    label="Break Len"
-                                    value={editingParams.breakLength}
-                                    onChange={(e) => setEditingParams({ ...editingParams, breakLength: parseInt(e.target.value) || 30 })}
-                                    fullWidth
-                                    slotProps={{ htmlInput: { min: 5, max: 60 } }}
-                                  />
-                                </Grid>
-                              </Grid>
-                            </Box>
-                          ) : (
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Typography variant="body2" fontWeight={600}>{pattern.name}</Typography>
-                                  {pattern.isNight && <Typography>🌙</Typography>}
-                                  <Typography variant="caption" color="text.secondary">({pattern.assignmentCount} shift{pattern.assignmentCount > 1 ? 's' : ''})</Typography>
-                                  {pattern.avgFRI > 0 && (
-                                    <Chip
-                                      size="small"
-                                      label={`FRI: ${pattern.avgFRI.toFixed(3)} (max ${pattern.maxFRI.toFixed(3)})`}
-                                      sx={{ ...getFRIChipSx(pattern.maxFRI), fontSize: '0.6rem', ml: 1 }}
-                                    />
-                                  )}
-                                </Box>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                                  <span>Workload: <strong>{pattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload}</strong>/5</span>
-                                  <span>Attention: <strong>{pattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention}</strong>/5</span>
-                                  <span>Commute: <strong>{pattern.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime}</strong>min</span>
-                                  <span>Breaks: <strong>{pattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency}</strong>/{pattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength}min</span>
-                                </Typography>
-                              </Box>
-                              {onUpdateShiftPattern && (
-                                <Button size="small" variant="outlined" startIcon={<Settings className="w-3 h-3" />} onClick={() => handleStartEdit(pattern)}>
-                                  Edit
-                                </Button>
-                              )}
-                            </Box>
-                          )}
-                        </Paper>
-                      ))}
-                    </Box>
-                  </Collapse>
-                </Box>
-              )}
-            </Box>
-          </Paper>
-        )}
-
-        {/* Compliance Violations */}
+        {/* Compliance Violations - sorted by date, soonest first */}
         {compliance.violations.length > 0 && (
           <Paper sx={{ mb: 2 }}>
             <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -809,7 +635,9 @@ export function PersonView({
               <Typography variant="subtitle2" fontWeight={600}>Compliance Violations ({compliance.violations.length})</Typography>
             </Box>
             <Box sx={{ p: 1.5, maxHeight: 200, overflow: 'auto' }}>
-              {compliance.violations.map((violation, idx) => (
+              {[...compliance.violations]
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .map((violation, idx) => (
                 <Box
                   key={idx}
                   onClick={() => handleViolationClick(violation)}
@@ -820,22 +648,24 @@ export function PersonView({
                     cursor: 'pointer',
                     borderLeft: 4,
                     borderColor: violation.severity === 'error' ? 'error.main' : 'warning.main',
-                    bgcolor: violation.severity === 'error' ? 'error.light' : 'warning.light',
-                    '&:hover': { boxShadow: 2 },
+                    bgcolor: violation.severity === 'error' ? '#fef2f2' : '#fffbeb',
+                    '&:hover': { boxShadow: 2, bgcolor: violation.severity === 'error' ? '#fee2e2' : '#fef3c7' },
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    {violation.severity === 'error' ? <XCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                    <Box sx={{ color: violation.severity === 'error' ? '#b91c1c' : '#b45309', mt: 0.25 }}>
+                      {violation.severity === 'error' ? <XCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                    </Box>
                     <Box>
-                      <Typography variant="caption" fontWeight={600} sx={{ color: violation.severity === 'error' ? 'error.dark' : 'warning.dark' }}>
+                      <Typography variant="caption" fontWeight={600} sx={{ color: violation.severity === 'error' ? '#991b1b' : '#92400e' }}>
                         {getViolationIcon(violation.type)} {getViolationTitle(violation.type)}
                       </Typography>
-                      <Typography variant="caption" display="block" sx={{ color: violation.severity === 'error' ? 'error.dark' : 'warning.dark' }}>
+                      <Typography variant="caption" display="block" sx={{ color: violation.severity === 'error' ? '#7f1d1d' : '#78350f' }}>
                         {violation.message}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: '#374151' }}>
                         {new Date(violation.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                        <Box component="span" sx={{ color: 'primary.main', ml: 1 }}>→ Click to view</Box>
+                        <Box component="span" sx={{ color: 'primary.main', ml: 1, fontWeight: 500 }}>→ Click to view</Box>
                       </Typography>
                     </Box>
                   </Box>
@@ -1081,6 +911,121 @@ export function PersonView({
           </Box>
         </Paper>
       </Box>
+
+      {/* Fatigue Analysis Section - FRI Results */}
+      {showFRI && fatigueAnalysis && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Activity className="w-5 h-5" />
+            Fatigue Risk Analysis
+          </Typography>
+
+          {/* FRI Summary Stats */}
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              FRI Summary
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Average FRI</Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  sx={{ color: fatigueAnalysis.avgFRI >= 1.2 ? 'error.main' : fatigueAnalysis.avgFRI >= 1.1 ? 'warning.main' : 'success.main' }}
+                >
+                  {fatigueAnalysis.avgFRI.toFixed(3)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Peak FRI</Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  sx={{ color: fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main' }}
+                >
+                  {fatigueAnalysis.maxFRI.toFixed(3)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Shifts Analyzed</Typography>
+                <Typography variant="h6" fontWeight={700}>
+                  {fatigueAnalysis.results.length}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Critical Shifts</Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  sx={{ color: fatigueAnalysis.criticalShifts > 0 ? 'error.main' : 'success.main' }}
+                >
+                  {fatigueAnalysis.criticalShifts}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">Elevated Shifts</Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  sx={{ color: fatigueAnalysis.elevatedShifts > 0 ? 'warning.main' : 'success.main' }}
+                >
+                  {fatigueAnalysis.elevatedShifts}
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+
+          {/* Per-Shift FRI Results */}
+          {fatigueAnalysis.results.length > 0 && periodAssignments.length > 0 && (
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Per-Shift FRI Values
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {fatigueAnalysis.results.map((result, idx) => {
+                  const assignment = periodAssignments[idx];
+                  const pattern = assignment ? shiftPatterns.find(p => p.id === assignment.shiftPatternId) : null;
+                  const startTime = assignment?.customStartTime || pattern?.startTime || '08:00';
+                  const endTime = assignment?.customEndTime || pattern?.endTime || '18:00';
+                  return (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1,
+                        borderRadius: 1,
+                        bgcolor: result.riskIndex >= 1.2 ? '#fef2f2' : result.riskIndex >= 1.1 ? '#fffbeb' : '#f0fdf4',
+                        borderLeft: 3,
+                        borderColor: result.riskIndex >= 1.2 ? 'error.main' : result.riskIndex >= 1.1 ? 'warning.main' : 'success.main',
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="body2" fontWeight={600}>
+                          {assignment ? new Date(assignment.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : `Day ${result.day}`}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {startTime} - {endTime}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={`FRI: ${result.riskIndex.toFixed(3)}`}
+                        size="small"
+                        sx={{
+                          ...getFRIChipSx(result.riskIndex),
+                          fontWeight: 700,
+                          fontSize: '0.75rem'
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Paper>
+          )}
+        </Box>
+      )}
 
       {/* Assignment Edit Modal */}
       {editingAssignment && onUpdateAssignment && (

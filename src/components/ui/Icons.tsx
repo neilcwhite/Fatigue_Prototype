@@ -35,6 +35,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
 
 interface IconProps {
   className?: string;
@@ -283,6 +284,13 @@ export const EyeOff = ({ className = "w-6 h-6" }: IconProps) => (
 
 export const Edit = ({ className = "w-6 h-6" }: IconProps) => (
   <EditIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const Activity = ({ className = "w-6 h-6" }: IconProps) => (
+  <ShowChartIcon
     className={className}
     sx={{ fontSize: getSizeFromClass(className) }}
   />
