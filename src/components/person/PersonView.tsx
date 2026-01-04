@@ -17,7 +17,7 @@ import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField';
 import Collapse from '@mui/material/Collapse';
-import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
+import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp, Edit2, Eye, EyeOff } from '@/components/ui/Icons';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
@@ -81,6 +81,7 @@ export function PersonView({
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState(initialPeriodInfo.periodIdx);
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
   const [showFatigueParams, setShowFatigueParams] = useState(true);
+  const [showFRI, setShowFRI] = useState(true);
   const [editingPatternId, setEditingPatternId] = useState<string | null>(null);
   const [editingParams, setEditingParams] = useState<{
     workload: number;
@@ -519,16 +520,27 @@ export function PersonView({
             </Box>
           </Box>
 
-          <Button
-            variant="contained"
-            color="success"
-            size="small"
-            onClick={handleExport}
-            disabled={periodAssignments.length === 0}
-            startIcon={<Download className="w-4 h-4" />}
-          >
-            Export Schedule
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant={showFRI ? 'contained' : 'outlined'}
+              color={showFRI ? 'primary' : 'inherit'}
+              size="small"
+              onClick={() => setShowFRI(!showFRI)}
+              startIcon={showFRI ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            >
+              FRI
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              size="small"
+              onClick={handleExport}
+              disabled={periodAssignments.length === 0}
+              startIcon={<Download className="w-4 h-4" />}
+            >
+              Export Schedule
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
@@ -581,6 +593,7 @@ export function PersonView({
             </Card>
           </Grid>
 
+          {showFRI && (
           <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <Card sx={{ borderLeft: 4, borderColor: fatigueAnalysis?.maxFRI && fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis?.maxFRI && fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main' }}>
               <CardContent sx={{ py: 1.5, px: 2 }}>
@@ -604,10 +617,11 @@ export function PersonView({
               </CardContent>
             </Card>
           </Grid>
+          )}
         </Grid>
 
         {/* Fatigue Analysis Section */}
-        {fatigueAnalysis && fatigueAnalysis.results.length > 0 && (
+        {showFRI && fatigueAnalysis && fatigueAnalysis.results.length > 0 && (
           <Paper sx={{ mb: 2 }}>
             <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -825,6 +839,7 @@ export function PersonView({
                 <Chip label="Warning" size="small" sx={{ bgcolor: 'warning.light', fontSize: '0.6rem', height: 18 }} />
                 <Chip label="OK" size="small" sx={{ bgcolor: 'success.light', fontSize: '0.6rem', height: 18 }} />
               </Box>
+              {showFRI && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.65rem' }}>
                 <Typography variant="caption" fontWeight={500} color="text.secondary">Chip (FRI):</Typography>
                 <Chip label="<1.0" size="small" sx={{ bgcolor: '#22c55e', color: 'white', fontSize: '0.6rem', height: 18 }} />
@@ -832,22 +847,40 @@ export function PersonView({
                 <Chip label="1.1-1.2" size="small" sx={{ bgcolor: '#f97316', color: 'white', fontSize: '0.6rem', height: 18 }} />
                 <Chip label="≥1.2" size="small" sx={{ bgcolor: '#dc2626', color: 'white', fontSize: '0.6rem', height: 18 }} />
               </Box>
+              )}
             </Box>
           </Box>
           <Box sx={{ p: 1.5, overflow: 'auto' }}>
             {/* Day Headers */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.5 }}>
-              {calendarDayHeaders.map(day => (
-                <Typography key={day} variant="caption" fontWeight={600} textAlign="center" color="text.secondary">
-                  {day}
-                </Typography>
-              ))}
+            <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
+              {/* Empty space for month column */}
+              <Box sx={{ width: 40, minWidth: 40 }} />
+              <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+                {calendarDayHeaders.map(day => (
+                  <Typography key={day} variant="caption" fontWeight={600} textAlign="center" color="text.secondary">
+                    {day}
+                  </Typography>
+                ))}
+              </Box>
             </Box>
 
             {/* Calendar Grid */}
-            {[0, 1, 2, 3].map(weekIdx => (
-              <Box key={weekIdx} sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 0.5 }}>
-                {calendarDates.slice(weekIdx * 7, (weekIdx + 1) * 7).map((date) => {
+            {[0, 1, 2, 3].map(weekIdx => {
+              // Get month name from first day of the week
+              const weekDates = calendarDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
+              const firstDateOfWeek = weekDates[0];
+              const weekMonthName = firstDateOfWeek ? formatDateHeader(firstDateOfWeek).month : '';
+              return (
+              <Box key={weekIdx} sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
+                {/* Month label column */}
+                <Box sx={{ width: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                    {weekMonthName}
+                  </Typography>
+                </Box>
+                {/* Week days */}
+                <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+                {weekDates.map((date) => {
                   const { date: dateNum, isWeekend, isToday } = formatDateHeader(date);
                   const dateAssignments = periodAssignments.filter(a => a.date === date);
                   const dateViolationSeverity = dateAssignments.reduce<'error' | 'warning' | null>((worst, a) => {
@@ -893,7 +926,7 @@ export function PersonView({
                         <Typography variant="caption" fontWeight={600} sx={{ color: isToday ? 'primary.main' : 'text.primary' }}>
                           {dateNum}
                         </Typography>
-                        {dateFRI !== null && (
+                        {showFRI && dateFRI !== null && (
                           <Chip
                             label={dateFRI.toFixed(3)}
                             size="small"
@@ -907,7 +940,7 @@ export function PersonView({
                       ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                           {dateAssignments.map(assignment => {
-                            const { pattern } = getAssignmentInfo(assignment);
+                            const { pattern, project } = getAssignmentInfo(assignment);
                             const assignmentIdx = periodAssignments.findIndex(a => a.id === assignment.id);
                             const assignmentFRI = assignmentIdx !== -1 && fatigueAnalysis ? fatigueAnalysis.results[assignmentIdx]?.riskIndex : null;
                             return (
@@ -917,7 +950,7 @@ export function PersonView({
                                   position: 'relative',
                                   borderRadius: 0.5,
                                   p: 0.5,
-                                  ...getFRIChipSx(assignmentFRI),
+                                  ...(showFRI ? getFRIChipSx(assignmentFRI) : { bgcolor: 'primary.main', color: 'white' }),
                                 }}
                               >
                                 <Box sx={{ position: 'absolute', top: 0, right: 0, display: 'flex', gap: 0.25 }}>
@@ -930,6 +963,9 @@ export function PersonView({
                                     <Trash2 className="w-2.5 h-2.5" />
                                   </IconButton>
                                 </Box>
+                                <Typography variant="caption" fontWeight={500} noWrap sx={{ pr: 4, display: 'block', fontSize: '0.6rem' }}>
+                                  {project?.name || 'Unknown'}
+                                </Typography>
                                 <Typography variant="caption" fontWeight={500} noWrap sx={{ pr: 4, display: 'block', fontSize: '0.6rem' }}>
                                   {getAssignmentDisplayName(assignment, pattern)}
                                 </Typography>
@@ -944,8 +980,10 @@ export function PersonView({
                     </Box>
                   );
                 })}
+                </Box>
               </Box>
-            ))}
+            );
+            })}
           </Box>
         </Paper>
 
@@ -977,7 +1015,7 @@ export function PersonView({
                         alignItems: 'center',
                         borderLeft: 3,
                         borderColor: assignmentViolationSeverity === 'error' ? 'error.main' : assignmentViolationSeverity === 'warning' ? 'warning.main' : 'transparent',
-                        bgcolor: assignmentViolationSeverity === 'error' ? 'error.light' : assignmentViolationSeverity === 'warning' ? 'warning.light' : fri && fri >= 1.2 ? 'error.light' : fri && fri >= 1.1 ? 'warning.light' : 'action.hover',
+                        bgcolor: assignmentViolationSeverity === 'error' ? 'error.light' : assignmentViolationSeverity === 'warning' ? 'warning.light' : (showFRI && fri && fri >= 1.2) ? 'error.light' : (showFRI && fri && fri >= 1.1) ? 'warning.light' : 'action.hover',
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -1002,7 +1040,7 @@ export function PersonView({
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {fri !== undefined && (
+                        {showFRI && fri !== undefined && (
                           <Chip
                             label={`FRI: ${fri.toFixed(3)}`}
                             size="small"

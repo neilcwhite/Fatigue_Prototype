@@ -15,11 +15,12 @@ export const COMPLIANCE_LIMITS = {
   MAX_WEEKLY_HOURS: 72,
   MAX_CONSECUTIVE_DAYS: 13,
   MAX_CONSECUTIVE_NIGHTS: 7,
-  
+
   // Soft Limits (Warnings)
   APPROACHING_WEEKLY_HOURS: 66,
   CONSECUTIVE_NIGHTS_WARNING: 4,
-  
+  CONSECUTIVE_DAYS_WARNING: 6, // Warn after 7 consecutive days
+
   // Night shift definition
   NIGHT_START_HOUR: 20, // 8pm onwards considered night
   NIGHT_END_HOUR: 6,    // Before 6am considered night
@@ -29,12 +30,13 @@ export const COMPLIANCE_LIMITS = {
 
 export type ViolationSeverity = 'error' | 'warning';
 
-export type ViolationType = 
+export type ViolationType =
   | 'MAX_SHIFT_LENGTH'
   | 'INSUFFICIENT_REST'
   | 'MAX_WEEKLY_HOURS'
   | 'APPROACHING_WEEKLY_LIMIT'
   | 'MAX_CONSECUTIVE_DAYS'
+  | 'CONSECUTIVE_DAYS_WARNING'
   | 'CONSECUTIVE_NIGHTS_WARNING'
   | 'MAX_CONSECUTIVE_NIGHTS'
   | 'DAY_NIGHT_TRANSITION'
@@ -410,59 +412,76 @@ export function checkWeeklyHours(
 
 /**
  * Check consecutive days worked
+ * Reports violations on the specific day that crosses each threshold:
+ * - Warning on 7th consecutive day (CONSECUTIVE_DAYS_WARNING + 1)
+ * - Error on 14th consecutive day (MAX_CONSECUTIVE_DAYS + 1)
  */
 export function checkConsecutiveDays(
   employeeId: number,
   assignments: AssignmentCamel[]
 ): ComplianceViolation[] {
   const violations: ComplianceViolation[] = [];
-  
+  const addedViolationDates = new Set<string>(); // Track dates we've already flagged
+
   if (assignments.length < 2) return violations;
-  
+
   // Get unique dates sorted
   const dates = [...new Set(assignments.map(a => a.date))].sort();
-  
+
   let consecutiveCount = 1;
-  let streakStart = dates[0];
-  
+  let streakDates: string[] = [dates[0]];
+
   for (let i = 1; i < dates.length; i++) {
     const prevDate = new Date(dates[i - 1]);
     const currDate = new Date(dates[i]);
     const daysDiff = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysDiff === 1) {
       consecutiveCount++;
-    } else {
-      // Check if streak exceeded limit
-      if (consecutiveCount > COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS) {
-        violations.push({
-          type: 'MAX_CONSECUTIVE_DAYS',
-          severity: 'error',
-          employeeId,
-          date: streakStart,
-          message: `${consecutiveCount} consecutive days worked (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS})`,
-          value: consecutiveCount,
-          limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS,
-        });
+      streakDates.push(dates[i]);
+
+      // Flag violation on the specific day when threshold is exceeded
+      // Error on 14th day (MAX_CONSECUTIVE_DAYS + 1)
+      if (consecutiveCount === COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS + 1) {
+        const violationDate = dates[i];
+        if (!addedViolationDates.has(violationDate)) {
+          violations.push({
+            type: 'MAX_CONSECUTIVE_DAYS',
+            severity: 'error',
+            employeeId,
+            date: violationDate,
+            message: `${consecutiveCount} consecutive days worked (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS})`,
+            value: consecutiveCount,
+            limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS,
+            relatedDates: [...streakDates],
+          });
+          addedViolationDates.add(violationDate);
+        }
       }
+      // Warning on 7th day (CONSECUTIVE_DAYS_WARNING + 1)
+      else if (consecutiveCount === COMPLIANCE_LIMITS.CONSECUTIVE_DAYS_WARNING + 1) {
+        const violationDate = dates[i];
+        if (!addedViolationDates.has(violationDate)) {
+          violations.push({
+            type: 'CONSECUTIVE_DAYS_WARNING',
+            severity: 'warning',
+            employeeId,
+            date: violationDate,
+            message: `${consecutiveCount} consecutive days worked - consider rest period`,
+            value: consecutiveCount,
+            limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS,
+            relatedDates: [...streakDates],
+          });
+          addedViolationDates.add(violationDate);
+        }
+      }
+    } else {
+      // Streak broken, reset
       consecutiveCount = 1;
-      streakStart = dates[i];
+      streakDates = [dates[i]];
     }
   }
-  
-  // Check final streak
-  if (consecutiveCount > COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS) {
-    violations.push({
-      type: 'MAX_CONSECUTIVE_DAYS',
-      severity: 'error',
-      employeeId,
-      date: streakStart,
-      message: `${consecutiveCount} consecutive days worked (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS})`,
-      value: consecutiveCount,
-      limit: COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS,
-    });
-  }
-  
+
   return violations;
 }
 
