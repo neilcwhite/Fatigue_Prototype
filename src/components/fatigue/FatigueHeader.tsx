@@ -49,13 +49,13 @@ export function FatigueHeader({
           {buttonLabel}
         </Button>
         <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-          Fatigue{' '}
+          Shift Pattern{' '}
           <Box component="span" sx={{ color: '#fb923c' }}>
-            Risk Assessment
+            Builder
           </Box>
         </Typography>
         <Chip
-          label="HSE RR446 COMPLIANT"
+          label="FATIGUE CHECKER"
           size="small"
           sx={{
             bgcolor: 'rgba(255,255,255,0.1)',
