@@ -27,10 +27,10 @@ const getNRComplianceChipSx = (severity: 'error' | 'warning' | null) => {
 // Helper to get FRI cell background colors
 const getFRICellSx = (fri: number | null | undefined) => {
   if (fri === null || fri === undefined) return { bgcolor: 'white', borderColor: 'grey.200' };
-  if (fri >= 1.2) return { bgcolor: 'error.light', borderColor: 'error.main' };
-  if (fri >= 1.1) return { bgcolor: 'warning.light', borderColor: 'warning.main' };
-  if (fri >= 1.0) return { bgcolor: 'warning.50', borderColor: 'warning.300' };
-  return { bgcolor: 'success.light', borderColor: 'success.light' };
+  if (fri >= 1.2) return { bgcolor: '#fecaca', borderColor: '#dc2626' }; // Red - High risk
+  if (fri >= 1.1) return { bgcolor: '#fed7aa', borderColor: '#f97316' }; // Orange - Elevated risk
+  if (fri >= 1.0) return { bgcolor: '#fef3c7', borderColor: '#eab308' }; // Yellow/Amber - Moderate risk
+  return { bgcolor: '#bbf7d0', borderColor: '#22c55e' }; // Green - Low risk
 };
 
 interface FatigueResult {
@@ -251,24 +251,22 @@ export function ScheduleCalendar({
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              height: '100%',
-                              minHeight: 40,
+                              py: 0.5,
                               cursor: 'pointer',
                               borderRadius: 0.5,
-                              border: '2px dashed',
+                              border: '1px dashed',
                               borderColor: 'grey.300',
                               color: 'grey.400',
-                              transition: 'all 0.2s',
+                              fontSize: '0.7rem',
+                              transition: 'all 0.15s',
                               '&:hover': {
                                 borderColor: 'primary.main',
-                                bgcolor: 'primary.50',
+                                bgcolor: 'rgba(25, 118, 210, 0.08)',
                                 color: 'primary.main',
                               },
                             }}
                           >
-                            <Typography variant="caption" fontWeight={500}>
-                              + Add
-                            </Typography>
+                            + Add
                           </Box>
                         ) : (
                           <Typography variant="caption" color="text.disabled" textAlign="center" display="block">

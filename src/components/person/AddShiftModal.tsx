@@ -52,13 +52,27 @@ export function AddShiftModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Special value for "enter custom times" option
+  const CUSTOM_PATTERN_VALUE = '__CUSTOM__';
+
+  // Check if user selected the custom times option
+  const isCustomTimesMode = selectedPatternId === CUSTOM_PATTERN_VALUE;
+
   // Filter patterns by selected project
   const availablePatterns = useMemo(() => {
     if (!selectedProjectId) return [];
     return shiftPatterns.filter(p => p.projectId === selectedProjectId);
   }, [selectedProjectId, shiftPatterns]);
 
-  const selectedPattern = shiftPatterns.find(p => p.id === selectedPatternId);
+  // Find a "Custom" pattern for the selected project (to use when entering custom times)
+  const customPatternForProject = useMemo(() => {
+    if (!selectedProjectId) return null;
+    return shiftPatterns.find(
+      p => p.projectId === selectedProjectId && p.name.toLowerCase() === 'custom'
+    );
+  }, [selectedProjectId, shiftPatterns]);
+
+  const selectedPattern = isCustomTimesMode ? null : shiftPatterns.find(p => p.id === selectedPatternId);
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   // Format date for display
@@ -79,8 +93,23 @@ export function AddShiftModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedProjectId || !selectedPatternId) {
-      setError('Please select a project and shift pattern');
+    if (!selectedProjectId) {
+      setError('Please select a project');
+      return;
+    }
+
+    if (isCustomTimesMode) {
+      // Custom times mode - need a "Custom" pattern to exist
+      if (!customPatternForProject) {
+        setError('No "Custom" shift pattern exists for this project. Please create one first in the Planning view.');
+        return;
+      }
+      if (!customStartTime || !customEndTime) {
+        setError('Please enter both start and end times');
+        return;
+      }
+    } else if (!selectedPatternId) {
+      setError('Please select a shift pattern');
       return;
     }
 
@@ -88,13 +117,21 @@ export function AddShiftModal({
     setError(null);
 
     try {
+      // Determine which pattern ID to use
+      const patternIdToUse = isCustomTimesMode
+        ? customPatternForProject!.id
+        : selectedPatternId;
+
+      // Determine if we need custom times
+      const needsCustomTimes = isCustomTimesMode || useCustomTimes;
+
       await onAddShift({
         employeeId: employee.id,
         projectId: selectedProjectId as number,
-        shiftPatternId: selectedPatternId,
+        shiftPatternId: patternIdToUse,
         date,
-        customStartTime: useCustomTimes ? customStartTime : undefined,
-        customEndTime: useCustomTimes ? customEndTime : undefined,
+        customStartTime: needsCustomTimes ? customStartTime : undefined,
+        customEndTime: needsCustomTimes ? customEndTime : undefined,
       });
       onClose();
     } catch (err) {
@@ -157,28 +194,74 @@ export function AddShiftModal({
               onChange={(e) => setSelectedPatternId(e.target.value)}
               label="Shift Pattern"
             >
-              {availablePatterns.length === 0 ? (
-                <MenuItem disabled>
-                  {selectedProjectId ? 'No patterns available' : 'Select a project first'}
-                </MenuItem>
+              {!selectedProjectId ? (
+                <MenuItem disabled>Select a project first</MenuItem>
               ) : (
-                availablePatterns.map((pattern) => (
-                  <MenuItem key={pattern.id} value={pattern.id}>
+                <>
+                  {/* Custom times option - always available */}
+                  <MenuItem value={CUSTOM_PATTERN_VALUE}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                      <span>{pattern.name}</span>
-                      {pattern.isNight && <Chip label="Night" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />}
-                      <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                        {pattern.startTime || '?'} - {pattern.endTime || '?'}
-                      </Typography>
+                      <span>Enter Custom Times</span>
+                      <Chip label="Manual" size="small" color="secondary" sx={{ height: 18, fontSize: '0.65rem' }} />
                     </Box>
                   </MenuItem>
-                ))
+                  {/* Divider */}
+                  {availablePatterns.length > 0 && (
+                    <MenuItem disabled sx={{ borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 }}>
+                      <Typography variant="caption" color="text.secondary">— or select a pattern —</Typography>
+                    </MenuItem>
+                  )}
+                  {/* Existing patterns */}
+                  {availablePatterns.map((pattern) => (
+                    <MenuItem key={pattern.id} value={pattern.id}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                        <span>{pattern.name}</span>
+                        {pattern.isNight && <Chip label="Night" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />}
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                          {pattern.startTime || '?'} - {pattern.endTime || '?'}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </>
               )}
             </Select>
           </FormControl>
 
+          {/* Custom Times Mode - time inputs shown immediately */}
+          {isCustomTimesMode && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                <Typography variant="caption">
+                  Enter custom start and end times for this shift.
+                  {!customPatternForProject && (
+                    <><br /><strong>Note:</strong> A &quot;Custom&quot; shift pattern must exist for this project.</>
+                  )}
+                </Typography>
+              </Alert>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Start Time"
+                  type="time"
+                  value={customStartTime}
+                  onChange={(e) => setCustomStartTime(e.target.value)}
+                  fullWidth
+                  slotProps={{ htmlInput: { step: 300 } }}
+                />
+                <TextField
+                  label="End Time"
+                  type="time"
+                  value={customEndTime}
+                  onChange={(e) => setCustomEndTime(e.target.value)}
+                  fullWidth
+                  slotProps={{ htmlInput: { step: 300 } }}
+                />
+              </Box>
+            </Box>
+          )}
+
           {/* Selected Pattern Info */}
-          {selectedPattern && (
+          {selectedPattern && !isCustomTimesMode && (
             <Alert severity="success" sx={{ py: 0.5 }}>
               <Typography variant="caption">
                 <strong>{selectedPattern.name}</strong> ({selectedPattern.dutyType})
@@ -189,15 +272,15 @@ export function AddShiftModal({
             </Alert>
           )}
 
-          {/* Custom Times Toggle */}
-          {selectedPatternId && (
+          {/* Custom Times Toggle - only for existing patterns */}
+          {selectedPatternId && !isCustomTimesMode && (
             <Box>
               <Button
                 variant={useCustomTimes ? 'contained' : 'outlined'}
                 size="small"
                 onClick={() => setUseCustomTimes(!useCustomTimes)}
               >
-                {useCustomTimes ? 'Using Custom Times' : 'Use Custom Times'}
+                {useCustomTimes ? 'Using Custom Times' : 'Override Times'}
               </Button>
 
               {useCustomTimes && (
@@ -231,7 +314,12 @@ export function AddShiftModal({
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={isSubmitting || !selectedProjectId || !selectedPatternId}
+          disabled={
+            isSubmitting ||
+            !selectedProjectId ||
+            !selectedPatternId ||
+            (isCustomTimesMode && !customPatternForProject)
+          }
           startIcon={<Plus className="w-4 h-4" />}
         >
           {isSubmitting ? 'Adding...' : 'Add Shift'}
