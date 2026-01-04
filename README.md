@@ -2,9 +2,17 @@
 
 A Network Rail compliant shift planning and fatigue monitoring system, implementing HSE Research Report RR446 fatigue calculations.
 
-**Version**: 2.0 (January 2026)
+**Version**: 2.1 (January 2026)
 
 ## Recent Updates
+
+### UI Enhancements (v2.1)
+- **MUI Material Design**: Migrated to Google Material Design system using MUI components
+- **Shift Builder**: Renamed from "Fatigue Assessment" for clearer purpose
+- **Default Pattern**: New patterns default to 08:00-17:00 Mon-Fri with realistic commute times (90min Monday in, 90min Friday out)
+- **Compliance Colors**: Planning view employees panel shows compliance status colors (green/amber/red)
+- **Person View Dual Colors**: NR compliance colors shift chips, FRI colors calendar cells
+- **FRI Toggle**: Show/hide FRI analysis with eye icon toggle button
 
 ### Security Enhancements (v2.0)
 - **Tenant Isolation**: All database mutations now include `organisation_id` filter to prevent cross-tenant access
@@ -14,7 +22,7 @@ A Network Rail compliant shift planning and fatigue monitoring system, implement
 - **Error Surfacing**: Data load failures now display clear error messages instead of silently showing empty data
 - **Config Validation**: Early check for Supabase environment variables with user-friendly error display
 
-### Fatigue View Enhancements (v2.0)
+### Shift Builder Enhancements (v2.0)
 - **Modal-First Entry**: Project/pattern selection modal on entry with create-new-project capability
 - **Review Mode**: Load existing patterns in read-only mode with explicit "Edit" button
 - **Full-Width Layout**: FRI chart at top (full-width), shift builder below (full-width)
@@ -23,7 +31,7 @@ A Network Rail compliant shift planning and fatigue monitoring system, implement
 - **Inline FRI Display**: See calculated FRI for each working day directly in the table
 - **Worst-Case Column**: Shows FRI with Workload=5, Attention=5 for high-demand role monitoring
 - **Dropdown Selects**: Workload and Attention restricted to 1-5 via dropdown (no manual entry)
-- **Global Settings Bar**: Summary showing continuous work limits and break requirements
+- **Global Settings Bar**: Summary showing max continuous work and break length
 - **Weekly Summary**: Average FRI and Peak FRI displayed below the shift table
 - **Quick Role Check**: Compare how different roles would score on the same pattern
 
@@ -45,7 +53,8 @@ npm run dev
 ### Technology Stack
 - **Framework**: Next.js 14 with App Router
 - **Language**: TypeScript (strict mode)
-- **Styling**: Tailwind CSS
+- **UI Components**: MUI (Material-UI) v6
+- **Styling**: Tailwind CSS + MUI sx prop
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
 
@@ -54,7 +63,7 @@ npm run dev
 ```
 src/
 ├── app/                        # Next.js App Router
-│   ├── layout.tsx              # Root layout with fonts
+│   ├── layout.tsx              # Root layout with MUI theme provider
 │   ├── page.tsx                # Main application entry point
 │   └── globals.css             # Tailwind + custom styles
 │
@@ -64,7 +73,10 @@ src/
 │   │   └── SignOutHeader.tsx   # User header with sign out
 │   │
 │   ├── dashboard/              # Dashboard view
-│   │   └── Dashboard.tsx       # Project cards, stats, navigation
+│   │   └── Dashboard.tsx       # Project cards, stats, navigation tiles
+│   │
+│   ├── layout/                 # Layout components
+│   │   └── Sidebar.tsx         # Collapsible navigation sidebar
 │   │
 │   ├── planning/               # Assignment planning
 │   │   ├── PlanningView.tsx    # Main planning container
@@ -78,7 +90,7 @@ src/
 │   ├── summary/                # Project summary
 │   │   └── SummaryView.tsx     # Stats, compliance, patterns
 │   │
-│   ├── fatigue/                # Fatigue calculator
+│   ├── fatigue/                # Shift Builder (fatigue calculator)
 │   │   ├── FatigueView.tsx     # Pattern builder, 7-day editor, save/update
 │   │   ├── FatigueChart.tsx    # Risk visualization chart with dual-line support
 │   │   ├── FatigueEntryModal.tsx  # Project/pattern selection modal
@@ -96,7 +108,7 @@ src/
 │   │   └── CustomTimeModal.tsx          # Custom shift times
 │   │
 │   └── ui/                     # Shared UI
-│       └── Icons.tsx           # Lucide icon exports
+│       └── Icons.tsx           # MUI Material icon wrappers
 │
 ├── hooks/                      # Custom React hooks
 │   ├── useAuth.ts              # Authentication state
@@ -193,8 +205,9 @@ Based on HSE Research Report RR446, the system calculates:
 |-----------|-------|---------|-------------|
 | Workload | 1-5 | 3 | Physical/mental workload (1=Light, 2=Moderate, 3=Average, 4=Heavy, 5=Very Heavy) |
 | Attention | 1-5 | 3 | Required attention level (1=Low, 2=Moderate, 3=Average, 4=High, 5=Very High) |
-| Commute Time | 0-180 min | 60 | Total daily commute |
-| Break Frequency | 30-480 min | 180 | Time between breaks |
+| Commute In | 0-180 min | 90 Mon, 30 other | Travel time to work |
+| Commute Out | 0-180 min | 90 Fri, 30 other | Travel time from work |
+| Break Frequency | 30-480 min | 180 | Maximum continuous work before break |
 | Break Length | 5-60 min | 30 | Duration of breaks |
 
 ## Compliance Rules
@@ -203,9 +216,9 @@ Based on HSE Research Report RR446, the system calculates:
 |------|-------|--------|----------|
 | Maximum shift duration | 12 hours | NR/L2/OHS/003 | Error |
 | Minimum rest between shifts | 12 hours | NR/L2/OHS/003 | Error |
-| Maximum weekly hours | 60 hours | Working Time Regs | Warning at 55h |
-| Maximum consecutive days | 13 days | NR/L2/OHS/003 | Error |
-| Maximum consecutive nights | 4 nights | NR/L2/OHS/003 | Warning at 3 |
+| Maximum weekly hours | 72 hours | Working Time Regs | Warning at 66h |
+| Maximum consecutive days | 13 days | NR/L2/OHS/003 | Warning at 7, Error at 14 |
+| Maximum consecutive nights | 7 nights | NR/L2/OHS/003 | Warning at 4 |
 
 ## Database Schema
 
@@ -257,21 +270,22 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - **Error Handling**: Typed error catching with `instanceof Error`
 - **Imports**: Use `@/` path alias for clean imports
 - **State**: React hooks with proper typing
-- **Styling**: Tailwind CSS with consistent patterns
+- **Styling**: MUI sx prop + Tailwind CSS with consistent patterns
 - **Components**: Single responsibility, props interfaces defined
 
 ## Key Features
 
-1. **Dashboard** - Project overview with stats, compliance alerts, and quick navigation
+1. **Dashboard** - Project overview with stats, compliance alerts, and quick navigation tiles
 2. **Planning Views** - Timeline, Gantt, and Weekly views with VS Code-style resizable panels
 3. **Drag & Drop** - Assign employees by dragging to calendar cells with multi-select (Ctrl+click)
-4. **Person View** - Employee-centric calendar with dual colour coding (NR compliance + FRI)
+4. **Person View** - Employee-centric calendar with dual colour coding (NR compliance chips + FRI cells)
 5. **Real-time FRI** - Live fatigue calculation with per-shift risk indicators
 6. **Cross-Project Compliance** - Check employees working across multiple projects
 7. **Team Assignments** - Bulk assign teams to shifts
 8. **Excel Import/Export** - Portable assignment data
 9. **Custom Times** - Override shift times for individual assignments (moves to Custom row)
 10. **Pattern Hatching** - Visual indication of non-working days per shift pattern
+11. **Collapsible Sidebar** - Navigation with context-aware menu items
 
 ## Person View
 
@@ -283,13 +297,14 @@ The calendar uses a dual colour system to show both compliance and fatigue risk:
 
 | Element | Purpose | Colours |
 |---------|---------|---------|
-| **Cell Background** | Network Rail Compliance | Red (error), Amber (warning), Green (OK), White (no shifts) |
-| **Shift Chip** | Fatigue Risk Index (FRI) | Green (<1.0), Yellow (1.0-1.1), Orange (1.1-1.2), Red (>=1.2) |
-| **FRI Badge** | Per-day max FRI | Solid colour badge in top-right corner with tooltip |
+| **Shift Chip** | Network Rail Compliance | Red (error), Amber (warning), Green (OK) |
+| **Cell Background** | Fatigue Risk Index (FRI) | Green (<1.0), Yellow (1.0-1.1), Orange (1.1-1.2), Red (>=1.2), White (no FRI toggle off) |
+| **FRI Badge** | Per-day max FRI | Solid colour badge in top-right corner of cell |
 
 ### Features
 
 - **Period Navigation** - Navigate by Network Rail 13-period year (Sat-Fri weeks)
+- **FRI Toggle** - Show/hide FRI analysis with eye icon button
 - **Export Schedule** - Download employee schedule as Excel file
 - **Compliance Summary** - Issues count, shift count, hours, project count, max FRI
 - **Shift Pattern Parameters** - View workload, attention, commute, breaks per pattern
@@ -311,19 +326,19 @@ The PlanningView provides project-centric shift assignment with multiple view mo
 ### Features
 
 - **VS Code-style Panels** - Drag the resize handle to adjust planner/employee panel split
-- **Employee Panel** - Searchable employee list with compliance status indicators
+- **Employee Panel** - Searchable employee list with compliance status colours (green/amber/red backgrounds)
 - **Multi-select** - Ctrl+click to select multiple employees, then drag to assign
 - **Pattern Hatching** - Days where pattern doesn't work shown with diagonal hatching
 - **Custom Times** - Drop on hatched cell to set custom start/end times (creates Custom row)
 - **Copy Mode** - Click assignment chip to copy to other cells
 
-## Fatigue Risk Assessment Tool
+## Shift Builder
 
-The FatigueView provides a comprehensive shift pattern editor with HSE RR446 fatigue calculations.
+The Shift Builder (formerly Fatigue Assessment) provides a comprehensive shift pattern editor with HSE RR446 fatigue calculations.
 
 ### Entry Flow (Modal-First)
 
-When opening the Fatigue Assessment tool, a modal guides the user through:
+When opening the Shift Builder, a modal guides the user through:
 
 1. **Select Project**
    - Choose from existing projects
@@ -371,6 +386,14 @@ The view uses a full-width vertical layout:
 - Visual distinction: working days in green, rest days in grey
 - Working/rest day counts shown in summary
 
+#### Default Pattern
+
+New patterns default to a typical office week:
+- **Working Days**: Monday to Friday (08:00 - 17:00)
+- **Rest Days**: Saturday and Sunday
+- **Commute In**: 90 minutes on Monday, 30 minutes other days
+- **Commute Out**: 30 minutes on all days except Friday (90 minutes)
+
 #### Column Layout
 
 | Column | Description |
@@ -392,8 +415,8 @@ The view uses a full-width vertical layout:
 #### Global Settings Bar
 
 Shows cumulative fatigue parameters applied across all shifts:
-- **Continuous Work**: Maximum hours before mandatory break
-- **Break After**: Required break duration after continuous work period
+- **Max continuous work**: Maximum minutes of work before mandatory break (default 180m = 3 hours)
+- **Break length**: Required break duration (default 30m)
 
 #### Weekly Summary
 

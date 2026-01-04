@@ -586,19 +586,28 @@ export function FatigueView({
   };
 
   const initializeWeeklyShifts = () => {
-    const weekShifts: Shift[] = NR_DAYS.map((_, index) => ({
-      id: Date.now() + index,
-      day: nrDayIndexToShiftDay(index),
-      startTime: '07:00',
-      endTime: '19:00',
-      isRestDay: index === 0 || index === 1,
-      commuteIn: Math.floor(params.commuteTime / 2),
-      commuteOut: Math.ceil(params.commuteTime / 2),
-      workload: params.workload,
-      attention: params.attention,
-      breakFreq: params.breakFrequency,
-      breakLen: params.breakLength,
-    }));
+    // Default pattern: Mon-Fri 08:00-17:00, Sat/Sun rest days
+    // Commute in: 90 min Monday, 30 min other days
+    // Commute out: 30 min all days except Friday (90 min)
+    const weekShifts: Shift[] = NR_DAYS.map((dayName, index) => {
+      const isRestDay = index === 0 || index === 1; // Sat (0) and Sun (1) are rest days
+      const isMonday = index === 2;
+      const isFriday = index === 6;
+
+      return {
+        id: Date.now() + index,
+        day: nrDayIndexToShiftDay(index),
+        startTime: '08:00',
+        endTime: '17:00',
+        isRestDay,
+        commuteIn: isMonday ? 90 : 30,
+        commuteOut: isFriday ? 90 : 30,
+        workload: params.workload,
+        attention: params.attention,
+        breakFreq: params.breakFrequency,
+        breakLen: params.breakLength,
+      };
+    });
     setShifts(weekShifts);
     setStartDayOfWeek(6);
   };
@@ -1206,7 +1215,7 @@ export function FatigueView({
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="caption" fontWeight={600}>Global Settings:</Typography>
                             <Typography variant="caption">
-                              Continuous: <strong>{params.continuousWork}h</strong> | Break after: <strong>{params.breakAfterContinuous}m</strong>
+                              Max continuous work: <strong>{params.continuousWork}m</strong> | Break length: <strong>{params.breakAfterContinuous}m</strong>
                             </Typography>
                           </Box>
                         </Alert>
