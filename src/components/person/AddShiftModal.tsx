@@ -65,10 +65,11 @@ export function AddShiftModal({
   }, [selectedProjectId, shiftPatterns]);
 
   // Find a "Custom" pattern for the selected project (to use when entering custom times)
+  // Matches patterns named "Custom", "Custom (Ad-hoc)", etc.
   const customPatternForProject = useMemo(() => {
     if (!selectedProjectId) return null;
     return shiftPatterns.find(
-      p => p.projectId === selectedProjectId && p.name.toLowerCase() === 'custom'
+      p => p.projectId === selectedProjectId && p.name.toLowerCase().startsWith('custom')
     );
   }, [selectedProjectId, shiftPatterns]);
 
