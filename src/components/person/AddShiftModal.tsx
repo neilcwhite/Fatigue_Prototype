@@ -189,42 +189,42 @@ export function AddShiftModal({
 
           {/* Shift Pattern Selection */}
           <FormControl fullWidth disabled={!selectedProjectId}>
-            <InputLabel>Shift Pattern</InputLabel>
+            <InputLabel id="shift-pattern-label">Shift Pattern</InputLabel>
             <Select
+              labelId="shift-pattern-label"
               value={selectedPatternId}
-              onChange={(e) => setSelectedPatternId(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value as string;
+                setSelectedPatternId(value);
+              }}
               label="Shift Pattern"
             >
               {!selectedProjectId ? (
-                <MenuItem disabled>Select a project first</MenuItem>
+                <MenuItem disabled value="">Select a project first</MenuItem>
               ) : (
-                <>
-                  {/* Custom times option - always available */}
-                  <MenuItem value={CUSTOM_PATTERN_VALUE}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                      <span>Enter Custom Times</span>
-                      <Chip label="Manual" size="small" color="secondary" sx={{ height: 18, fontSize: '0.65rem' }} />
-                    </Box>
-                  </MenuItem>
-                  {/* Divider */}
-                  {availablePatterns.length > 0 && (
-                    <MenuItem disabled sx={{ borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 }}>
+                [
+                  // Custom times option - always available
+                  <MenuItem key="__custom__" value={CUSTOM_PATTERN_VALUE}>
+                    Enter Custom Times
+                    <Chip label="Manual" size="small" color="secondary" sx={{ height: 18, fontSize: '0.65rem', ml: 1 }} />
+                  </MenuItem>,
+                  // Divider
+                  ...(availablePatterns.length > 0 ? [
+                    <MenuItem key="__divider__" disabled value="" sx={{ borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 }}>
                       <Typography variant="caption" color="text.secondary">— or select a pattern —</Typography>
                     </MenuItem>
-                  )}
-                  {/* Existing patterns */}
-                  {availablePatterns.map((pattern) => (
+                  ] : []),
+                  // Existing patterns
+                  ...availablePatterns.map((pattern) => (
                     <MenuItem key={pattern.id} value={pattern.id}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                        <span>{pattern.name}</span>
-                        {pattern.isNight && <Chip label="Night" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem' }} />}
-                        <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                          {pattern.startTime || '?'} - {pattern.endTime || '?'}
-                        </Typography>
-                      </Box>
+                      {pattern.name}
+                      {pattern.isNight && <Chip label="Night" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem', ml: 1 }} />}
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                        {pattern.startTime || '?'} - {pattern.endTime || '?'}
+                      </Typography>
                     </MenuItem>
-                  ))}
-                </>
+                  ))
+                ]
               )}
             </Select>
           </FormControl>
