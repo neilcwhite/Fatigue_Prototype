@@ -398,12 +398,32 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   // ==================== SHIFT PATTERN OPERATIONS ====================
 
-  const createShiftPattern = async (patternData: Omit<ShiftPatternCamel, 'id' | 'organisationId'> & { id?: string }) => {
+  const createShiftPattern = async (patternData: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
 
-    // Use provided ID or generate a cryptographically random UUID
-    // Avoids predictable/guessable IDs that could enable cross-tenant access
-    const id = patternData.id || crypto.randomUUID();
+    // SECURITY: Always use server-generated UUIDs - never accept client IDs
+    // Client-supplied IDs could enable ID spoofing or collisions
+    const id = crypto.randomUUID();
+
+    // Validate time strings
+    if (!validateTimeString(patternData.startTime)) {
+      throw new Error('Invalid start time format. Use HH:MM format.');
+    }
+    if (!validateTimeString(patternData.endTime)) {
+      throw new Error('Invalid end time format. Use HH:MM format.');
+    }
+
+    // Validate fatigue parameters
+    const fatigueValidation = validateFatigueParams({
+      workload: patternData.workload,
+      attention: patternData.attention,
+      commuteTime: patternData.commuteTime,
+      breakFrequency: patternData.breakFrequency,
+      breakLength: patternData.breakLength,
+    });
+    if (!fatigueValidation.valid) {
+      throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
+    }
 
     // Convert empty strings to null for time fields (database expects null, not "")
     const startTime = patternData.startTime || null;
@@ -433,6 +453,26 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Validate time strings if provided
+    if (updateData.startTime !== undefined && !validateTimeString(updateData.startTime)) {
+      throw new Error('Invalid start time format. Use HH:MM format.');
+    }
+    if (updateData.endTime !== undefined && !validateTimeString(updateData.endTime)) {
+      throw new Error('Invalid end time format. Use HH:MM format.');
+    }
+
+    // Validate fatigue parameters if any are provided
+    const fatigueValidation = validateFatigueParams({
+      workload: updateData.workload,
+      attention: updateData.attention,
+      commuteTime: updateData.commuteTime,
+      breakFrequency: updateData.breakFrequency,
+      breakLength: updateData.breakLength,
+    });
+    if (!fatigueValidation.valid) {
+      throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
+    }
 
     // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('shift_patterns').update({

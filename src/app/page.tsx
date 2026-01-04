@@ -350,7 +350,7 @@ export default function Home() {
         {currentView === 'person' && !selectedEmployeeData && (
           <div className="min-h-screen bg-slate-900 text-white p-8">
             <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-              ← Back to Dashboard
+              &#8592; Back to Dashboard
             </button>
             <h1 className="text-2xl font-bold mb-4">Employee View</h1>
             <p className="text-slate-400">
@@ -365,7 +365,7 @@ export default function Home() {
         {currentView === 'summary' && !selectedProjectData && (
           <div className="min-h-screen bg-slate-900 text-white p-8">
             <button onClick={handleBackToDashboard} className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 mb-4">
-              ← Back to Dashboard
+              &#8592; Back to Dashboard
             </button>
             <h1 className="text-2xl font-bold mb-4">Project Summary</h1>
             <p className="text-slate-400">

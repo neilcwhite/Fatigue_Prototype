@@ -249,8 +249,22 @@ export function useAuth(): UseAuthReturn {
           profileLoadedForUser = session.user.id;
           // Pass the session access token for RLS authentication
           await loadProfile(session.user.id, session.user.email || '', session.access_token);
-        } catch {
+          // Clear any previous errors on success
+          if (isMounted) setError(null);
+        } catch (err) {
           profileLoadedForUser = null; // Reset so we can retry
+          retryAttemptsRef.current += 1;
+
+          // Surface the error to the user after max retries
+          if (retryAttemptsRef.current >= RETRY_CONFIG.maxRetries) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to load user profile';
+            if (isMounted) {
+              setError(`Profile load failed: ${errorMessage}. Please try signing out and back in.`);
+              // Force sign out on repeated failures to prevent stuck state
+              setUser(null);
+              setProfile(null);
+            }
+          }
         }
       } else {
         setUser(null);

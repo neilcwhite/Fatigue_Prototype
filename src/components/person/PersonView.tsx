@@ -7,26 +7,23 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
-import TextField from '@mui/material/TextField';
-import Collapse from '@mui/material/Collapse';
-import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Trash2, Download, Clock, Calendar, BarChart, Settings, ChevronDown, ChevronUp, Edit2, Eye, EyeOff, Activity } from '@/components/ui/Icons';
+import { ChevronLeft, ChevronRight, Trash2, Download, Edit2, Eye, EyeOff, Activity, AlertTriangle } from '@/components/ui/Icons';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
-import type { ShiftDefinition, FatigueResult } from '@/lib/types';
+import type { ShiftDefinition } from '@/lib/types';
 import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
 import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel, SupabaseUser } from '@/lib/types';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
-import { getFRIChipColor, getFRILevel } from '@/lib/utils';
 import { useNotification } from '@/hooks/useNotification';
+import { PersonStatsBar } from './PersonStatsBar';
+import { ViolationsList } from './ViolationsList';
+import { ScheduleCalendar, getFRIChipSx, hasCustomTimes, getAssignmentDisplayName } from './ScheduleCalendar';
 
 interface PersonViewProps {
   user: SupabaseUser;
@@ -43,30 +40,6 @@ interface PersonViewProps {
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
 }
 
-// Helper to get FRI chip colors for MUI
-const getFRIChipSx = (fri: number | null | undefined) => {
-  if (fri === null || fri === undefined) return { bgcolor: 'grey.200', color: 'grey.700' };
-  if (fri >= 1.2) return { bgcolor: '#dc2626', color: 'white' };
-  if (fri >= 1.1) return { bgcolor: '#f97316', color: 'white' };
-  if (fri >= 1.0) return { bgcolor: '#eab308', color: 'white' };
-  return { bgcolor: '#22c55e', color: 'white' };
-};
-
-// Helper to get NR compliance chip colors for MUI
-const getNRComplianceChipSx = (severity: 'error' | 'warning' | null) => {
-  if (severity === 'error') return { bgcolor: '#dc2626', color: 'white' };
-  if (severity === 'warning') return { bgcolor: '#f59e0b', color: 'white' };
-  return { bgcolor: '#22c55e', color: 'white' };
-};
-
-// Helper to get FRI cell background colors
-const getFRICellSx = (fri: number | null | undefined) => {
-  if (fri === null || fri === undefined) return { bgcolor: 'white', borderColor: 'grey.200' };
-  if (fri >= 1.2) return { bgcolor: 'error.light', borderColor: 'error.main' };
-  if (fri >= 1.1) return { bgcolor: 'warning.light', borderColor: 'warning.main' };
-  if (fri >= 1.0) return { bgcolor: 'warning.50', borderColor: 'warning.300' };
-  return { bgcolor: 'success.light', borderColor: 'success.light' };
-};
 
 export function PersonView({
   user,
@@ -274,31 +247,6 @@ export function PersonView({
     return { pattern, project };
   };
 
-  const hasCustomTimes = (assignment: AssignmentCamel, pattern: ShiftPatternCamel | undefined): boolean => {
-    if (!pattern) return false;
-    const hasCustomStart = assignment.customStartTime && assignment.customStartTime !== pattern.startTime;
-    const hasCustomEnd = assignment.customEndTime && assignment.customEndTime !== pattern.endTime;
-    return !!(hasCustomStart || hasCustomEnd);
-  };
-
-  const getAssignmentDisplayName = (assignment: AssignmentCamel, pattern: ShiftPatternCamel | undefined): string => {
-    if (!pattern) return 'Unknown';
-    if (hasCustomTimes(assignment, pattern)) return 'Custom';
-    return pattern.name;
-  };
-
-  const formatDateHeader = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const d = new Date(year, month - 1, day);
-    return {
-      day: d.toLocaleDateString('en-GB', { weekday: 'short' }),
-      date: d.getDate(),
-      month: d.toLocaleDateString('en-GB', { month: 'short' }),
-      isWeekend: d.getDay() === 0 || d.getDay() === 6,
-      isToday: dateStr === new Date().toISOString().split('T')[0],
-    };
-  };
-
   const handleDelete = async (assignment: AssignmentCamel) => {
     const { pattern } = getAssignmentInfo(assignment);
     if (confirm(`Remove ${employee.name} from ${pattern?.name || 'shift'} on ${assignment.date}?`)) {
@@ -388,35 +336,6 @@ export function PersonView({
     URL.revokeObjectURL(url);
   };
 
-  const getViolationIcon = (type: string) => {
-    switch (type) {
-      case 'MAX_SHIFT_LENGTH': return '⏱️';
-      case 'INSUFFICIENT_REST': return '😴';
-      case 'MAX_WEEKLY_HOURS': return '📊';
-      case 'APPROACHING_WEEKLY_LIMIT': return '⚠️';
-      case 'MAX_CONSECUTIVE_DAYS': return '📅';
-      case 'CONSECUTIVE_NIGHTS_WARNING': return '🌙';
-      case 'MAX_CONSECUTIVE_NIGHTS': return '🌙';
-      case 'DAY_NIGHT_TRANSITION': return '🔄';
-      case 'MULTIPLE_SHIFTS_SAME_DAY': return '⚡';
-      default: return '⚠️';
-    }
-  };
-
-  const getViolationTitle = (type: string) => {
-    switch (type) {
-      case 'MAX_SHIFT_LENGTH': return 'Maximum Shift Length Exceeded';
-      case 'INSUFFICIENT_REST': return 'Insufficient Rest Period';
-      case 'MAX_WEEKLY_HOURS': return 'Maximum Weekly Hours Exceeded';
-      case 'APPROACHING_WEEKLY_LIMIT': return 'Approaching Weekly Limit';
-      case 'MAX_CONSECUTIVE_DAYS': return 'Too Many Consecutive Days';
-      case 'CONSECUTIVE_NIGHTS_WARNING': return 'Extended Night Shift Run';
-      case 'MAX_CONSECUTIVE_NIGHTS': return 'Too Many Consecutive Nights';
-      case 'DAY_NIGHT_TRANSITION': return 'Day-Night Transition Same Day';
-      case 'MULTIPLE_SHIFTS_SAME_DAY': return 'Multiple Shifts Same Day';
-      default: return 'Compliance Issue';
-    }
-  };
 
   const handleStartEdit = (pattern: ShiftPatternCamel) => {
     setEditingPatternId(pattern.id);
@@ -565,272 +484,35 @@ export function PersonView({
       </Paper>
 
       <Box sx={{ p: 2 }}>
-        {/* Compact Stats Row */}
-        <Paper sx={{ mb: 2, px: 2, py: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-            {/* Compliance */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: 3, borderColor: compliance.hasErrors ? 'error.main' : compliance.hasWarnings ? 'warning.main' : 'success.main', pl: 1 }}>
-              {compliance.hasErrors ? <XCircle className="w-4 h-4" /> : compliance.hasWarnings ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-              <Typography variant="body2" color="text.secondary">Compliance:</Typography>
-              <Typography variant="body1" fontWeight={700} sx={{ color: compliance.hasErrors ? 'error.main' : compliance.hasWarnings ? 'warning.main' : 'success.main' }}>
-                {compliance.violations.length} {compliance.violations.length === 1 ? 'issue' : 'issues'}
-              </Typography>
-            </Box>
+        {/* Compact Stats Row - extracted component */}
+        <PersonStatsBar
+          compliance={compliance}
+          stats={stats}
+          showFRI={showFRI}
+          fatigueAnalysis={fatigueAnalysis}
+        />
 
-            <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+        {/* Compliance Violations - extracted component */}
+        <ViolationsList
+          violations={compliance.violations}
+          onViolationClick={handleViolationClick}
+        />
 
-            {/* Period Shifts */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" color="text.secondary">Shifts:</Typography>
-              <Typography variant="body1" fontWeight={700}>{stats.totalShifts}</Typography>
-              <Typography variant="caption" color="text.secondary">({stats.nightShifts} nights)</Typography>
-            </Box>
-
-            <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
-
-            {/* Period Hours */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" color="text.secondary">Hours:</Typography>
-              <Typography variant="body1" fontWeight={700}>{stats.totalHours}h</Typography>
-              <Typography variant="caption" color="text.secondary">
-                ({stats.totalShifts > 0 ? Math.round(stats.totalHours / stats.totalShifts * 10) / 10 : 0}h avg)
-              </Typography>
-            </Box>
-
-            <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
-
-            {/* Projects */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" color="text.secondary">Projects:</Typography>
-              <Typography variant="body1" fontWeight={700}>{stats.uniqueProjects}</Typography>
-            </Box>
-
-            {/* Max FRI - only show if FRI enabled */}
-            {showFRI && fatigueAnalysis && (
-              <>
-                <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: 3, borderColor: fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main', pl: 1 }}>
-                  <Typography variant="body2" color="text.secondary">Max FRI:</Typography>
-                  <Typography
-                    variant="body1"
-                    fontWeight={700}
-                    sx={{ color: fatigueAnalysis.maxFRI >= 1.2 ? 'error.main' : fatigueAnalysis.maxFRI >= 1.1 ? 'warning.main' : 'success.main' }}
-                  >
-                    {fatigueAnalysis.maxFRI.toFixed(3)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    ({fatigueAnalysis.criticalShifts} critical)
-                  </Typography>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Paper>
-
-        {/* Compliance Violations - sorted by date, soonest first */}
-        {compliance.violations.length > 0 && (
-          <Paper sx={{ mb: 2 }}>
-            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <AlertTriangle className="w-4 h-4" />
-              <Typography variant="subtitle2" fontWeight={600}>Compliance Violations ({compliance.violations.length})</Typography>
-            </Box>
-            <Box sx={{ p: 1.5, maxHeight: 200, overflow: 'auto' }}>
-              {[...compliance.violations]
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .map((violation, idx) => (
-                <Box
-                  key={idx}
-                  onClick={() => handleViolationClick(violation)}
-                  sx={{
-                    p: 1,
-                    mb: 1,
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    borderLeft: 4,
-                    borderColor: violation.severity === 'error' ? 'error.main' : 'warning.main',
-                    bgcolor: violation.severity === 'error' ? '#fef2f2' : '#fffbeb',
-                    '&:hover': { boxShadow: 2, bgcolor: violation.severity === 'error' ? '#fee2e2' : '#fef3c7' },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <Box sx={{ color: violation.severity === 'error' ? '#b91c1c' : '#b45309', mt: 0.25 }}>
-                      {violation.severity === 'error' ? <XCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" fontWeight={600} sx={{ color: violation.severity === 'error' ? '#991b1b' : '#92400e' }}>
-                        {getViolationIcon(violation.type)} {getViolationTitle(violation.type)}
-                      </Typography>
-                      <Typography variant="caption" display="block" sx={{ color: violation.severity === 'error' ? '#7f1d1d' : '#78350f' }}>
-                        {violation.message}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#374151' }}>
-                        {new Date(violation.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                        <Box component="span" sx={{ color: 'primary.main', ml: 1, fontWeight: 500 }}>→ Click to view</Box>
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-        )}
-
-        {/* Schedule Calendar Grid */}
-        <Paper id="schedule-calendar" sx={{ mb: 2, scrollMarginTop: 16 }}>
-          <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Calendar className="w-4 h-4" />
-              <Typography variant="subtitle2" fontWeight={600}>Schedule - {currentPeriod?.name}</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.65rem' }}>
-                <Typography variant="caption" fontWeight={500} color="text.secondary">Chip (NR):</Typography>
-                <Chip label="Error" size="small" sx={{ bgcolor: '#dc2626', color: 'white', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="Warning" size="small" sx={{ bgcolor: '#f59e0b', color: 'white', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="OK" size="small" sx={{ bgcolor: '#22c55e', color: 'white', fontSize: '0.6rem', height: 18 }} />
-              </Box>
-              {showFRI && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.65rem' }}>
-                <Typography variant="caption" fontWeight={500} color="text.secondary">Cell (FRI):</Typography>
-                <Chip label="<1.0" size="small" sx={{ bgcolor: 'success.light', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="1.0-1.1" size="small" sx={{ bgcolor: 'warning.50', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="1.1-1.2" size="small" sx={{ bgcolor: 'warning.light', fontSize: '0.6rem', height: 18 }} />
-                <Chip label="≥1.2" size="small" sx={{ bgcolor: 'error.light', fontSize: '0.6rem', height: 18 }} />
-              </Box>
-              )}
-            </Box>
-          </Box>
-          <Box sx={{ p: 1.5, overflow: 'auto' }}>
-            {/* Day Headers */}
-            <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
-              {/* Empty space for month column */}
-              <Box sx={{ width: 40, minWidth: 40 }} />
-              <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
-                {calendarDayHeaders.map(day => (
-                  <Typography key={day} variant="caption" fontWeight={600} textAlign="center" color="text.secondary">
-                    {day}
-                  </Typography>
-                ))}
-              </Box>
-            </Box>
-
-            {/* Calendar Grid */}
-            {[0, 1, 2, 3].map(weekIdx => {
-              // Get month name from first day of the week
-              const weekDates = calendarDates.slice(weekIdx * 7, (weekIdx + 1) * 7);
-              const firstDateOfWeek = weekDates[0];
-              const weekMonthName = firstDateOfWeek ? formatDateHeader(firstDateOfWeek).month : '';
-              return (
-              <Box key={weekIdx} sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
-                {/* Month label column */}
-                <Box sx={{ width: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                    {weekMonthName}
-                  </Typography>
-                </Box>
-                {/* Week days */}
-                <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
-                {weekDates.map((date) => {
-                  const { date: dateNum, isWeekend, isToday } = formatDateHeader(date);
-                  const dateAssignments = periodAssignments.filter(a => a.date === date);
-                  const dateViolationSeverity = dateAssignments.reduce<'error' | 'warning' | null>((worst, a) => {
-                    const severity = violationAssignmentSeverity.get(a.id);
-                    if (!severity) return worst;
-                    if (severity === 'error') return 'error';
-                    if (!worst) return severity;
-                    return worst;
-                  }, null);
-                  const dateAssignmentIndices = periodAssignments.map((a, idx) => a.date === date ? idx : -1).filter(i => i !== -1);
-                  const dateFRI = dateAssignmentIndices.length > 0 && fatigueAnalysis
-                    ? Math.max(...dateAssignmentIndices.map(i => fatigueAnalysis.results[i]?.riskIndex || 0))
-                    : null;
-                  const isHighlighted = highlightedDate === date;
-                  const hasAssignments = dateAssignments.length > 0;
-                  const isNRCompliant = hasAssignments && !dateViolationSeverity;
-
-                  return (
-                    <Box
-                      key={date}
-                      sx={{
-                        minHeight: 80,
-                        p: 0.75,
-                        borderRadius: 1,
-                        border: 2,
-                        transition: 'all 0.2s',
-                        ...(isHighlighted
-                          ? { bgcolor: 'primary.light', borderColor: 'primary.main', boxShadow: 4, transform: 'scale(1.02)', zIndex: 10, animation: 'pulse 1s infinite' }
-                          : showFRI && hasAssignments && dateFRI !== null
-                          ? getFRICellSx(dateFRI)
-                          : isWeekend
-                          ? { bgcolor: 'grey.100', borderColor: 'grey.200' }
-                          : isToday
-                          ? { bgcolor: 'primary.50', borderColor: 'primary.light' }
-                          : { bgcolor: 'white', borderColor: 'grey.200' }),
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
-                        <Typography variant="caption" fontWeight={600} sx={{ color: isToday ? 'primary.main' : 'text.primary' }}>
-                          {dateNum}
-                        </Typography>
-                        {showFRI && dateFRI !== null && (
-                          <Chip
-                            label={dateFRI.toFixed(3)}
-                            size="small"
-                            sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.55rem', height: 16, fontWeight: 700 }}
-                          />
-                        )}
-                      </Box>
-
-                      {dateAssignments.length === 0 ? (
-                        <Typography variant="caption" color="text.disabled" textAlign="center" display="block">-</Typography>
-                      ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                          {dateAssignments.map(assignment => {
-                            const { pattern, project } = getAssignmentInfo(assignment);
-                            const assignmentViolation = violationAssignmentSeverity.get(assignment.id) || null;
-                            return (
-                              <Box
-                                key={assignment.id}
-                                sx={{
-                                  position: 'relative',
-                                  borderRadius: 0.5,
-                                  p: 0.5,
-                                  ...getNRComplianceChipSx(assignmentViolation),
-                                }}
-                              >
-                                <Box sx={{ position: 'absolute', top: 0, right: 0, display: 'flex', gap: 0.25 }}>
-                                  {onUpdateAssignment && (
-                                    <IconButton size="small" onClick={() => setEditingAssignment(assignment)} sx={{ p: 0.25, color: 'inherit', opacity: 0.8, '&:hover': { opacity: 1 } }}>
-                                      <Edit2 className="w-2.5 h-2.5" />
-                                    </IconButton>
-                                  )}
-                                  <IconButton size="small" onClick={() => handleDelete(assignment)} sx={{ p: 0.25, color: 'inherit', opacity: 0.8, '&:hover': { opacity: 1 } }}>
-                                    <Trash2 className="w-2.5 h-2.5" />
-                                  </IconButton>
-                                </Box>
-                                <Typography variant="caption" fontWeight={500} noWrap sx={{ pr: 4, display: 'block', fontSize: '0.6rem' }}>
-                                  {project?.name || 'Unknown'}
-                                </Typography>
-                                <Typography variant="caption" fontWeight={500} noWrap sx={{ pr: 4, display: 'block', fontSize: '0.6rem' }}>
-                                  {getAssignmentDisplayName(assignment, pattern)}
-                                </Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.55rem' }}>
-                                  {assignment.customStartTime || pattern?.startTime || '?'}-{assignment.customEndTime || pattern?.endTime || '?'}
-                                </Typography>
-                              </Box>
-                            );
-                          })}
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                })}
-                </Box>
-              </Box>
-            );
-            })}
-          </Box>
-        </Paper>
+        {/* Schedule Calendar Grid - extracted component */}
+        <ScheduleCalendar
+          currentPeriod={currentPeriod}
+          calendarDates={calendarDates}
+          calendarDayHeaders={calendarDayHeaders}
+          periodAssignments={periodAssignments}
+          shiftPatterns={shiftPatterns}
+          projects={projects}
+          violationAssignmentSeverity={violationAssignmentSeverity}
+          fatigueResults={fatigueAnalysis?.results || null}
+          highlightedDate={highlightedDate}
+          showFRI={showFRI}
+          onEditAssignment={onUpdateAssignment ? (assignment) => setEditingAssignment(assignment) : undefined}
+          onDeleteAssignment={handleDelete}
+        />
 
         {/* Period Assignments List */}
         <Paper>
