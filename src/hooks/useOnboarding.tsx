@@ -76,6 +76,7 @@ interface OnboardingContextValue extends OnboardingState {
   completeTask: (taskId: string) => void;
   resetOnboarding: () => void;
   dismissOnboarding: () => void;
+  undismissOnboarding: () => void;
   setActiveTask: (taskId: string | null) => void;
   togglePanel: () => void;
   openPanel: () => void;
@@ -157,6 +158,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const undismissOnboarding = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      dismissed: false,
+    }));
+  }, []);
+
   const setActiveTask = useCallback((taskId: string | null) => {
     setState(prev => ({
       ...prev,
@@ -205,6 +213,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     completeTask,
     resetOnboarding,
     dismissOnboarding,
+    undismissOnboarding,
     setActiveTask,
     togglePanel,
     openPanel,

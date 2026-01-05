@@ -114,8 +114,10 @@ export function OnboardingPanel({ onStartTask }: OnboardingPanelProps) {
     completedTasks,
     completionPercentage,
     isComplete,
+    dismissed,
     resetOnboarding,
     dismissOnboarding,
+    undismissOnboarding,
     setActiveTask,
     activeTaskId,
   } = useOnboarding();
@@ -216,7 +218,22 @@ export function OnboardingPanel({ onStartTask }: OnboardingPanelProps) {
 
         {/* Footer */}
         <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-          {!isComplete && (
+          {isComplete ? (
+            // When complete, no footer actions needed
+            null
+          ) : dismissed ? (
+            // When dismissed but not complete, offer to show on dashboard again
+            <Button
+              fullWidth
+              variant="outlined"
+              size="small"
+              onClick={undismissOnboarding}
+              sx={{ color: '#233e99', borderColor: '#233e99' }}
+            >
+              Show on Dashboard
+            </Button>
+          ) : (
+            // When not dismissed and not complete, offer to skip
             <Button
               fullWidth
               variant="text"
@@ -224,7 +241,7 @@ export function OnboardingPanel({ onStartTask }: OnboardingPanelProps) {
               onClick={dismissOnboarding}
               sx={{ color: 'text.secondary' }}
             >
-              Skip Tutorial
+              Hide from Dashboard
             </Button>
           )}
         </Box>

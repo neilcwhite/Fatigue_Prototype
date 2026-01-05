@@ -30,7 +30,7 @@ const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 export default function Home() {
   const { user, profile, loading: authLoading, error: authError, signOut } = useAuth();
-  const { openPanel: openOnboardingPanel } = useOnboarding();
+  const { openPanel: openOnboardingPanel, setActiveTask } = useOnboarding();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
@@ -242,6 +242,52 @@ export default function Home() {
     });
   };
 
+  // Handle onboarding task actions
+  const handleOnboardingTask = (taskId: string) => {
+    switch (taskId) {
+      case 'create_project':
+        setShowProjectModal(true);
+        break;
+      case 'create_team':
+        setCurrentView('teams');
+        break;
+      case 'add_employee':
+        setCurrentView('teams'); // Teams view has employee management
+        break;
+      case 'import_employees':
+        setCurrentView('teams'); // Teams view has import functionality
+        break;
+      case 'create_shift_pattern':
+        if (selectedProject) {
+          setCurrentView('planning');
+          setShowShiftPatternModal(true);
+        } else {
+          // Need to select a project first, go to dashboard
+          setCurrentView('dashboard');
+        }
+        break;
+      case 'assign_shift':
+        if (selectedProject) {
+          setCurrentView('planning');
+        } else {
+          setCurrentView('dashboard');
+        }
+        break;
+      case 'view_compliance':
+        if (selectedEmployee) {
+          setCurrentView('person');
+        } else if (selectedProject) {
+          setCurrentView('summary');
+        } else {
+          setCurrentView('dashboard');
+        }
+        break;
+      default:
+        break;
+    }
+    setActiveTask(taskId);
+  };
+
   // Handle sidebar navigation
   const handleNavigate = (view: ViewMode) => {
     setCurrentView(view);
@@ -263,7 +309,7 @@ export default function Home() {
       />
 
       {/* Onboarding Panel */}
-      <OnboardingPanel />
+      <OnboardingPanel onStartTask={handleOnboardingTask} />
 
       {/* Main Content Area */}
       <Box
