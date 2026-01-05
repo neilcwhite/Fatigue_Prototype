@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Fatigue System <noreply@thespencergroup.co.uk>',
+          from: 'HerdWatch <noreply@thespencergroup.co.uk>',
           to: [ADMIN_EMAIL],
           subject: `[Action Required] New Signup Request: ${email}`,
           html: `
             <h2>New Account Signup Request</h2>
-            <p>A new user has requested access to the Fatigue Management System:</p>
+            <p>A new user has requested access to HerdWatch:</p>
             <table style="border-collapse: collapse; margin: 20px 0;">
               <tr>
                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Email:</td>
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
               <li>Edit their metadata to set <code>pending_approval: false</code></li>
             </ol>
             <p style="color: #666; font-size: 12px;">
-              This is an automated message from the Fatigue Management System.
+              This is an automated message from HerdWatch.
             </p>
           `,
         }),

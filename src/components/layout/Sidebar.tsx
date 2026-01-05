@@ -101,8 +101,8 @@ export function Sidebar({
         }}
       >
         {!collapsed && (
-          <Typography variant="h6" fontWeight="bold" color="primary" noWrap>
-            ShiftAdmin
+          <Typography variant="h6" fontWeight="bold" noWrap>
+            Herd<Box component="span" sx={{ color: '#22c55e' }}>Watch</Box>
           </Typography>
         )}
         <IconButton onClick={() => setCollapsed(!collapsed)} size="small">

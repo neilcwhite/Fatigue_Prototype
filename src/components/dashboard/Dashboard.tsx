@@ -115,11 +115,8 @@ export function Dashboard({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Network Rail{' '}
-            <Box component="span" sx={{ color: 'primary.light' }}>
-              Fatigue Management
-            </Box>
+          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
+            Herd<Box component="span" sx={{ color: '#22c55e' }}>Watch</Box>
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip

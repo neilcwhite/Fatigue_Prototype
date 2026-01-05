@@ -4,8 +4,8 @@ import { NotificationProvider } from '@/hooks/useNotification';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Fatigue Management System',
-  description: 'Network Rail compliant shift planning and fatigue monitoring',
+  title: 'HerdWatch',
+  description: 'Workforce fatigue management and shift planning',
 };
 
 export default function RootLayout({

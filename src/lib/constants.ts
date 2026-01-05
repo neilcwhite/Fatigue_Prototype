@@ -182,9 +182,9 @@ export const RISK_COLORS = {
  * Application metadata
  */
 export const APP_META = {
-  NAME: 'ShiftAdmin',
+  NAME: 'HerdWatch',
   VERSION: '2.1.0',
-  DESCRIPTION: 'Network Rail Fatigue Management System',
+  DESCRIPTION: 'Workforce Fatigue Management',
 } as const;
 
 // ==================== HELPER FUNCTIONS ====================
