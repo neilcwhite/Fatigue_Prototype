@@ -118,7 +118,7 @@ export function Dashboard({
           <Box sx={{ flexGrow: 1 }}>
             <Box
               component="img"
-              src="/logo-header-dark.svg"
+              src="/logo-header.svg"
               alt="HerdWatch"
               sx={{ height: 32, width: 'auto' }}
             />

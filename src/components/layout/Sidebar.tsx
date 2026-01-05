@@ -113,7 +113,7 @@ export function Sidebar({
           <>
             <Box
               component="img"
-              src="/logo-header-dark.svg"
+              src="/logo-header.svg"
               alt="HerdWatch"
               sx={{ height: 32, width: 'auto' }}
             />
