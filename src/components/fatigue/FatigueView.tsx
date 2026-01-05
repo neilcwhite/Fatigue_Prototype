@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
@@ -68,6 +68,8 @@ interface FatigueViewProps {
   onDeleteShiftPattern?: (id: string) => Promise<void>;
   onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onCreateProject?: (name: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
+  initialProjectId?: number;
+  startInCreateMode?: boolean;
 }
 
 const TEMPLATES = {
@@ -214,6 +216,8 @@ export function FatigueView({
   onDeleteShiftPattern,
   onUpdateAssignment,
   onCreateProject,
+  initialProjectId,
+  startInCreateMode,
 }: FatigueViewProps) {
   const { showSuccess, showError } = useNotification();
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -273,6 +277,44 @@ export function FatigueView({
     continuousWork: DEFAULT_FATIGUE_PARAMS.continuousWork,
     breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
   });
+
+  // Track if we've initialized from props
+  const initializedFromProps = useRef(false);
+
+  // Handle initial create mode when navigating from Planning view
+  useEffect(() => {
+    if (startInCreateMode && initialProjectId && !initializedFromProps.current) {
+      const project = projects.find(p => p.id === initialProjectId);
+      if (project) {
+        initializedFromProps.current = true;
+        setSelectedProjectId(project.id);
+        setSelectedPatternId(null);
+        setShowEntryModal(false);
+        enterCreateMode(project);
+        // Initialize weekly shifts inline since the function isn't available yet
+        const weekShifts: Shift[] = NR_DAYS.map((dayName, index) => {
+          const isRestDay = index === 0 || index === 1;
+          const isMonday = index === 2;
+          const isFriday = index === 6;
+          return {
+            id: Date.now() + index,
+            day: nrDayIndexToShiftDay(index),
+            startTime: '08:00',
+            endTime: '17:00',
+            isRestDay,
+            commuteIn: isMonday ? 90 : 30,
+            commuteOut: isFriday ? 90 : 30,
+            workload: params.workload,
+            attention: params.attention,
+            breakFreq: params.breakFrequency,
+            breakLen: params.breakLength,
+          };
+        });
+        setShifts(weekShifts);
+        setStartDayOfWeek(6);
+      }
+    }
+  }, [startInCreateMode, initialProjectId, projects, enterCreateMode, params]);
 
   const projectPatterns = useMemo(() => {
     if (!selectedProjectId) return [];

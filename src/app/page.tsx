@@ -37,6 +37,7 @@ export default function Home() {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showShiftPatternModal, setShowShiftPatternModal] = useState(false);
   const [editingShiftPattern, setEditingShiftPattern] = useState<ShiftPatternCamel | null>(null);
+  const [shiftBuilderCreateMode, setShiftBuilderCreateMode] = useState<{ projectId: number } | null>(null);
 
   // Load app data once we have an organisation
   const {
@@ -351,7 +352,10 @@ export default function Home() {
             onCreateAssignment={createAssignment}
             onUpdateAssignment={updateAssignment}
             onDeleteAssignment={deleteAssignment}
-            onCreateShiftPattern={() => setShowShiftPatternModal(true)}
+            onCreateShiftPattern={() => {
+              setShiftBuilderCreateMode({ projectId: selectedProject! });
+              setCurrentView('fatigue');
+            }}
             onCreateShiftPatternDirect={createShiftPattern}
             onNavigateToPerson={(empId) => {
               setSelectedEmployee(empId);
@@ -399,7 +403,10 @@ export default function Home() {
           <FatigueView
             user={user}
             onSignOut={signOut}
-            onBack={handleBackToDashboard}
+            onBack={() => {
+              setShiftBuilderCreateMode(null);
+              handleBackToDashboard();
+            }}
             projects={projects}
             employees={employees}
             shiftPatterns={shiftPatterns}
@@ -409,6 +416,8 @@ export default function Home() {
             onUpdateShiftPattern={updateShiftPattern}
             onDeleteShiftPattern={deleteShiftPattern}
             onUpdateAssignment={updateAssignment}
+            initialProjectId={shiftBuilderCreateMode?.projectId}
+            startInCreateMode={!!shiftBuilderCreateMode}
           />
         )}
 
