@@ -59,21 +59,21 @@ function TaskItem({
       }}
       onClick={!isCompleted ? onStart : undefined}
     >
-      {/* Clickable checkbox area */}
+      {/* Checkbox - only clickable when completed (to uncomplete) */}
       <Box
         sx={{
           mt: 0.25,
           color: isCompleted ? '#059669' : '#94a3b8',
-          cursor: 'pointer',
-          '&:hover': {
-            color: isCompleted ? '#047857' : '#64748b',
-          },
+          cursor: isCompleted ? 'pointer' : 'default',
+          '&:hover': isCompleted ? {
+            color: '#047857',
+          } : {},
         }}
-        onClick={(e) => {
+        onClick={isCompleted ? (e) => {
           e.stopPropagation();
           onToggleComplete();
-        }}
-        title={isCompleted ? 'Click to mark as incomplete' : 'Click to mark as complete'}
+        } : undefined}
+        title={isCompleted ? 'Click to mark as incomplete' : undefined}
       >
         {isCompleted ? (
           <CheckCircle className="w-5 h-5" />
