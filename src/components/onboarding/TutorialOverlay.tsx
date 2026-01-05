@@ -17,11 +17,13 @@ import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import { X, ChevronRight, ChevronLeft, CheckCircle, Home, Calendar, Users, Settings, Plus } from '@/components/ui/Icons';
 
+type ScreenshotType = 'dashboard' | 'create-project-modal' | 'teams' | 'add-employee-modal' | 'create-team-modal' | 'shiftbuilder' | 'planning';
+
 interface TutorialStep {
   title: string;
   description: string;
   tip?: string;
-  image?: 'dashboard' | 'teams' | 'planning' | 'shiftbuilder';
+  image?: ScreenshotType;
 }
 
 interface TutorialContent {
@@ -48,15 +50,18 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
       {
         title: 'Click "Create New Project"',
         description: 'On the Dashboard, find the card labeled "Create New Project" with a + icon. Click it to open the project creation form.',
+        image: 'dashboard',
       },
       {
         title: 'Enter Project Details',
         description: 'In the popup form, fill in:\n\n• Project Name (required): e.g., "Silverstone Track Works"\n• Start Date (optional)\n• End Date (optional)',
         tip: 'Choose a clear, recognizable name that your team will understand.',
+        image: 'create-project-modal',
       },
       {
         title: 'Click "Create Project"',
         description: 'Click the "Create Project" button at the bottom of the form. Your new project will appear on the Dashboard.',
+        image: 'create-project-modal',
       },
     ],
   },
@@ -73,19 +78,23 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
       {
         title: 'Click "Create Team" button or card',
         description: 'Either click the purple "Create Team" button at the top right, OR click the "Create New Team" card with the + icon.',
+        image: 'teams',
       },
       {
         title: 'Enter Team Name',
         description: 'In the "Create Team" popup:\n\n1. Enter a name in the "Team Name" field\n   Example: "Night Shift Team A"',
+        image: 'create-team-modal',
       },
       {
         title: 'Select Team Members',
         description: 'Below the name field is "Select Members":\n\n1. You\'ll see a list of all employees\n2. Click the checkbox next to each employee you want to add\n3. The count shows how many are selected',
         tip: 'You need to add employees first before you can add them to a team.',
+        image: 'create-team-modal',
       },
       {
         title: 'Click "Create Team"',
         description: 'Click the purple "Create Team" button at the bottom right of the popup.\n\nYour team will appear as a card showing the team name and member count.',
+        image: 'create-team-modal',
       },
     ],
   },
@@ -102,18 +111,22 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
       {
         title: 'Click "Add Employee"',
         description: 'At the top right of the page, click the green "Add Employee" button.',
+        image: 'teams',
       },
       {
         title: 'Enter Name',
         description: 'In the "Add Employee" popup:\n\n1. Enter the employee\'s full name in the "Name" field\n   Example: "John Smith"',
+        image: 'add-employee-modal',
       },
       {
         title: 'Enter Role (optional)',
         description: 'In the "Role" field, enter their job title:\n   Example: "Track Engineer"\n\nThis is optional but helps with fatigue calculations.',
+        image: 'add-employee-modal',
       },
       {
         title: 'Click "Add Employee"',
         description: 'Click the blue "Add Employee" button at the bottom right.\n\nThe employee will appear in the Employees list on the right side of the page.',
+        image: 'add-employee-modal',
       },
     ],
   },
@@ -130,6 +143,7 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
       {
         title: 'Look for Import Option',
         description: 'On the Teams page, look for an "Import" button (this feature may be coming soon).',
+        image: 'teams',
       },
       {
         title: 'Prepare Your Spreadsheet',
@@ -156,15 +170,18 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
         title: 'Select Your Project',
         description: 'When prompted, select the project this shift pattern will belong to. You must have a project created first.',
         tip: 'Each shift pattern is linked to a specific project.',
+        image: 'shiftbuilder',
       },
       {
         title: 'Configure the Week',
         description: 'You\'ll see a 7-day week (Saturday to Friday). For each working day:\n\n• Uncheck "Rest" to make it a working day\n• Set the Start time (e.g., 08:00)\n• Set the End time (e.g., 17:00)',
         tip: 'Watch the FRI (Fatigue Risk Index) column - green is good.',
+        image: 'shiftbuilder',
       },
       {
         title: 'Click "Save as New Pattern"',
         description: 'Click the green "Save as New Pattern" button. Enter a name like "Day Shift Mon-Fri" and click Save.',
+        image: 'shiftbuilder',
       },
     ],
   },
@@ -176,20 +193,23 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
       {
         title: 'Select a Project',
         description: 'Go to "Dashboard" and click on a project card to select it.',
-        image: 'planning',
+        image: 'dashboard',
       },
       {
         title: 'Open Planning View',
         description: 'Click "Open Planning" on the project card, or click "Planning" in the sidebar (after selecting a project).',
+        image: 'dashboard',
       },
       {
         title: 'Drag Employees to Shifts',
         description: 'At the bottom of the screen is the employee panel. Drag an employee card onto a shift cell (day/row) to assign them.',
         tip: 'Hold Ctrl and click to select multiple employees, then drag them all at once.',
+        image: 'planning',
       },
       {
         title: 'Check for Warnings',
         description: 'Employee cards are color-coded:\n\n• Green border = compliant\n• Yellow border = approaching limits\n• Red border = compliance issue\n\nHover over a card to see details.',
+        image: 'planning',
       },
     ],
   },
@@ -201,34 +221,41 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
       {
         title: 'Open Planning View',
         description: 'Go to "Planning" in the sidebar (you must have a project selected).',
+        image: 'planning',
       },
       {
         title: 'Check Employee Colors',
         description: 'In the employee panel at the bottom, cards are color-coded:\n\n• Green = OK\n• Yellow = Warning (approaching limits)\n• Red = Violation (compliance issue)',
+        image: 'planning',
       },
       {
         title: 'Hover for Details',
         description: 'Hover over any employee card to see specific warning or violation messages.',
+        image: 'planning',
       },
       {
         title: 'Go to Person View',
         description: 'Click "Person View" in the sidebar to see detailed compliance information for the selected employee.',
         tip: 'You must have an employee selected first.',
+        image: 'planning',
       },
     ],
   },
 };
 
-// Screenshot paths for each page type
+// Screenshot paths for each page/modal type
 const SCREENSHOT_PATHS: Record<string, string> = {
   dashboard: '/tutorials/01-dashboard.png',
+  'create-project-modal': '/tutorials/02-create-project-modal.png',
   teams: '/tutorials/03-teams-page.png',
-  planning: '/tutorials/01-dashboard.png', // Use dashboard until we have planning screenshot
+  'add-employee-modal': '/tutorials/04-add-employee-modal.png',
+  'create-team-modal': '/tutorials/05-create-team-modal.png',
   shiftbuilder: '/tutorials/06-shift-builder.png',
+  planning: '/tutorials/01-dashboard.png', // Use dashboard until we have planning screenshot
 };
 
 // Screenshot component for each page type
-function PageScreenshot({ type }: { type: 'dashboard' | 'teams' | 'planning' | 'shiftbuilder' }) {
+function PageScreenshot({ type }: { type: ScreenshotType }) {
   const src = SCREENSHOT_PATHS[type];
 
   if (!src) return null;
