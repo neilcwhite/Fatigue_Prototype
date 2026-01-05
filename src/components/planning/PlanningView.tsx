@@ -33,6 +33,7 @@ import type {
   EmployeeCamel,
   AssignmentCamel,
   ShiftPatternCamel,
+  TeamCamel,
   SupabaseUser
 } from '@/lib/types';
 
@@ -41,6 +42,7 @@ interface PlanningViewProps {
   onSignOut: () => void;
   project: ProjectCamel;
   employees: EmployeeCamel[];
+  teams: TeamCamel[];
   assignments: AssignmentCamel[];
   shiftPatterns: ShiftPatternCamel[];
   onBack: () => void;
@@ -66,6 +68,7 @@ export function PlanningView({
   onSignOut,
   project,
   employees,
+  teams,
   assignments,
   shiftPatterns,
   onBack,

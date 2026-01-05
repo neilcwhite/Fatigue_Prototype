@@ -48,6 +48,7 @@ export default function Home() {
     loading: dataLoading,
     error: dataError,
     createProject,
+    createEmployee,
     createAssignment,
     updateAssignment,
     deleteAssignment,
@@ -343,6 +344,7 @@ export default function Home() {
             onSignOut={signOut}
             project={selectedProjectData}
             employees={employees}
+            teams={teams}
             assignments={assignments}
             shiftPatterns={shiftPatterns}
             onBack={handleBackToDashboard}
@@ -423,6 +425,7 @@ export default function Home() {
             onUpdateTeam={updateTeam}
             onDeleteTeam={deleteTeam}
             onCreateAssignment={createAssignment}
+            onCreateEmployee={createEmployee}
           />
         )}
 

@@ -43,6 +43,7 @@ interface TeamsViewProps {
   onUpdateTeam: (id: number, data: Partial<TeamCamel>) => Promise<void>;
   onDeleteTeam: (id: number) => Promise<void>;
   onCreateAssignment: (data: Omit<AssignmentCamel, 'id' | 'organisationId'>) => Promise<void>;
+  onCreateEmployee: (name: string, role?: string) => Promise<void>;
 }
 
 export function TeamsView({
@@ -56,6 +57,7 @@ export function TeamsView({
   onUpdateTeam,
   onDeleteTeam,
   onCreateAssignment,
+  onCreateEmployee,
 }: TeamsViewProps) {
   const { showSuccess, showError, showWarning } = useNotification();
   const [showModal, setShowModal] = useState(false);
@@ -72,6 +74,12 @@ export function TeamsView({
   const [assignEndDate, setAssignEndDate] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
+
+  // Add Employee modal state
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [newEmployeeRole, setNewEmployeeRole] = useState('');
+  const [creatingEmployee, setCreatingEmployee] = useState(false);
 
   const openCreateModal = () => {
     setEditingTeam(null);
@@ -127,6 +135,28 @@ export function TeamsView({
         ? prev.filter(id => id !== employeeId)
         : [...prev, employeeId]
     );
+  };
+
+  const handleCreateEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployeeName.trim()) {
+      showWarning('Please enter an employee name');
+      return;
+    }
+
+    setCreatingEmployee(true);
+    try {
+      await onCreateEmployee(newEmployeeName.trim(), newEmployeeRole.trim() || undefined);
+      showSuccess('Employee created successfully');
+      setShowEmployeeModal(false);
+      setNewEmployeeName('');
+      setNewEmployeeRole('');
+    } catch (err) {
+      console.error('Error creating employee:', err);
+      showError('Failed to create employee');
+    } finally {
+      setCreatingEmployee(false);
+    }
   };
 
   const openAssignModal = (team: TeamCamel) => {
@@ -251,19 +281,28 @@ export function TeamsView({
       <Box sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Box>
-            <Typography variant="h4" fontWeight={700}>Teams</Typography>
+            <Typography variant="h4" fontWeight={700}>Teams & Employees</Typography>
             <Typography variant="body2" color="text.secondary">
-              Create teams and bulk-assign them to shift patterns
+              Manage employees and create teams for bulk shift assignment
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<Plus className="w-4 h-4" />}
-            onClick={openCreateModal}
-          >
-            Create Team
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<Plus className="w-4 h-4" />}
+              onClick={() => setShowEmployeeModal(true)}
+            >
+              Add Employee
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<Plus className="w-4 h-4" />}
+              onClick={openCreateModal}
+            >
+              Create Team
+            </Button>
+          </Box>
         </Box>
 
         {teams.length === 0 ? (
@@ -531,6 +570,46 @@ export function TeamsView({
             {assigning ? 'Assigning...' : 'Assign Team'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Add Employee Modal */}
+      <Dialog open={showEmployeeModal} onClose={() => setShowEmployeeModal(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Add Employee</DialogTitle>
+        <form onSubmit={handleCreateEmployee}>
+          <DialogContent dividers>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Name"
+                value={newEmployeeName}
+                onChange={(e) => setNewEmployeeName(e.target.value)}
+                placeholder="e.g., John Smith"
+                fullWidth
+                required
+                autoFocus
+              />
+              <TextField
+                label="Role (optional)"
+                value={newEmployeeRole}
+                onChange={(e) => setNewEmployeeRole(e.target.value)}
+                placeholder="e.g., Track Engineer"
+                fullWidth
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={() => setShowEmployeeModal(false)} disabled={creatingEmployee}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={creatingEmployee || !newEmployeeName.trim()}
+              startIcon={creatingEmployee ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {creatingEmployee ? 'Adding...' : 'Add Employee'}
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </Box>
   );
