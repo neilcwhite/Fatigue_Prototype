@@ -16,7 +16,7 @@ import FormControl from '@mui/material/FormControl';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
-import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle } from '@/components/ui/Icons';
+import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle, Users } from '@/components/ui/Icons';
 import { TimelineView } from './TimelineView';
 import { GanttView } from './GanttView';
 import { WeeklyView } from './WeeklyView';
@@ -90,6 +90,10 @@ export function PlanningView({
   const [selectedEmployees, setSelectedEmployees] = useState<EmployeeCamel[]>([]);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
 
+  // Panel mode: employees or teams
+  type PanelMode = 'employees' | 'teams';
+  const [panelMode, setPanelMode] = useState<PanelMode>('employees');
+
   // Employee panel resize
   const [employeePanelHeight, setEmployeePanelHeight] = useState(200);
   const [isResizing, setIsResizing] = useState(false);
@@ -101,8 +105,11 @@ export function PlanningView({
   const controlsRef = useRef<HTMLDivElement>(null);
   const [fixedHeight, setFixedHeight] = useState(0);
 
-  // Drag state
-  const draggedEmployeeRef = useRef<EmployeeCamel[] | null>(null);
+  // Drag state - can be employees or a team
+  type DragData =
+    | { type: 'employees'; employees: EmployeeCamel[] }
+    | { type: 'team'; team: TeamCamel; members: EmployeeCamel[] };
+  const dragDataRef = useRef<DragData | null>(null);
 
   // Custom time modal state
   const [customTimeModal, setCustomTimeModal] = useState<{
@@ -193,6 +200,11 @@ export function PlanningView({
     (emp.role?.toLowerCase() || '').includes(employeeSearchTerm.toLowerCase())
   );
 
+  // Filter teams for search
+  const filteredTeams = teams.filter(team =>
+    team.name.toLowerCase().includes(employeeSearchTerm.toLowerCase())
+  );
+
   // Handle resize
   const handleResizeStart = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -249,18 +261,26 @@ export function PlanningView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Drag handlers
+  // Drag handlers for employees
   const handleEmployeeDragStart = (e: React.DragEvent, employee: EmployeeCamel) => {
     const employeesToDrag = selectedEmployees.some(emp => emp.id === employee.id)
       ? selectedEmployees
       : [employee];
 
-    draggedEmployeeRef.current = employeesToDrag;
+    dragDataRef.current = { type: 'employees', employees: employeesToDrag };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(employee.id));
   };
 
-  const handleEmployeeDragEnd = () => {
+  // Drag handler for teams
+  const handleTeamDragStart = (e: React.DragEvent, team: TeamCamel) => {
+    const teamMembers = employees.filter(emp => team.memberIds?.includes(emp.id));
+    dragDataRef.current = { type: 'team', team, members: teamMembers };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `team-${team.id}`);
+  };
+
+  const handleDragEnd = () => {
     // Don't clear ref here - let drop handle it
   };
 
@@ -273,10 +293,20 @@ export function PlanningView({
     e.preventDefault();
     e.stopPropagation();
 
-    const employeesToAssign = draggedEmployeeRef.current;
+    const dragData = dragDataRef.current;
 
-    if (!employeesToAssign || employeesToAssign.length === 0) {
-      draggedEmployeeRef.current = null;
+    if (!dragData) {
+      dragDataRef.current = null;
+      return;
+    }
+
+    // Get the employees to assign (either direct employees or team members)
+    const employeesToAssign = dragData.type === 'employees'
+      ? dragData.employees
+      : dragData.members;
+
+    if (employeesToAssign.length === 0) {
+      dragDataRef.current = null;
       return;
     }
 
@@ -290,7 +320,7 @@ export function PlanningView({
         date,
         patternName: pattern?.name || 'Unknown Pattern',
       });
-      draggedEmployeeRef.current = null;
+      dragDataRef.current = null;
       return;
     }
 
@@ -316,7 +346,7 @@ export function PlanningView({
     }
 
     clearSelection();
-    draggedEmployeeRef.current = null;
+    dragDataRef.current = null;
   };
 
   // Handle custom time confirmation - assigns to Custom pattern, not original
@@ -601,12 +631,22 @@ export function PlanningView({
       >
         <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="subtitle2" fontWeight={600}>
-              Employees ({employees.length})
-            </Typography>
+            <ToggleButtonGroup
+              value={panelMode}
+              exclusive
+              onChange={(e, val) => val && setPanelMode(val)}
+              size="small"
+            >
+              <ToggleButton value="employees" sx={{ px: 1.5, py: 0.5 }}>
+                Employees ({employees.length})
+              </ToggleButton>
+              <ToggleButton value="teams" sx={{ px: 1.5, py: 0.5 }}>
+                Teams ({teams.length})
+              </ToggleButton>
+            </ToggleButtonGroup>
             <TextField
               size="small"
-              placeholder="Search employees..."
+              placeholder={panelMode === 'employees' ? 'Search employees...' : 'Search teams...'}
               value={employeeSearchTerm}
               onChange={(e) => setEmployeeSearchTerm(e.target.value)}
               sx={{ width: 200 }}
@@ -626,83 +666,142 @@ export function PlanningView({
 
         <Box sx={{ p: 1.5, overflow: 'auto' }} style={{ height: employeePanelHeight - 60 }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {filteredEmployees.map(employee => {
-              const isSelected = selectedEmployees.some(e => e.id === employee.id);
-              // Use ALL assignments for compliance to catch cross-project conflicts
-              const complianceStatus = getEmployeeComplianceStatus(employee.id, assignments, shiftPatterns);
+            {panelMode === 'employees' ? (
+              // Employees list
+              filteredEmployees.map(employee => {
+                const isSelected = selectedEmployees.some(e => e.id === employee.id);
+                // Use ALL assignments for compliance to catch cross-project conflicts
+                const complianceStatus = getEmployeeComplianceStatus(employee.id, assignments, shiftPatterns);
 
-              return (
-                <Paper
-                  key={employee.id}
-                  draggable
-                  onDragStart={(e) => handleEmployeeDragStart(e, employee)}
-                  onDragEnd={handleEmployeeDragEnd}
-                  onClick={(e) => handleEmployeeClick(e, employee)}
-                  elevation={isSelected ? 4 : 0}
-                  sx={{
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: 2,
-                    cursor: 'grab',
-                    userSelect: 'none',
-                    transition: 'all 0.2s',
-                    bgcolor: isSelected
-                      ? 'primary.main'
-                      : complianceStatus.status === 'error'
-                        ? 'error.50'
-                        : complianceStatus.status === 'warning'
-                          ? 'warning.50'
-                          : 'success.50',
-                    color: isSelected ? 'white' : 'text.primary',
-                    border: 2,
-                    borderColor: isSelected
-                      ? 'primary.main'
-                      : complianceStatus.status === 'error'
-                        ? 'error.300'
-                        : complianceStatus.status === 'warning'
-                          ? 'warning.300'
-                          : 'success.300',
-                    '&:hover': {
-                      borderColor: isSelected
-                        ? 'primary.dark'
+                return (
+                  <Paper
+                    key={employee.id}
+                    draggable
+                    onDragStart={(e) => handleEmployeeDragStart(e, employee)}
+                    onDragEnd={handleDragEnd}
+                    onClick={(e) => handleEmployeeClick(e, employee)}
+                    elevation={isSelected ? 4 : 0}
+                    sx={{
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 2,
+                      cursor: 'grab',
+                      userSelect: 'none',
+                      transition: 'all 0.2s',
+                      bgcolor: isSelected
+                        ? 'primary.main'
                         : complianceStatus.status === 'error'
-                          ? 'error.400'
+                          ? 'error.50'
                           : complianceStatus.status === 'warning'
-                            ? 'warning.400'
-                            : 'success.400',
-                    },
-                  }}
-                  title={complianceStatus.violations.length > 0
-                    ? `${employee.name}\n\n⚠️ ${complianceStatus.violations.map(v => v.message).join('\n⚠️ ')}\n\nDrag to assign to shift. Ctrl+click to select multiple.`
-                    : 'Drag to assign to shift. Ctrl+click to select multiple.'
-                  }
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                    {complianceStatus.status === 'error' && !isSelected && (
-                      <Box sx={{ color: '#ef4444', flexShrink: 0, display: 'flex' }}>
-                        <AlertTriangle className="w-2.5 h-2.5" />
-                      </Box>
+                            ? 'warning.50'
+                            : 'success.50',
+                      color: isSelected ? 'white' : 'text.primary',
+                      border: 2,
+                      borderColor: isSelected
+                        ? 'primary.main'
+                        : complianceStatus.status === 'error'
+                          ? 'error.300'
+                          : complianceStatus.status === 'warning'
+                            ? 'warning.300'
+                            : 'success.300',
+                      '&:hover': {
+                        borderColor: isSelected
+                          ? 'primary.dark'
+                          : complianceStatus.status === 'error'
+                            ? 'error.400'
+                            : complianceStatus.status === 'warning'
+                              ? 'warning.400'
+                              : 'success.400',
+                      },
+                    }}
+                    title={complianceStatus.violations.length > 0
+                      ? `${employee.name}\n\n${complianceStatus.violations.map(v => v.message).join('\n')}\n\nDrag to assign to shift. Ctrl+click to select multiple.`
+                      : 'Drag to assign to shift. Ctrl+click to select multiple.'
+                    }
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      {complianceStatus.status === 'error' && !isSelected && (
+                        <Box sx={{ color: '#ef4444', flexShrink: 0, display: 'flex' }}>
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                        </Box>
+                      )}
+                      {complianceStatus.status === 'warning' && !isSelected && (
+                        <Box sx={{ color: '#f59e0b', flexShrink: 0, display: 'flex' }}>
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                        </Box>
+                      )}
+                      {complianceStatus.status === 'ok' && !isSelected && (
+                        <Box sx={{ color: '#22c55e', flexShrink: 0, display: 'flex' }}>
+                          <CheckCircle className="w-2.5 h-2.5" />
+                        </Box>
+                      )}
+                      <Typography variant="body2" fontWeight={600}>{employee.name}</Typography>
+                    </Box>
+                    {employee.role && (
+                      <Typography variant="caption" sx={{ color: isSelected ? 'primary.100' : 'text.secondary' }}>
+                        {employee.role}
+                      </Typography>
                     )}
-                    {complianceStatus.status === 'warning' && !isSelected && (
-                      <Box sx={{ color: '#f59e0b', flexShrink: 0, display: 'flex' }}>
-                        <AlertTriangle className="w-2.5 h-2.5" />
+                  </Paper>
+                );
+              })
+            ) : (
+              // Teams list
+              filteredTeams.map(team => {
+                const memberCount = team.memberIds?.length || 0;
+                const teamMembers = employees.filter(emp => team.memberIds?.includes(emp.id));
+
+                return (
+                  <Paper
+                    key={team.id}
+                    draggable
+                    onDragStart={(e) => handleTeamDragStart(e, team)}
+                    onDragEnd={handleDragEnd}
+                    elevation={0}
+                    sx={{
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 2,
+                      cursor: memberCount > 0 ? 'grab' : 'not-allowed',
+                      userSelect: 'none',
+                      transition: 'all 0.2s',
+                      bgcolor: memberCount > 0 ? '#e0e7ff' : 'grey.100',
+                      color: 'text.primary',
+                      border: 2,
+                      borderColor: memberCount > 0 ? '#818cf8' : 'grey.300',
+                      opacity: memberCount > 0 ? 1 : 0.6,
+                      '&:hover': memberCount > 0 ? {
+                        borderColor: '#6366f1',
+                        bgcolor: '#c7d2fe',
+                      } : {},
+                    }}
+                    title={memberCount > 0
+                      ? `${team.name}\n\nMembers: ${teamMembers.map(m => m.name).join(', ')}\n\nDrag to assign all ${memberCount} team members to a shift.`
+                      : `${team.name}\n\nNo members in this team.`
+                    }
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Box sx={{ color: memberCount > 0 ? '#6366f1' : 'grey.400', flexShrink: 0, display: 'flex' }}>
+                        <Users className="w-3.5 h-3.5" />
                       </Box>
-                    )}
-                    {complianceStatus.status === 'ok' && !isSelected && (
-                      <Box sx={{ color: '#22c55e', flexShrink: 0, display: 'flex' }}>
-                        <CheckCircle className="w-2.5 h-2.5" />
-                      </Box>
-                    )}
-                    <Typography variant="body2" fontWeight={600}>{employee.name}</Typography>
-                  </Box>
-                  {employee.role && (
-                    <Typography variant="caption" sx={{ color: isSelected ? 'primary.100' : 'text.secondary' }}>
-                      {employee.role}
-                    </Typography>
-                  )}
-                </Paper>
-              );
-            })}
+                      <Typography variant="body2" fontWeight={600}>{team.name}</Typography>
+                      <Chip
+                        label={memberCount}
+                        size="small"
+                        sx={{
+                          height: 18,
+                          minWidth: 24,
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          bgcolor: memberCount > 0 ? '#6366f1' : 'grey.400',
+                          color: 'white',
+                        }}
+                      />
+                    </Box>
+                  </Paper>
+                );
+              })
+            )}
           </Box>
         </Box>
       </Paper>
