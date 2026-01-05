@@ -100,17 +100,28 @@ export function Sidebar({
           minHeight: 64,
         }}
       >
-        {!collapsed && (
-          <Box
-            component="img"
-            src="/logo-header-dark.svg"
-            alt="HerdWatch"
-            sx={{ height: 32, width: 'auto' }}
-          />
+        {collapsed ? (
+          <IconButton onClick={() => setCollapsed(false)} size="small" sx={{ p: 0 }}>
+            <Box
+              component="img"
+              src="/icon-shield.svg"
+              alt="HerdWatch"
+              sx={{ height: 28, width: 'auto' }}
+            />
+          </IconButton>
+        ) : (
+          <>
+            <Box
+              component="img"
+              src="/logo-header-dark.svg"
+              alt="HerdWatch"
+              sx={{ height: 32, width: 'auto' }}
+            />
+            <IconButton onClick={() => setCollapsed(true)} size="small">
+              <ChevronLeft className="w-5 h-5" />
+            </IconButton>
+          </>
         )}
-        <IconButton onClick={() => setCollapsed(!collapsed)} size="small">
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </IconButton>
       </Box>
 
       <Divider />

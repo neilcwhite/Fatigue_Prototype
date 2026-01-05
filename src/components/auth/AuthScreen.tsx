@@ -42,25 +42,31 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [signupStep, setSignupStep] = useState(0);
   const [awaitingVerification, setAwaitingVerification] = useState(false);
 
-  // Common input styles - fixed to prevent label overlap
+  // Common input styles - fixed label positioning
   const inputSx = {
     '& .MuiOutlinedInput-root': {
       bgcolor: '#0f172a',
       color: '#ffffff',
-      '& fieldset': { borderColor: '#475569' },
+      '& fieldset': {
+        borderColor: '#475569',
+        '& legend': { display: 'none' }, // Hide legend to prevent notch
+      },
       '&:hover fieldset': { borderColor: '#64748b' },
-      '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+      '&.Mui-focused fieldset': { borderColor: '#4a6bc4' },
     },
     '& .MuiInputLabel-root': {
-      color: '#94a3b8',
-      '&.MuiInputLabel-shrink': {
-        transform: 'translate(14px, -9px) scale(0.75)',
-        bgcolor: '#1e293b',
-        px: 0.5,
-      },
+      color: '#cbd5e1', // Brighter label color
+      fontSize: '0.875rem',
+      transform: 'translate(14px, -24px) scale(0.85)', // Always positioned above
+      '&.Mui-focused': { color: '#93c5fd' },
     },
-    '& .MuiInputLabel-root.Mui-focused': { color: 'primary.light' },
-    '& .MuiOutlinedInput-input::placeholder': { color: '#64748b', opacity: 1 },
+    '& .MuiOutlinedInput-input': {
+      color: '#ffffff',
+      '&::placeholder': { color: '#64748b', opacity: 1 },
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      top: 0, // Remove notch space
+    },
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,19 +163,18 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
         }}
       >
         {/* Logo */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
           <Box
             component="img"
             src="/logo-login.svg"
             alt="HerdWatch"
             sx={{
-              width: '100%',
-              maxWidth: 280,
+              width: 220,
               height: 'auto',
               mb: 1,
             }}
           />
-          <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+          <Typography variant="body2" sx={{ color: '#cbd5e1' }}>
             Fatigue management for your workforce
           </Typography>
         </Box>
@@ -368,8 +373,8 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
 
             {/* Mode Toggle */}
             <Box sx={{ textAlign: 'center', mt: 3 }}>
-              <Divider sx={{ mb: 2, borderColor: '#334155' }}>
-                <Typography variant="caption" sx={{ color: '#64748b' }}>
+              <Divider sx={{ mb: 2, borderColor: '#475569' }}>
+                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                   {mode === 'signin' ? 'New to HerdWatch?' : 'Already have an account?'}
                 </Typography>
               </Divider>
@@ -379,12 +384,12 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                 disabled={loading}
                 fullWidth
                 sx={{
-                  color: '#4a6bc4',
+                  color: '#93c5fd',
                   borderColor: '#4a6bc4',
                   textTransform: 'none',
                   '&:hover': {
-                    bgcolor: 'rgba(35, 62, 153, 0.1)',
-                    borderColor: '#233e99',
+                    bgcolor: 'rgba(35, 62, 153, 0.15)',
+                    borderColor: '#93c5fd',
                   },
                 }}
               >
