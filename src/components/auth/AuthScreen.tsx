@@ -42,30 +42,18 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [signupStep, setSignupStep] = useState(0);
   const [awaitingVerification, setAwaitingVerification] = useState(false);
 
-  // Common input styles - fixed label positioning
+  // Common input styles - no floating labels
   const inputSx = {
     '& .MuiOutlinedInput-root': {
       bgcolor: '#0f172a',
       color: '#ffffff',
-      '& fieldset': {
-        borderColor: '#475569',
-        '& legend': { display: 'none' }, // Hide legend to prevent notch
-      },
+      '& fieldset': { borderColor: '#475569' },
       '&:hover fieldset': { borderColor: '#64748b' },
       '&.Mui-focused fieldset': { borderColor: '#4a6bc4' },
     },
-    '& .MuiInputLabel-root': {
-      color: '#cbd5e1', // Brighter label color
-      fontSize: '0.875rem',
-      transform: 'translate(14px, -24px) scale(0.85)', // Always positioned above
-      '&.Mui-focused': { color: '#93c5fd' },
-    },
     '& .MuiOutlinedInput-input': {
       color: '#ffffff',
-      '&::placeholder': { color: '#64748b', opacity: 1 },
-    },
-    '& .MuiOutlinedInput-notchedOutline': {
-      top: 0, // Remove notch space
+      '&::placeholder': { color: '#94a3b8', opacity: 1 },
     },
   };
 
@@ -297,50 +285,62 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
             )}
 
             {/* Form */}
-            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <TextField
-                type="email"
-                label="Email Address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-                disabled={loading}
-                fullWidth
-                variant="outlined"
-                size="medium"
-                sx={inputSx}
-              />
-
-              <TextField
-                type="password"
-                label="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-                disabled={loading}
-                fullWidth
-                variant="outlined"
-                size="medium"
-                sx={inputSx}
-              />
-
-              {/* Confirm Password for Sign-up */}
-              {mode === 'signup' && (
+            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#cbd5e1', mb: 0.5, display: 'block' }}>
+                  Email Address
+                </Typography>
                 <TextField
-                  type="password"
-                  label="Confirm Password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter your password"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
                   required
                   disabled={loading}
                   fullWidth
                   variant="outlined"
-                  size="medium"
+                  size="small"
                   sx={inputSx}
                 />
+              </Box>
+
+              <Box>
+                <Typography variant="caption" sx={{ color: '#cbd5e1', mb: 0.5, display: 'block' }}>
+                  Password
+                </Typography>
+                <TextField
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  disabled={loading}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  sx={inputSx}
+                />
+              </Box>
+
+              {/* Confirm Password for Sign-up */}
+              {mode === 'signup' && (
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#cbd5e1', mb: 0.5, display: 'block' }}>
+                    Confirm Password
+                  </Typography>
+                  <TextField
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    required
+                    disabled={loading}
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    sx={inputSx}
+                  />
+                </Box>
               )}
 
               <Button
