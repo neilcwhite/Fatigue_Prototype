@@ -36,6 +36,9 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface IconProps {
   className?: string;
@@ -291,6 +294,27 @@ export const Edit = ({ className = "w-6 h-6" }: IconProps) => (
 
 export const Activity = ({ className = "w-6 h-6" }: IconProps) => (
   <ShowChartIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const HelpCircle = ({ className = "w-6 h-6" }: IconProps) => (
+  <HelpOutlineIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const Circle = ({ className = "w-6 h-6" }: IconProps) => (
+  <RadioButtonUncheckedIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const RotateCcw = ({ className = "w-6 h-6" }: IconProps) => (
+  <RefreshIcon
     className={className}
     sx={{ fontSize: getSizeFromClass(className) }}
   />

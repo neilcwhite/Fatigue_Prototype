@@ -12,7 +12,7 @@ import IconButton from '@mui/material/IconButton';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
-import { Home, Calendar, Users, BarChart, Settings, ChevronLeft, ChevronRight } from '@/components/ui/Icons';
+import { Home, Calendar, Users, BarChart, Settings, ChevronLeft, ChevronRight, HelpCircle } from '@/components/ui/Icons';
 
 export type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
 
@@ -40,6 +40,7 @@ interface SidebarProps {
   hasSelectedEmployee: boolean;
   selectedProjectName?: string;
   selectedEmployeeName?: string;
+  onOpenHelp?: () => void;
 }
 
 const DRAWER_WIDTH_EXPANDED = 220;
@@ -52,6 +53,7 @@ export function Sidebar({
   hasSelectedEmployee,
   selectedProjectName,
   selectedEmployeeName,
+  onOpenHelp,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -186,7 +188,47 @@ export function Sidebar({
         })}
       </List>
 
-      <Divider sx={{ mt: 'auto' }} />
+      {/* Help Button */}
+      <Box sx={{ mt: 'auto' }}>
+        <Divider />
+        <List>
+          <Tooltip title={collapsed ? 'Help & Tutorial' : ''} placement="right" arrow>
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={onOpenHelp}
+                sx={{
+                  minHeight: 44,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  px: collapsed ? 0 : 2.5,
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: collapsed ? 0 : 2,
+                    justifyContent: 'center',
+                    color: '#233e99',
+                  }}
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </ListItemIcon>
+                {!collapsed && (
+                  <ListItemText
+                    primary="Help & Tutorial"
+                    primaryTypographyProps={{
+                      fontSize: 14,
+                      fontWeight: 400,
+                      color: 'text.primary',
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </ListItem>
+          </Tooltip>
+        </List>
+      </Box>
+
+      <Divider />
 
       {/* Context Info (when expanded) */}
       {!collapsed && (hasSelectedProject || hasSelectedEmployee) && (

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ThemeRegistry } from '@/components/providers/ThemeRegistry';
 import { NotificationProvider } from '@/hooks/useNotification';
+import { OnboardingProvider } from '@/hooks/useOnboarding';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -25,7 +26,9 @@ export default function RootLayout({
       <body>
         <ThemeRegistry>
           <NotificationProvider>
-            {children}
+            <OnboardingProvider>
+              {children}
+            </OnboardingProvider>
           </NotificationProvider>
         </ThemeRegistry>
       </body>

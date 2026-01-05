@@ -21,6 +21,7 @@ import {
   BarChart
 } from '@/components/ui/Icons';
 import { checkProjectCompliance } from '@/lib/compliance';
+import { GettingStartedCard } from '@/components/onboarding/GettingStartedCard';
 import type {
   ProjectCamel,
   EmployeeCamel,
@@ -236,8 +237,13 @@ export function Dashboard({
           </Grid>
         </Grid>
 
-        {/* Project Cards */}
+        {/* Getting Started + Project Cards */}
         <Grid container spacing={3}>
+          {/* Getting Started Card */}
+          <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+            <GettingStartedCard />
+          </Grid>
+
           {projects.map(project => {
             const stats = getProjectStats(project.id);
             return (

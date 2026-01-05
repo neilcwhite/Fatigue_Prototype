@@ -17,6 +17,8 @@ import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal
 import { Sidebar, DRAWER_WIDTH_EXPANDED } from '@/components/layout';
 import { Spinner, ChevronLeft } from '@/components/ui/Icons';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { OnboardingPanel } from '@/components/onboarding/OnboardingPanel';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
 
 type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
@@ -28,6 +30,7 @@ const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 export default function Home() {
   const { user, profile, loading: authLoading, error: authError, signOut } = useAuth();
+  const { openPanel: openOnboardingPanel } = useOnboarding();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
@@ -256,7 +259,11 @@ export default function Home() {
         hasSelectedEmployee={!!selectedEmployee}
         selectedProjectName={selectedProjectData?.name}
         selectedEmployeeName={selectedEmployeeData?.name}
+        onOpenHelp={openOnboardingPanel}
       />
+
+      {/* Onboarding Panel */}
+      <OnboardingPanel />
 
       {/* Main Content Area */}
       <Box
