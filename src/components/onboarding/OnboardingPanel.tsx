@@ -31,12 +31,14 @@ function TaskItem({
   task,
   isCompleted,
   isActive,
-  onStart
+  onStart,
+  onToggleComplete
 }: {
   task: OnboardingTask;
   isCompleted: boolean;
   isActive: boolean;
   onStart: () => void;
+  onToggleComplete: () => void;
 }) {
   return (
     <Box
@@ -50,14 +52,29 @@ function TaskItem({
         border: '1px solid',
         borderColor: isActive ? '#233e99' : 'transparent',
         transition: 'all 0.2s',
-        cursor: isCompleted ? 'default' : 'pointer',
-        '&:hover': !isCompleted ? {
-          bgcolor: 'rgba(35, 62, 153, 0.05)',
-        } : {},
+        cursor: 'pointer',
+        '&:hover': {
+          bgcolor: isCompleted ? 'rgba(5, 150, 105, 0.05)' : 'rgba(35, 62, 153, 0.05)',
+        },
       }}
       onClick={!isCompleted ? onStart : undefined}
     >
-      <Box sx={{ mt: 0.25, color: isCompleted ? '#059669' : '#94a3b8' }}>
+      {/* Clickable checkbox area */}
+      <Box
+        sx={{
+          mt: 0.25,
+          color: isCompleted ? '#059669' : '#94a3b8',
+          cursor: 'pointer',
+          '&:hover': {
+            color: isCompleted ? '#047857' : '#64748b',
+          },
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleComplete();
+        }}
+        title={isCompleted ? 'Click to mark as incomplete' : 'Click to mark as complete'}
+      >
         {isCompleted ? (
           <CheckCircle className="w-5 h-5" />
         ) : (
@@ -120,6 +137,7 @@ export function OnboardingPanel({ onStartTask }: OnboardingPanelProps) {
     undismissOnboarding,
     setActiveTask,
     activeTaskId,
+    toggleTaskCompletion,
   } = useOnboarding();
 
   const handleStartTask = (taskId: string) => {
@@ -210,6 +228,7 @@ export function OnboardingPanel({ onStartTask }: OnboardingPanelProps) {
                   isCompleted={completedTasks.includes(task.id)}
                   isActive={activeTaskId === task.id}
                   onStart={() => handleStartTask(task.id)}
+                  onToggleComplete={() => toggleTaskCompletion(task.id)}
                 />
               ))}
             </Box>

@@ -74,6 +74,8 @@ interface OnboardingState {
 
 interface OnboardingContextValue extends OnboardingState {
   completeTask: (taskId: string) => void;
+  uncompleteTask: (taskId: string) => void;
+  toggleTaskCompletion: (taskId: string) => void;
   resetOnboarding: () => void;
   dismissOnboarding: () => void;
   undismissOnboarding: () => void;
@@ -140,6 +142,33 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         completedTasks: [...prev.completedTasks, taskId],
         activeTaskId: null,
       };
+    });
+  }, []);
+
+  const uncompleteTask = useCallback((taskId: string) => {
+    setState(prev => {
+      if (!prev.completedTasks.includes(taskId)) return prev;
+      return {
+        ...prev,
+        completedTasks: prev.completedTasks.filter(id => id !== taskId),
+      };
+    });
+  }, []);
+
+  const toggleTaskCompletion = useCallback((taskId: string) => {
+    setState(prev => {
+      if (prev.completedTasks.includes(taskId)) {
+        return {
+          ...prev,
+          completedTasks: prev.completedTasks.filter(id => id !== taskId),
+        };
+      } else {
+        return {
+          ...prev,
+          completedTasks: [...prev.completedTasks, taskId],
+          activeTaskId: null,
+        };
+      }
     });
   }, []);
 
@@ -211,6 +240,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const value: OnboardingContextValue = {
     ...state,
     completeTask,
+    uncompleteTask,
+    toggleTaskCompletion,
     resetOnboarding,
     dismissOnboarding,
     undismissOnboarding,
