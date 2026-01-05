@@ -109,6 +109,55 @@ export const COMPLIANCE = {
   NIGHT_END_HOUR: 6,
 } as const;
 
+// ==================== ORGANISATION & AUTH SETTINGS ====================
+
+/**
+ * Allowed email domains and their corresponding organisation details.
+ * Users can only sign up with email addresses from these domains.
+ * Each domain maps to a specific organisation ID and name.
+ *
+ * To add a new organisation:
+ * 1. Create the organisation in Supabase with a known UUID
+ * 2. Add the domain mapping here
+ */
+export const ALLOWED_DOMAINS: Record<string, { organisationId: string; organisationName: string }> = {
+  'thespencergroup.co.uk': {
+    organisationId: 'bb74dd23-9959-4f7a-a315-d8b15fe1db25',
+    organisationName: 'The Spencer Group',
+  },
+  // Add more domains as needed:
+  // 'example.com': {
+  //   organisationId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  //   organisationName: 'Example Company',
+  // },
+};
+
+/**
+ * Get the list of allowed email domains for display
+ */
+export function getAllowedDomainsList(): string[] {
+  return Object.keys(ALLOWED_DOMAINS);
+}
+
+/**
+ * Check if an email domain is allowed for signup
+ * @param email - The email address to check
+ * @returns The organisation mapping if allowed, null otherwise
+ */
+export function getOrganisationForEmail(email: string): { organisationId: string; organisationName: string } | null {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return null;
+  return ALLOWED_DOMAINS[domain] || null;
+}
+
+/**
+ * Validate if an email is from an allowed domain
+ * @param email - The email address to check
+ */
+export function isEmailDomainAllowed(email: string): boolean {
+  return getOrganisationForEmail(email) !== null;
+}
+
 // ==================== UI/UX SETTINGS ====================
 
 /**

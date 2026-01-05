@@ -17,6 +17,10 @@ interface GanttViewProps {
   employees: EmployeeCamel[];
   shiftPatterns: ShiftPatternCamel[];
   assignments: AssignmentCamel[];
+  /** All assignments across all projects - used for cross-project compliance checking */
+  allAssignments?: AssignmentCamel[];
+  /** All shift patterns across all projects - used for cross-project compliance checking */
+  allShiftPatterns?: ShiftPatternCamel[];
   period: NetworkRailPeriod;
   onCellDragOver: (e: React.DragEvent) => void;
   onCellDrop: (e: React.DragEvent, shiftPatternId: string, date: string, isValidCell?: boolean) => void;
@@ -35,6 +39,8 @@ export function GanttView({
   employees,
   shiftPatterns,
   assignments,
+  allAssignments,
+  allShiftPatterns,
   period,
   onCellDragOver,
   onCellDrop,
@@ -42,6 +48,9 @@ export function GanttView({
   onEditAssignment,
 }: GanttViewProps) {
   const { showError } = useNotification();
+  // Use all assignments/patterns for compliance (cross-project), fall back to project-only
+  const complianceAssignments = allAssignments || assignments;
+  const compliancePatterns = allShiftPatterns || shiftPatterns;
   // Generate 28 days from period start
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -74,7 +83,8 @@ export function GanttView({
         assignmentsByDate.set(assignment.date, existing);
       }
 
-      const compliance = checkEmployeeCompliance(employee.id, assignments, shiftPatterns);
+      // Pass ALL assignments to catch cross-project violations
+      const compliance = checkEmployeeCompliance(employee.id, complianceAssignments, compliancePatterns);
 
       groups.push({
         employee,
@@ -85,7 +95,7 @@ export function GanttView({
 
     // Sort by employee name
     return groups.sort((a, b) => a.employee.name.localeCompare(b.employee.name));
-  }, [employees, assignments, shiftPatterns]);
+  }, [employees, assignments, complianceAssignments, compliancePatterns]);
 
   // Get shift pattern name
   const getPatternName = (patternId: string): string => {

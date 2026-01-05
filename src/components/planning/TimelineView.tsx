@@ -28,6 +28,10 @@ interface TimelineViewProps {
   employees: EmployeeCamel[];
   shiftPatterns: ShiftPatternCamel[];
   assignments: AssignmentCamel[];
+  /** All assignments across all projects - used for cross-project compliance checking */
+  allAssignments?: AssignmentCamel[];
+  /** All shift patterns across all projects - used for cross-project compliance checking */
+  allShiftPatterns?: ShiftPatternCamel[];
   period: NetworkRailPeriod;
   onCellDragOver: (e: React.DragEvent) => void;
   onCellDrop: (e: React.DragEvent, shiftPatternId: string, date: string, isValidCell?: boolean) => void;
@@ -58,6 +62,8 @@ export function TimelineView({
   employees,
   shiftPatterns,
   assignments,
+  allAssignments,
+  allShiftPatterns,
   period,
   onCellDragOver,
   onCellDrop,
@@ -66,6 +72,9 @@ export function TimelineView({
   onNavigateToPerson,
   onCreateAssignment,
 }: TimelineViewProps) {
+  // Use all assignments/patterns for compliance (cross-project), fall back to project-only
+  const complianceAssignments = allAssignments || assignments;
+  const compliancePatterns = allShiftPatterns || shiftPatterns;
   const { showSuccess, showError } = useNotification();
   // Copy shift dialog state
   const [copyDialog, setCopyDialog] = useState<CopyShiftDialogState | null>(null);
@@ -99,18 +108,21 @@ export function TimelineView({
   }, [copyDialog]);
 
   // Build compliance violations map for all employees
+  // Uses ALL assignments across projects to detect cross-project conflicts
   const complianceByEmployee = useMemo(() => {
     const result = new Map<number, ComplianceViolation[]>();
 
+    // Check employees who have assignments on THIS project
     const employeeIds = [...new Set(assignments.map(a => a.employeeId))];
 
     for (const empId of employeeIds) {
-      const compliance = checkEmployeeCompliance(empId, assignments, shiftPatterns);
+      // Pass ALL assignments to catch cross-project violations
+      const compliance = checkEmployeeCompliance(empId, complianceAssignments, compliancePatterns);
       result.set(empId, compliance.violations);
     }
 
     return result;
-  }, [assignments, shiftPatterns]);
+  }, [assignments, complianceAssignments, compliancePatterns]);
 
   // Get violations for an employee on a specific date
   const getViolationsForCell = (employeeId: number, date: string): ComplianceViolation[] => {

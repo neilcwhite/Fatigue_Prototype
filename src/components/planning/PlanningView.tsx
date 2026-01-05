@@ -503,6 +503,8 @@ export function PlanningView({
             employees={employees}
             shiftPatterns={projectShiftPatterns}
             assignments={projectAssignments}
+            allAssignments={assignments}
+            allShiftPatterns={shiftPatterns}
             period={currentPeriod}
             onCellDragOver={handleCellDragOver}
             onCellDrop={handleCellDrop}
@@ -540,6 +542,8 @@ export function PlanningView({
             employees={employees}
             shiftPatterns={projectShiftPatterns}
             assignments={projectAssignments}
+            allAssignments={assignments}
+            allShiftPatterns={shiftPatterns}
             period={currentPeriod}
             onCellDragOver={handleCellDragOver}
             onCellDrop={handleCellDrop}
@@ -554,6 +558,8 @@ export function PlanningView({
             employees={employees}
             shiftPatterns={projectShiftPatterns}
             assignments={projectAssignments}
+            allAssignments={assignments}
+            allShiftPatterns={shiftPatterns}
             period={currentPeriod}
             onCellDragOver={handleCellDragOver}
             onCellDrop={handleCellDrop}
@@ -619,7 +625,8 @@ export function PlanningView({
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {filteredEmployees.map(employee => {
               const isSelected = selectedEmployees.some(e => e.id === employee.id);
-              const complianceStatus = getEmployeeComplianceStatus(employee.id, projectAssignments, projectShiftPatterns);
+              // Use ALL assignments for compliance to catch cross-project conflicts
+              const complianceStatus = getEmployeeComplianceStatus(employee.id, assignments, shiftPatterns);
 
               return (
                 <Paper

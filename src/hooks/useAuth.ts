@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getOrganisationForEmail, getAllowedDomainsList } from '@/lib/constants';
 import type { User, Session } from '@supabase/supabase-js';
 
 // ==================== RETRY CONFIGURATION ====================
@@ -173,17 +174,35 @@ export function useAuth(): UseAuthReturn {
       }
     }
 
-    // No profile found - create one
+    // No profile found - create one using domain mapping
     if (!profileData) {
-      const orgId = crypto.randomUUID();
+      // Look up organisation based on email domain
+      const orgMapping = getOrganisationForEmail(userEmail);
 
-      const { error: orgError } = await supabase.from('organisations').insert({
-        id: orgId,
-        name: 'My Organisation',
-      });
+      if (!orgMapping) {
+        // This shouldn't happen if signup validation is working, but handle it gracefully
+        throw new Error(
+          'Your email domain is not authorized. Please contact your administrator.'
+        );
+      }
 
-      if (orgError) {
-        throw orgError;
+      // Check if the organisation already exists, if not create it
+      const { data: existingOrg } = await supabase
+        .from('organisations')
+        .select('id')
+        .eq('id', orgMapping.organisationId)
+        .single();
+
+      if (!existingOrg) {
+        // Create the organisation with the predefined ID and name
+        const { error: orgError } = await supabase.from('organisations').insert({
+          id: orgMapping.organisationId,
+          name: orgMapping.organisationName,
+        });
+
+        if (orgError && !orgError.message.includes('duplicate')) {
+          throw orgError;
+        }
       }
 
       const { data: newProfile, error: insertError } = await supabase
@@ -192,7 +211,7 @@ export function useAuth(): UseAuthReturn {
           id: userId,
           email: userEmail,
           role: 'admin',
-          organisation_id: orgId,
+          organisation_id: orgMapping.organisationId,
         })
         .select('*')
         .single();
@@ -208,7 +227,7 @@ export function useAuth(): UseAuthReturn {
           fullName: newProfile.full_name,
           role: newProfile.role,
           organisationId: newProfile.organisation_id,
-          organisationName: 'My Organisation',
+          organisationName: orgMapping.organisationName,
         });
       }
     } else {
@@ -321,6 +340,16 @@ export function useAuth(): UseAuthReturn {
   const signUp = async (email: string, password: string) => {
     if (!supabase) throw new Error('Supabase not configured');
     setError(null);
+
+    // Validate email domain before attempting signup
+    const orgMapping = getOrganisationForEmail(email);
+    if (!orgMapping) {
+      const allowedDomains = getAllowedDomainsList();
+      throw new Error(
+        `Signups are currently restricted to approved domains: ${allowedDomains.join(', ')}. ` +
+        `Please contact your administrator if you need access.`
+      );
+    }
 
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
