@@ -67,21 +67,25 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
     steps: [
       {
         title: 'Go to Teams',
-        description: 'In the sidebar on the left, click "Teams". This opens the Teams & Employees management page.',
+        description: 'In the sidebar on the left, click "Teams".',
         image: 'teams',
       },
       {
-        title: 'Click "Create Team"',
-        description: 'At the top right of the page, click the purple "Create Team" button.',
+        title: 'Click "Create Team" button or card',
+        description: 'Either click the purple "Create Team" button at the top right, OR click the "Create New Team" card with the + icon.',
       },
       {
         title: 'Enter Team Name',
-        description: 'In the popup, enter a team name (e.g., "Night Crew", "Track Team A", "COSS Team").',
-        tip: 'Use names that are meaningful to your organization.',
+        description: 'In the "Create Team" popup:\n\n1. Enter a name in the "Team Name" field\n   Example: "Night Shift Team A"',
+      },
+      {
+        title: 'Select Team Members',
+        description: 'Below the name field is "Select Members":\n\n1. You\'ll see a list of all employees\n2. Click the checkbox next to each employee you want to add\n3. The count shows how many are selected',
+        tip: 'You need to add employees first before you can add them to a team.',
       },
       {
         title: 'Click "Create Team"',
-        description: 'Click "Create Team" to save. Your team will appear in the Teams section. You can then drag employees into the team to add members.',
+        description: 'Click the purple "Create Team" button at the bottom right of the popup.\n\nYour team will appear as a card showing the team name and member count.',
       },
     ],
   },
@@ -92,7 +96,7 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
     steps: [
       {
         title: 'Go to Teams',
-        description: 'In the sidebar on the left, click "Teams". This opens the Teams & Employees page.',
+        description: 'In the sidebar on the left, click "Teams".',
         image: 'teams',
       },
       {
@@ -100,13 +104,16 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
         description: 'At the top right of the page, click the green "Add Employee" button.',
       },
       {
-        title: 'Enter Employee Details',
-        description: 'In the popup, fill in:\n\n• Name (required): The employee\'s full name\n• Role (optional): e.g., "COSS", "Lookout", "Machine Operator"',
-        tip: 'The role affects fatigue calculations - different roles have different workload factors.',
+        title: 'Enter Name',
+        description: 'In the "Add Employee" popup:\n\n1. Enter the employee\'s full name in the "Name" field\n   Example: "John Smith"',
+      },
+      {
+        title: 'Enter Role (optional)',
+        description: 'In the "Role" field, enter their job title:\n   Example: "Track Engineer"\n\nThis is optional but helps with fatigue calculations.',
       },
       {
         title: 'Click "Add Employee"',
-        description: 'Click "Add Employee" to save. The employee will appear in the Employees list and can now be assigned to shifts.',
+        description: 'Click the blue "Add Employee" button at the bottom right.\n\nThe employee will appear in the Employees list on the right side of the page.',
       },
     ],
   },
@@ -212,138 +219,42 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
   },
 };
 
-// Visual illustration component for each page type
-function PageIllustration({ type }: { type: 'dashboard' | 'teams' | 'planning' | 'shiftbuilder' }) {
-  const illustrations = {
-    dashboard: (
-      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 2, border: '1px solid', borderColor: 'grey.300' }}>
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-          <Box sx={{ width: 48, bgcolor: 'background.paper', borderRadius: 1, p: 1, display: 'flex', flexDirection: 'column', gap: 0.5, borderRight: '1px solid', borderColor: 'grey.200' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, bgcolor: 'primary.50', borderRadius: 0.5 }}>
-              <Home className="w-3 h-3" />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5 }}>
-              <Calendar className="w-3 h-3" />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5 }}>
-              <Users className="w-3 h-3" />
-            </Box>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Dashboard</Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Paper sx={{ p: 1, flex: 1, bgcolor: 'primary.50', border: '2px dashed', borderColor: 'primary.main' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Plus className="w-3 h-3" />
-                  <Typography variant="caption" fontWeight={600}>New Project</Typography>
-                </Box>
-              </Paper>
-              <Paper sx={{ p: 1, flex: 1 }}>
-                <Typography variant="caption">Project 1</Typography>
-              </Paper>
-            </Box>
-          </Box>
-        </Box>
-        <Alert severity="info" sx={{ py: 0 }}>
-          <Typography variant="caption">Click "New Project" to create your first project</Typography>
-        </Alert>
-      </Box>
-    ),
-    teams: (
-      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 2, border: '1px solid', borderColor: 'grey.300' }}>
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-          <Box sx={{ width: 48, bgcolor: 'background.paper', borderRadius: 1, p: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5 }}>
-              <Home className="w-3 h-3" />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, bgcolor: 'primary.50', borderRadius: 0.5 }}>
-              <Users className="w-3 h-3" />
-            </Box>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-              <Typography variant="caption" fontWeight={600}>Teams & Employees</Typography>
-              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <Chip label="Create Team" size="small" color="primary" sx={{ height: 20, fontSize: '0.65rem' }} />
-                <Chip label="Add Employee" size="small" color="success" sx={{ height: 20, fontSize: '0.65rem', border: '2px solid', borderColor: 'success.main' }} />
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Paper sx={{ p: 1, flex: 1 }}>
-                <Typography variant="caption">Team A (3)</Typography>
-              </Paper>
-              <Paper sx={{ p: 1, flex: 1 }}>
-                <Typography variant="caption">John Smith</Typography>
-              </Paper>
-            </Box>
-          </Box>
-        </Box>
-        <Alert severity="info" sx={{ py: 0 }}>
-          <Typography variant="caption">Use the buttons at the top to add teams or employees</Typography>
-        </Alert>
-      </Box>
-    ),
-    planning: (
-      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 2, border: '1px solid', borderColor: 'grey.300' }}>
-        <Typography variant="caption" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Planning View</Typography>
-        <Box sx={{ bgcolor: 'background.paper', borderRadius: 1, p: 1, mb: 1 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.5, mb: 1 }}>
-            <Typography variant="caption" sx={{ fontSize: '0.6rem', textAlign: 'center' }}>Mon</Typography>
-            <Typography variant="caption" sx={{ fontSize: '0.6rem', textAlign: 'center' }}>Tue</Typography>
-            <Typography variant="caption" sx={{ fontSize: '0.6rem', textAlign: 'center' }}>Wed</Typography>
-            <Typography variant="caption" sx={{ fontSize: '0.6rem', textAlign: 'center' }}>Thu</Typography>
-            <Typography variant="caption" sx={{ fontSize: '0.6rem', textAlign: 'center' }}>Fri</Typography>
-          </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 0.5 }}>
-            {[...Array(5)].map((_, i) => (
-              <Box key={i} sx={{ bgcolor: i === 2 ? 'primary.100' : 'grey.100', p: 0.5, borderRadius: 0.5, minHeight: 20 }}>
-                {i === 2 && <Typography variant="caption" sx={{ fontSize: '0.5rem' }}>JS</Typography>}
-              </Box>
-            ))}
-          </Box>
-        </Box>
-        <Paper sx={{ p: 1, border: '2px dashed', borderColor: 'primary.main', bgcolor: 'primary.50' }}>
-          <Typography variant="caption" fontWeight={600}>Drag employees here</Typography>
-          <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-            <Chip label="John S." size="small" sx={{ height: 18, fontSize: '0.6rem' }} />
-            <Chip label="Jane D." size="small" sx={{ height: 18, fontSize: '0.6rem' }} />
-          </Box>
-        </Paper>
-      </Box>
-    ),
-    shiftbuilder: (
-      <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 2, border: '1px solid', borderColor: 'grey.300' }}>
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-          <Box sx={{ width: 48, bgcolor: 'background.paper', borderRadius: 1, p: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5 }}>
-              <Home className="w-3 h-3" />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, bgcolor: 'primary.50', borderRadius: 0.5 }}>
-              <Settings className="w-3 h-3" />
-            </Box>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Shift Builder</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '40px repeat(3, 1fr)', gap: 0.5, fontSize: '0.6rem' }}>
-              <Typography variant="caption" sx={{ fontSize: '0.55rem' }}>Day</Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.55rem' }}>Start</Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.55rem' }}>End</Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.55rem' }}>FRI</Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.55rem' }}>Mon</Typography>
-              <Box sx={{ bgcolor: 'info.50', p: 0.25, borderRadius: 0.5, fontSize: '0.5rem' }}>08:00</Box>
-              <Box sx={{ bgcolor: 'white', p: 0.25, borderRadius: 0.5, fontSize: '0.5rem' }}>17:00</Box>
-              <Box sx={{ bgcolor: 'success.100', p: 0.25, borderRadius: 0.5, fontSize: '0.5rem', color: 'success.main' }}>0.85</Box>
-            </Box>
-          </Box>
-        </Box>
-        <Alert severity="success" sx={{ py: 0 }}>
-          <Typography variant="caption">Configure each day and monitor the fatigue index</Typography>
-        </Alert>
-      </Box>
-    ),
-  };
+// Screenshot paths for each page type
+const SCREENSHOT_PATHS: Record<string, string> = {
+  dashboard: '/tutorials/01-dashboard.png',
+  teams: '/tutorials/03-teams-page.png',
+  planning: '/tutorials/01-dashboard.png', // Use dashboard until we have planning screenshot
+  shiftbuilder: '/tutorials/06-shift-builder.png',
+};
 
-  return illustrations[type] || null;
+// Screenshot component for each page type
+function PageScreenshot({ type }: { type: 'dashboard' | 'teams' | 'planning' | 'shiftbuilder' }) {
+  const src = SCREENSHOT_PATHS[type];
+
+  if (!src) return null;
+
+  return (
+    <Box
+      sx={{
+        borderRadius: 2,
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'grey.300',
+        boxShadow: 1,
+      }}
+    >
+      <Box
+        component="img"
+        src={src}
+        alt={`${type} screenshot`}
+        sx={{
+          width: '100%',
+          height: 'auto',
+          display: 'block',
+        }}
+      />
+    </Box>
+  );
 }
 
 interface TutorialOverlayProps {
@@ -438,7 +349,7 @@ export function TutorialOverlay({
 
                 {step.image && (
                   <Box sx={{ mb: 2 }}>
-                    <PageIllustration type={step.image} />
+                    <PageScreenshot type={step.image} />
                   </Box>
                 )}
 
