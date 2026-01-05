@@ -18,6 +18,7 @@ import { Sidebar, DRAWER_WIDTH_EXPANDED } from '@/components/layout';
 import { Spinner, ChevronLeft } from '@/components/ui/Icons';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { OnboardingPanel } from '@/components/onboarding/OnboardingPanel';
+import { TutorialOverlay } from '@/components/onboarding/TutorialOverlay';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
 
@@ -30,7 +31,7 @@ const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
 
 export default function Home() {
   const { user, profile, loading: authLoading, error: authError, signOut } = useAuth();
-  const { openPanel: openOnboardingPanel, setActiveTask } = useOnboarding();
+  const { openPanel: openOnboardingPanel, setActiveTask, completeTask } = useOnboarding();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
@@ -38,6 +39,7 @@ export default function Home() {
   const [showShiftPatternModal, setShowShiftPatternModal] = useState(false);
   const [editingShiftPattern, setEditingShiftPattern] = useState<ShiftPatternCamel | null>(null);
   const [shiftBuilderCreateMode, setShiftBuilderCreateMode] = useState<{ projectId: number } | null>(null);
+  const [tutorialTaskId, setTutorialTaskId] = useState<string | null>(null);
 
   // Load app data once we have an organisation
   const {
@@ -244,10 +246,18 @@ export default function Home() {
     });
   };
 
-  // Handle onboarding task actions
+  // Handle onboarding task click - show tutorial first
   const handleOnboardingTask = (taskId: string) => {
+    setTutorialTaskId(taskId);
+    setActiveTask(taskId);
+  };
+
+  // Actually navigate to perform the task (called after tutorial)
+  const navigateToTask = (taskId: string) => {
+    setTutorialTaskId(null); // Close tutorial
     switch (taskId) {
       case 'create_project':
+        setCurrentView('dashboard');
         setShowProjectModal(true);
         break;
       case 'create_team':
@@ -261,8 +271,8 @@ export default function Home() {
         break;
       case 'create_shift_pattern':
         if (selectedProject) {
-          setCurrentView('planning');
-          setShowShiftPatternModal(true);
+          setShiftBuilderCreateMode({ projectId: selectedProject });
+          setCurrentView('fatigue');
         } else {
           // Need to select a project first, go to dashboard
           setCurrentView('dashboard');
@@ -287,7 +297,6 @@ export default function Home() {
       default:
         break;
     }
-    setActiveTask(taskId);
   };
 
   // Handle sidebar navigation
@@ -312,6 +321,15 @@ export default function Home() {
 
       {/* Onboarding Panel */}
       <OnboardingPanel onStartTask={handleOnboardingTask} />
+
+      {/* Tutorial Overlay */}
+      <TutorialOverlay
+        open={!!tutorialTaskId}
+        taskId={tutorialTaskId}
+        onClose={() => setTutorialTaskId(null)}
+        onStartTask={() => tutorialTaskId && navigateToTask(tutorialTaskId)}
+        onMarkComplete={() => tutorialTaskId && completeTask(tutorialTaskId)}
+      />
 
       {/* Main Content Area */}
       <Box
