@@ -241,7 +241,7 @@ export function FatigueView({
     setLoadedPattern,
   } = useFatigueMode();
 
-  const [showEntryModal, setShowEntryModal] = useState(true);
+  const [showEntryModal, setShowEntryModal] = useState(!startInCreateMode);
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
@@ -283,15 +283,14 @@ export function FatigueView({
 
   // Handle initial create mode when navigating from Planning view
   useEffect(() => {
-    if (startInCreateMode && initialProjectId && !initializedFromProps.current) {
+    if (startInCreateMode && initialProjectId && !initializedFromProps.current && projects.length > 0) {
       const project = projects.find(p => p.id === initialProjectId);
       if (project) {
         initializedFromProps.current = true;
         setSelectedProjectId(project.id);
         setSelectedPatternId(null);
-        setShowEntryModal(false);
         enterCreateMode(project);
-        // Initialize weekly shifts inline since the function isn't available yet
+        // Initialize weekly shifts inline
         const weekShifts: Shift[] = NR_DAYS.map((dayName, index) => {
           const isRestDay = index === 0 || index === 1;
           const isMonday = index === 2;
@@ -304,17 +303,17 @@ export function FatigueView({
             isRestDay,
             commuteIn: isMonday ? 90 : 30,
             commuteOut: isFriday ? 90 : 30,
-            workload: params.workload,
-            attention: params.attention,
-            breakFreq: params.breakFrequency,
-            breakLen: params.breakLength,
+            workload: DEFAULT_FATIGUE_PARAMS.workload,
+            attention: DEFAULT_FATIGUE_PARAMS.attention,
+            breakFreq: DEFAULT_FATIGUE_PARAMS.breakFrequency,
+            breakLen: DEFAULT_FATIGUE_PARAMS.breakLength,
           };
         });
         setShifts(weekShifts);
         setStartDayOfWeek(6);
       }
     }
-  }, [startInCreateMode, initialProjectId, projects, enterCreateMode, params]);
+  }, [startInCreateMode, initialProjectId, projects, enterCreateMode]);
 
   const projectPatterns = useMemo(() => {
     if (!selectedProjectId) return [];
