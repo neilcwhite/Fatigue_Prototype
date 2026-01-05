@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <style>
+      .brand-primary { fill: #233e99; }
+      .white { fill: #ffffff; }
+    </style>
+  </defs>
+  
+  <!-- Shield shape -->
+  <path d="M16 1 L30 5.6 L30 17.6 Q30 27.2 16 31 Q2 27.2 2 17.6 L2 5.6 Z" class="brand-primary"/>
+  
+  <!-- Eye -->
+  <ellipse cx="16" cy="15" rx="9" ry="5" class="white"/>
+  <circle cx="16" cy="15" r="3" class="brand-primary"/>
+  <circle cx="17" cy="14" r="1" class="white"/>
+  
+</svg>

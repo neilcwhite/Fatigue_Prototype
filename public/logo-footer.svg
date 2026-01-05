@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 28">
+  <defs>
+    <style>
+      .brand-muted { fill: #6b7ba3; }
+      .white { fill: #ffffff; }
+    </style>
+  </defs>
+  
+  <!-- Shield icon with eye - small muted -->
+  <g transform="translate(2, 2)">
+    <path d="M12 0 L24 4.8 L24 16.8 Q24 26.4 12 31.2 Q0 26.4 0 16.8 L0 4.8 Z" transform="scale(0.72)" class="brand-muted"/>
+    <ellipse cx="8.6" cy="11" rx="5" ry="3" class="white"/>
+    <circle cx="8.6" cy="11" r="1.8" class="brand-muted"/>
+  </g>
+  
+  <!-- Wordmark muted -->
+  <text x="30" y="19" font-family="Arial, Helvetica, sans-serif" font-size="14" class="brand-muted">
+    <tspan font-weight="600">Herd</tspan><tspan font-weight="400">Watch</tspan>
+  </text>
+  
+</svg>

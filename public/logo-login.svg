@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <defs>
+    <style>
+      .brand-primary { fill: #233e99; }
+      .white { fill: #ffffff; }
+      .tagline { fill: #5a6a8a; }
+    </style>
+  </defs>
+  
+  <!-- Shield icon with eye -->
+  <g transform="translate(140, 20)">
+    <path d="M60 0 L120 24 L120 84 Q120 132 60 156 Q0 132 0 84 L0 24 Z" class="brand-primary"/>
+    <ellipse cx="60" cy="68" rx="32" ry="18" class="white"/>
+    <circle cx="60" cy="68" r="11" class="brand-primary"/>
+    <circle cx="63" cy="65" r="4" class="white"/>
+  </g>
+  
+  <!-- Wordmark -->
+  <text x="200" y="195" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="32" class="brand-primary">
+    <tspan font-weight="700">Herd</tspan><tspan font-weight="400">Watch</tspan>
+  </text>
+  
+</svg>

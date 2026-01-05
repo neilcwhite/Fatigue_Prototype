@@ -101,9 +101,12 @@ export function Sidebar({
         }}
       >
         {!collapsed && (
-          <Typography variant="h6" fontWeight="bold" noWrap>
-            Herd<Box component="span" sx={{ color: '#22c55e' }}>Watch</Box>
-          </Typography>
+          <Box
+            component="img"
+            src="/logo-header-dark.svg"
+            alt="HerdWatch"
+            sx={{ height: 32, width: 'auto' }}
+          />
         )}
         <IconButton onClick={() => setCollapsed(!collapsed)} size="small">
           {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}

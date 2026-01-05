@@ -156,45 +156,20 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
           borderColor: 'divider',
         }}
       >
-        {/* Logo and Title */}
+        {/* Logo */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
-          {/* HerdWatch Logo - text-based for now */}
           <Box
+            component="img"
+            src="/logo-login.svg"
+            alt="HerdWatch"
             sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 1,
-              mb: 1.5,
+              width: '100%',
+              maxWidth: 280,
+              height: 'auto',
+              mb: 1,
             }}
-          >
-            {/* Cow icon placeholder */}
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                bgcolor: '#22c55e',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.75rem',
-              }}
-            >
-              🐄
-            </Box>
-          </Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              color: '#ffffff',
-              letterSpacing: '-0.5px',
-            }}
-          >
-            Herd<Box component="span" sx={{ color: '#22c55e' }}>Watch</Box>
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#94a3b8', mt: 0.5 }}>
+          />
+          <Typography variant="body2" sx={{ color: '#94a3b8' }}>
             Fatigue management for your workforce
           </Typography>
         </Box>
@@ -210,13 +185,13 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                       '& .MuiStepLabel-label': {
                         color: '#94a3b8',
                         fontSize: '0.75rem',
-                        '&.Mui-active': { color: '#22c55e' },
-                        '&.Mui-completed': { color: '#22c55e' },
+                        '&.Mui-active': { color: '#4a6bc4' },
+                        '&.Mui-completed': { color: '#233e99' },
                       },
                       '& .MuiStepIcon-root': {
                         color: '#475569',
-                        '&.Mui-active': { color: '#22c55e' },
-                        '&.Mui-completed': { color: '#22c55e' },
+                        '&.Mui-active': { color: '#4a6bc4' },
+                        '&.Mui-completed': { color: '#233e99' },
                       },
                     }}
                   >
@@ -235,9 +210,9 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
               severity="success"
               sx={{
                 mb: 3,
-                bgcolor: 'rgba(34, 197, 94, 0.1)',
-                color: '#86efac',
-                '& .MuiAlert-icon': { color: '#22c55e' },
+                bgcolor: 'rgba(35, 62, 153, 0.1)',
+                color: '#93a8d4',
+                '& .MuiAlert-icon': { color: '#4a6bc4' },
               }}
             >
               <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
@@ -257,7 +232,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                   Open the email from <strong style={{ color: '#ffffff' }}>noreply@mail.app.supabase.io</strong>
                 </li>
                 <li style={{ marginBottom: '8px' }}>
-                  Click the <strong style={{ color: '#22c55e' }}>Confirm your email</strong> link
+                  Click the <strong style={{ color: '#4a6bc4' }}>Confirm your email</strong> link
                 </li>
                 <li>
                   You&apos;ll be signed in automatically
@@ -274,9 +249,9 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
               variant="text"
               onClick={handleModeSwitch}
               sx={{
-                color: 'primary.light',
+                color: '#4a6bc4',
                 textTransform: 'none',
-                '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.1)' },
+                '&:hover': { bgcolor: 'rgba(35, 62, 153, 0.1)' },
               }}
             >
               Back to Sign In
@@ -374,9 +349,9 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                   mt: 1,
                   fontWeight: 600,
                   fontSize: '1rem',
-                  bgcolor: mode === 'signup' ? '#22c55e' : 'primary.main',
+                  bgcolor: '#233e99',
                   '&:hover': {
-                    bgcolor: mode === 'signup' ? '#16a34a' : 'primary.dark',
+                    bgcolor: '#1a2d73',
                   },
                 }}
               >
@@ -404,12 +379,12 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
                 disabled={loading}
                 fullWidth
                 sx={{
-                  color: mode === 'signin' ? '#22c55e' : 'primary.light',
-                  borderColor: mode === 'signin' ? '#22c55e' : 'primary.light',
+                  color: '#4a6bc4',
+                  borderColor: '#4a6bc4',
                   textTransform: 'none',
                   '&:hover': {
-                    bgcolor: mode === 'signin' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                    borderColor: mode === 'signin' ? '#22c55e' : 'primary.light',
+                    bgcolor: 'rgba(35, 62, 153, 0.1)',
+                    borderColor: '#233e99',
                   },
                 }}
               >

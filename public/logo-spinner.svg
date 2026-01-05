@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <style>
+      .brand-primary { fill: #233e99; }
+      .white { fill: #ffffff; }
+      .brand-light { fill: #4a6bc4; }
+    </style>
+  </defs>
+  
+  <!-- Shield shape -->
+  <path d="M32 4 L58 12 L58 36 Q58 54 32 60 Q6 54 6 36 L6 12 Z" class="brand-primary"/>
+  
+  <!-- Eye white -->
+  <ellipse cx="32" cy="32" rx="16" ry="9" class="white"/>
+  
+  <!-- Animated pupil -->
+  <circle cx="32" cy="32" r="5" class="brand-primary">
+    <animate attributeName="cx" values="28;36;28" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Highlight -->
+  <circle cx="34" cy="30" r="1.5" class="white">
+    <animate attributeName="cx" values="30;38;30" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Rotating ring around shield -->
+  <circle cx="32" cy="32" r="30" fill="none" stroke="#4a6bc4" stroke-width="2" stroke-dasharray="20 10" stroke-linecap="round">
+    <animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+</svg>

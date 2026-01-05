@@ -115,9 +115,14 @@ export function Dashboard({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            Herd<Box component="span" sx={{ color: '#22c55e' }}>Watch</Box>
-          </Typography>
+          <Box sx={{ flexGrow: 1 }}>
+            <Box
+              component="img"
+              src="/logo-header-dark.svg"
+              alt="HerdWatch"
+              sx={{ height: 32, width: 'auto' }}
+            />
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip
               label="DASHBOARD"

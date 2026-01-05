@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <style>
+      .brand-primary { fill: #233e99; }
+      .white { fill: #ffffff; }
+    </style>
+  </defs>
+  
+  <!-- Background rounded square -->
+  <rect x="0" y="0" width="192" height="192" rx="32" class="brand-primary"/>
+  
+  <!-- Eye centered -->
+  <ellipse cx="96" cy="96" rx="52" ry="30" class="white"/>
+  <circle cx="96" cy="96" r="18" class="brand-primary"/>
+  <circle cx="102" cy="90" r="6" class="white"/>
+  
+</svg>
