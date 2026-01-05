@@ -33,6 +33,7 @@ interface TutorialContent {
 }
 
 // Tutorial content for each onboarding task
+// IMPORTANT: All button names and menu items must EXACTLY match the UI
 const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
   create_project: {
     taskId: 'create_project',
@@ -40,179 +41,172 @@ const TUTORIAL_CONTENT: Record<string, Omit<TutorialContent, 'onComplete'>> = {
     introduction: 'Projects are the foundation of HerdWatch. They represent a job site, contract, or work location where you\'ll manage shifts and employees.',
     steps: [
       {
-        title: 'Navigate to Dashboard',
-        description: 'From the sidebar menu, click on "Dashboard" to go to the main dashboard view. This is where you\'ll see all your projects.',
+        title: 'Go to Dashboard',
+        description: 'In the sidebar on the left, click "Dashboard". This is the main view where all your projects are displayed.',
         image: 'dashboard',
       },
       {
-        title: 'Click "New Project"',
-        description: 'On the dashboard, you\'ll see a "New Project" button (or a card with a + icon). Click this to open the project creation form.',
-        tip: 'If you already have projects, the button appears in the top-right area of the projects section.',
+        title: 'Click "Create New Project"',
+        description: 'On the Dashboard, find the card labeled "Create New Project" with a + icon. Click it to open the project creation form.',
       },
       {
         title: 'Enter Project Details',
-        description: 'In the form that appears, enter:\n\n- Project Name: A descriptive name (e.g., "Silverstone Track Works")\n- Start Date (optional): When the project begins\n- End Date (optional): When the project is expected to finish',
-        tip: 'Choose a clear, recognizable name - your team will see this when selecting projects.',
+        description: 'In the popup form, fill in:\n\n• Project Name (required): e.g., "Silverstone Track Works"\n• Start Date (optional)\n• End Date (optional)',
+        tip: 'Choose a clear, recognizable name that your team will understand.',
       },
       {
-        title: 'Create the Project',
-        description: 'Click the "Create Project" button to save your new project. It will appear on your dashboard and you can start adding shift patterns and assigning employees.',
+        title: 'Click "Create Project"',
+        description: 'Click the "Create Project" button at the bottom of the form. Your new project will appear on the Dashboard.',
       },
     ],
   },
   create_team: {
     taskId: 'create_team',
     title: 'Creating a Team',
-    introduction: 'Teams help you organize employees into groups. You can assign entire teams to shifts at once, making scheduling faster and easier.',
+    introduction: 'Teams help you organize employees into groups. You can assign entire teams to shifts at once, making scheduling faster.',
     steps: [
       {
-        title: 'Go to Teams & Employees',
-        description: 'Click on "Teams" in the sidebar menu to open the Teams & Employees management page.',
+        title: 'Go to Teams',
+        description: 'In the sidebar on the left, click "Teams". This opens the Teams & Employees management page.',
         image: 'teams',
       },
       {
         title: 'Click "Create Team"',
-        description: 'Look for the "Create Team" button at the top of the page. Click it to open the team creation form.',
+        description: 'At the top right of the page, click the purple "Create Team" button.',
       },
       {
-        title: 'Name Your Team',
-        description: 'Enter a team name that describes the group (e.g., "Night Crew", "Track Team A", "COSS Team").',
-        tip: 'Use names that are meaningful to your organization structure.',
+        title: 'Enter Team Name',
+        description: 'In the popup, enter a team name (e.g., "Night Crew", "Track Team A", "COSS Team").',
+        tip: 'Use names that are meaningful to your organization.',
       },
       {
-        title: 'Add Team Members',
-        description: 'After creating the team, you can add employees to it by clicking on employee cards and assigning them to the team.',
-        tip: 'Employees can belong to multiple teams if needed.',
+        title: 'Click "Create Team"',
+        description: 'Click "Create Team" to save. Your team will appear in the Teams section. You can then drag employees into the team to add members.',
       },
     ],
   },
   add_employee: {
     taskId: 'add_employee',
     title: 'Adding an Employee',
-    introduction: 'Employees are the people you\'ll be scheduling for shifts. Add them individually or import in bulk.',
+    introduction: 'Employees are the people you\'ll be scheduling for shifts. Add them one at a time here.',
     steps: [
       {
-        title: 'Go to Teams & Employees',
-        description: 'Click on "Teams" in the sidebar menu to access the Teams & Employees page.',
+        title: 'Go to Teams',
+        description: 'In the sidebar on the left, click "Teams". This opens the Teams & Employees page.',
         image: 'teams',
       },
       {
         title: 'Click "Add Employee"',
-        description: 'Look for the "Add Employee" button. It\'s usually located near the top of the employees section.',
+        description: 'At the top right of the page, click the green "Add Employee" button.',
       },
       {
         title: 'Enter Employee Details',
-        description: 'Fill in the employee information:\n\n- Name: The employee\'s full name\n- Role (optional): Their job title or role (e.g., "COSS", "Lookout", "Machine Operator")',
-        tip: 'The role helps with fatigue calculations - different roles have different workload factors.',
+        description: 'In the popup, fill in:\n\n• Name (required): The employee\'s full name\n• Role (optional): e.g., "COSS", "Lookout", "Machine Operator"',
+        tip: 'The role affects fatigue calculations - different roles have different workload factors.',
       },
       {
-        title: 'Save the Employee',
-        description: 'Click "Create" or "Add" to save the employee. They\'ll now appear in your employee list and can be assigned to shifts.',
+        title: 'Click "Add Employee"',
+        description: 'Click "Add Employee" to save. The employee will appear in the Employees list and can now be assigned to shifts.',
       },
     ],
   },
   import_employees: {
     taskId: 'import_employees',
     title: 'Importing Employees',
-    introduction: 'If you have a spreadsheet with employee data, you can import multiple employees at once instead of adding them one by one.',
+    introduction: 'If you have a spreadsheet with employee data, you can import multiple employees at once.',
     steps: [
       {
-        title: 'Go to Teams & Employees',
-        description: 'Navigate to the Teams page from the sidebar menu.',
+        title: 'Go to Teams',
+        description: 'In the sidebar on the left, click "Teams".',
         image: 'teams',
       },
       {
-        title: 'Find the Import Option',
-        description: 'Look for an "Import" button or option on the Teams & Employees page.',
+        title: 'Look for Import Option',
+        description: 'On the Teams page, look for an "Import" button (this feature may be coming soon).',
       },
       {
         title: 'Prepare Your Spreadsheet',
-        description: 'Your spreadsheet should have columns for:\n\n- Name (required)\n- Role (optional)\n- Email (optional)',
-        tip: 'CSV and Excel formats are typically supported.',
+        description: 'Your spreadsheet should have columns for:\n\n• Name (required)\n• Role (optional)',
+        tip: 'CSV format works best.',
       },
       {
-        title: 'Upload and Review',
-        description: 'Select your file, review the imported data, and confirm to add all employees at once.',
+        title: 'Upload and Confirm',
+        description: 'Select your file, review the preview, and confirm to add all employees.',
       },
     ],
   },
   create_shift_pattern: {
     taskId: 'create_shift_pattern',
     title: 'Creating a Shift Pattern',
-    introduction: 'Shift patterns define the working hours for your project. The Shift Builder also calculates fatigue risk to help ensure compliance with working time regulations.',
+    introduction: 'Shift patterns define working hours for your project. The Shift Builder calculates fatigue risk to help ensure compliance.',
     steps: [
       {
         title: 'Go to Shift Builder',
-        description: 'Click on "Shift Builder" in the sidebar menu. This opens the fatigue-aware shift pattern designer.',
+        description: 'In the sidebar on the left, click "Shift Builder".',
         image: 'shiftbuilder',
       },
       {
-        title: 'Select or Create a Project',
-        description: 'If prompted, select the project this shift pattern belongs to, or create a new project first.',
-        tip: 'Shift patterns are always linked to a specific project.',
+        title: 'Select Your Project',
+        description: 'When prompted, select the project this shift pattern will belong to. You must have a project created first.',
+        tip: 'Each shift pattern is linked to a specific project.',
       },
       {
         title: 'Configure the Week',
-        description: 'You\'ll see a 7-day week (Saturday to Friday, Network Rail style). For each day:\n\n- Check/uncheck "Rest" for non-working days\n- Set Start and End times\n- Adjust commute times if needed',
-        tip: 'The fatigue index updates in real-time as you make changes.',
+        description: 'You\'ll see a 7-day week (Saturday to Friday). For each working day:\n\n• Uncheck "Rest" to make it a working day\n• Set the Start time (e.g., 08:00)\n• Set the End time (e.g., 17:00)',
+        tip: 'Watch the FRI (Fatigue Risk Index) column - green is good.',
       },
       {
-        title: 'Review Fatigue Risk',
-        description: 'Look at the FRI (Fatigue Risk Index) scores. Green is good, yellow needs attention, orange/red indicates high risk.',
-        tip: 'Aim to keep all days in the green zone for compliance.',
-      },
-      {
-        title: 'Save the Pattern',
-        description: 'Click "Save as New Pattern" to save your shift pattern. Give it a descriptive name (e.g., "Day Shift Mon-Fri", "Night Possession").',
+        title: 'Click "Save as New Pattern"',
+        description: 'Click the green "Save as New Pattern" button. Enter a name like "Day Shift Mon-Fri" and click Save.',
       },
     ],
   },
   assign_shift: {
     taskId: 'assign_shift',
     title: 'Assigning Shifts to Employees',
-    introduction: 'Once you have a project with shift patterns and employees, you can start scheduling by assigning shifts.',
+    introduction: 'With a project, shift patterns, and employees set up, you can now schedule people to work.',
     steps: [
       {
         title: 'Select a Project',
-        description: 'From the dashboard, click on a project to select it, then click "Open Planning" to go to the planning view.',
+        description: 'Go to "Dashboard" and click on a project card to select it.',
         image: 'planning',
       },
       {
-        title: 'View the Schedule',
-        description: 'You\'ll see a timeline or grid showing shift patterns and dates. Each row represents a shift pattern.',
+        title: 'Open Planning View',
+        description: 'Click "Open Planning" on the project card, or click "Planning" in the sidebar (after selecting a project).',
       },
       {
-        title: 'Drag and Drop',
-        description: 'At the bottom of the screen, you\'ll see your employees (or teams). Simply drag an employee onto a shift cell to assign them.',
-        tip: 'Hold Ctrl/Cmd and click to select multiple employees, then drag them all at once.',
+        title: 'Drag Employees to Shifts',
+        description: 'At the bottom of the screen is the employee panel. Drag an employee card onto a shift cell (day/row) to assign them.',
+        tip: 'Hold Ctrl and click to select multiple employees, then drag them all at once.',
       },
       {
-        title: 'Check Compliance',
-        description: 'Watch for warning indicators on employee cards - these show fatigue compliance issues that need attention.',
+        title: 'Check for Warnings',
+        description: 'Employee cards are color-coded:\n\n• Green border = compliant\n• Yellow border = approaching limits\n• Red border = compliance issue\n\nHover over a card to see details.',
       },
     ],
   },
   view_compliance: {
     taskId: 'view_compliance',
-    title: 'Viewing Compliance Reports',
-    introduction: 'HerdWatch automatically tracks working time compliance. Learn how to review and address any issues.',
+    title: 'Viewing Compliance Status',
+    introduction: 'HerdWatch automatically tracks fatigue compliance. Here\'s how to review the status.',
     steps: [
       {
-        title: 'Check Employee Cards',
-        description: 'In the Planning view, employee cards show color-coded compliance status:\n\n- Green: All good\n- Yellow: Approaching limits\n- Red: Compliance issues',
+        title: 'Open Planning View',
+        description: 'Go to "Planning" in the sidebar (you must have a project selected).',
+      },
+      {
+        title: 'Check Employee Colors',
+        description: 'In the employee panel at the bottom, cards are color-coded:\n\n• Green = OK\n• Yellow = Warning (approaching limits)\n• Red = Violation (compliance issue)',
       },
       {
         title: 'Hover for Details',
-        description: 'Hover over any employee card to see specific compliance warnings or violations.',
+        description: 'Hover over any employee card to see specific warning or violation messages.',
       },
       {
-        title: 'Review Project Summary',
-        description: 'Go to "Project View" from the sidebar to see an overall summary of the project\'s compliance status.',
-        image: 'planning',
-      },
-      {
-        title: 'Take Action',
-        description: 'If you see compliance issues, consider:\n\n- Reducing consecutive shifts\n- Adding rest days\n- Adjusting shift lengths\n- Reassigning to different employees',
+        title: 'Go to Person View',
+        description: 'Click "Person View" in the sidebar to see detailed compliance information for the selected employee.',
+        tip: 'You must have an employee selected first.',
       },
     ],
   },
