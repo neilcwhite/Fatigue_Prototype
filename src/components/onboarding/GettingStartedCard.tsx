@@ -76,24 +76,21 @@ export function GettingStartedCard() {
           />
         </Box>
 
-        {/* Next task */}
+        {/* Next task - compact single line */}
         {nextTask && (
           <Box
             sx={{
               bgcolor: 'rgba(255,255,255,0.1)',
               borderRadius: 1.5,
-              p: 2,
+              px: 2,
+              py: 1.5,
               mb: 2,
             }}
           >
-            <Typography variant="caption" sx={{ opacity: 0.7, display: 'block', mb: 0.5 }}>
-              NEXT STEP
-            </Typography>
-            <Typography variant="body1" fontWeight={500}>
-              {nextTask.title}
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8, mt: 0.5 }}>
-              {nextTask.description}
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              <span style={{ opacity: 0.7 }}>Next Step</span>
+              <span style={{ margin: '0 8px' }}>–</span>
+              <span style={{ fontWeight: 500 }}>{nextTask.title}</span>
             </Typography>
           </Box>
         )}

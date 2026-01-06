@@ -18,6 +18,7 @@ import {
   Plus,
   CheckCircle,
   ErrorTriangle,
+  AlertTriangle,
   BarChart
 } from '@/components/ui/Icons';
 import { checkProjectCompliance } from '@/lib/compliance';
@@ -35,6 +36,10 @@ interface ProjectStats {
   employeeCount: number;
   shiftPatternCount: number;
   violations: string[];
+  hasErrors: boolean;
+  hasWarnings: boolean;
+  errorCount: number;
+  warningCount: number;
 }
 
 interface DashboardProps {
@@ -100,6 +105,10 @@ export function Dashboard({
       employeeCount: employeeIds.size,
       shiftPatternCount: projectPatterns.length,
       violations,
+      hasErrors: complianceResult.hasErrors,
+      hasWarnings: complianceResult.hasWarnings,
+      errorCount: complianceResult.errorCount,
+      warningCount: complianceResult.warningCount,
     };
   };
 
@@ -200,7 +209,7 @@ export function Dashboard({
                 Shift Builder
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                HSE RR446 compliant shift pattern analysis
+                Check and build safe shift patterns
               </Typography>
             </Card>
           </Grid>
@@ -267,10 +276,20 @@ export function Dashboard({
                       <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                         {project.name}
                       </Typography>
-                      <Tooltip title={stats.violations.length > 0 ? 'Compliance issues' : 'Compliant'}>
-                        <Box sx={{ transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.1)' } }}>
-                          {stats.violations.length > 0 ? (
+                      <Tooltip title={
+                        stats.hasErrors ? `${stats.errorCount} compliance breach${stats.errorCount > 1 ? 'es' : ''}` :
+                        stats.hasWarnings ? `${stats.warningCount} warning${stats.warningCount > 1 ? 's' : ''}` :
+                        'Compliant'
+                      }>
+                        <Box sx={{
+                          transition: 'transform 0.2s',
+                          '&:hover': { transform: 'scale(1.1)' },
+                          color: stats.hasErrors ? 'error.main' : stats.hasWarnings ? 'warning.main' : 'success.main'
+                        }}>
+                          {stats.hasErrors ? (
                             <ErrorTriangle className="w-6 h-6" />
+                          ) : stats.hasWarnings ? (
+                            <AlertTriangle className="w-6 h-6" />
                           ) : (
                             <CheckCircle className="w-6 h-6" />
                           )}
@@ -296,11 +315,13 @@ export function Dashboard({
                         <Typography
                           variant="body2"
                           fontWeight={600}
-                          sx={{ color: stats.violations.length > 0 ? 'error.main' : 'success.main' }}
+                          sx={{ color: stats.hasErrors ? 'error.main' : stats.hasWarnings ? 'warning.main' : 'success.main' }}
                         >
-                          {stats.violations.length === 0
-                            ? 'Compliant'
-                            : `${stats.violations.length} Breach${stats.violations.length > 1 ? 'es' : ''}`}
+                          {stats.hasErrors
+                            ? `${stats.errorCount} Breach${stats.errorCount > 1 ? 'es' : ''}`
+                            : stats.hasWarnings
+                            ? `${stats.warningCount} Warning${stats.warningCount > 1 ? 's' : ''}`
+                            : 'Compliant'}
                         </Typography>
                       </Box>
                     </Box>
