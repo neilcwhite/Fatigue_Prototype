@@ -1236,7 +1236,30 @@ export function FatigueView({
                         </Button>
                       </Box>
                     ) : (
-                      <Box sx={{ pb: 1 }}>
+                      <Box sx={{
+                        pb: 1,
+                        overflowX: 'auto',
+                        '&::-webkit-scrollbar': { height: 6 },
+                        '&::-webkit-scrollbar-thumb': { bgcolor: 'grey.300', borderRadius: 3 },
+                        // Hide number input spinners by default, show on hover
+                        '& input[type=number]': {
+                          MozAppearance: 'textfield',
+                        },
+                        '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
+                          WebkitAppearance: 'none',
+                          margin: 0,
+                        },
+                        '& .MuiTextField-root:hover input[type=number]::-webkit-outer-spin-button, & .MuiTextField-root:hover input[type=number]::-webkit-inner-spin-button': {
+                          WebkitAppearance: 'inner-spin-button',
+                        },
+                        // Hide time input icons by default, show on hover
+                        '& input[type=time]::-webkit-calendar-picker-indicator': {
+                          opacity: 0,
+                        },
+                        '& .MuiTextField-root:hover input[type=time]::-webkit-calendar-picker-indicator': {
+                          opacity: 1,
+                        },
+                      }}>
                         {/* Global Parameters Summary */}
                         <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1248,7 +1271,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '5% 4% 5% 12% 12% 5% 5% 6% 6% 6% 6% 7% 7%', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 72px 72px 44px 36px 48px 48px 48px 44px 52px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1286,7 +1309,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '5% 4% 5% 12% 12% 5% 5% 6% 6% 6% 6% 7% 7%',
+                                gridTemplateColumns: '40px 32px 44px 72px 72px 44px 36px 48px 48px 48px 44px 52px 52px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
