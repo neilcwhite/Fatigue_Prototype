@@ -37,6 +37,8 @@ const getViolationIcon = (type: string): string => {
       return '🔄';
     case 'MULTIPLE_SHIFTS_SAME_DAY':
       return '⚡';
+    case 'ELEVATED_FATIGUE_INDEX':
+      return '😵';
     default:
       return '⚠️';
   }
@@ -68,6 +70,8 @@ const getViolationTitle = (type: string): string => {
       return 'Breach: Day-Night Transition Same Day';
     case 'MULTIPLE_SHIFTS_SAME_DAY':
       return 'Breach: Multiple Shifts Same Day';
+    case 'ELEVATED_FATIGUE_INDEX':
+      return 'Breach: Fatigue Risk Index Exceeded';
     default:
       return 'Compliance Issue';
   }

@@ -576,6 +576,77 @@ export function check24HourRestAfterLevel2(
 }
 
 /**
+ * Check Fatigue Risk Index (FRI) thresholds per NR/L2/OHS/003
+ * Module 1, Section 4.3: FRI risk score must not exceed 1.6
+ *
+ * NOTE: The standard also mentions fatigue scores of 35 (daytime) and 45 (nighttime),
+ * but these appear to use a different scale than HSE RR446. The risk index threshold
+ * of 1.6 is clearly defined and enforced here.
+ */
+export function checkFatigueRiskIndex(
+  employeeId: number,
+  assignments: AssignmentCamel[],
+  patternMap: Map<string, ShiftPatternCamel>
+): ComplianceViolation[] {
+  const violations: ComplianceViolation[] = [];
+
+  // Import FRI calculation at runtime to avoid circular dependencies
+  const { calculateRiskIndex } = require('./fatigue');
+  const { FRI_THRESHOLDS } = require('./constants');
+
+  if (assignments.length === 0) return violations;
+
+  // Sort by date
+  const sorted = [...assignments].sort((a, b) =>
+    parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+  );
+
+  // Build shift sequence for FRI calculation
+  const shiftSequence = sorted.map((assignment, index) => {
+    const pattern = patternMap.get(assignment.shiftPatternId);
+    if (!pattern) return null;
+
+    const times = getShiftTimes(pattern, assignment.date, assignment);
+    if (!times) return null;
+
+    return {
+      day: index + 1, // Sequential day number
+      startTime: times.start,
+      endTime: times.end,
+      commuteIn: pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : 30,
+      commuteOut: pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : 30,
+      workload: pattern.workload || 5, // Use worst-case (5) for compliance checking
+      attention: pattern.attention || 5, // Use worst-case (5) for compliance checking
+      breakFreq: pattern.breakFrequency || 180,
+      breakLen: pattern.breakLength || 30,
+    };
+  }).filter(Boolean);
+
+  // Calculate FRI for each shift
+  shiftSequence.forEach((shift, index) => {
+    if (!shift) return;
+
+    const friResult = calculateRiskIndex(shift, index, shiftSequence);
+    const assignment = sorted[index];
+
+    // Check if risk index exceeds Network Rail threshold
+    if (friResult.riskIndex > FRI_THRESHOLDS.RISK_SCORE_LIMIT) {
+      violations.push({
+        type: 'ELEVATED_FATIGUE_INDEX',
+        severity: 'error',
+        employeeId,
+        date: assignment.date,
+        message: `FRI risk score ${friResult.riskIndex.toFixed(2)} exceeds Network Rail limit of ${FRI_THRESHOLDS.RISK_SCORE_LIMIT} (NR/L2/OHS/003 Module 1)`,
+        value: Math.round(friResult.riskIndex * 100) / 100,
+        limit: FRI_THRESHOLDS.RISK_SCORE_LIMIT,
+      });
+    }
+  });
+
+  return violations;
+}
+
+/**
  * Check consecutive days worked
  * Reports violations on the specific day that crosses each threshold:
  * - Warning on 7th consecutive day (CONSECUTIVE_DAYS_WARNING + 1)
@@ -756,6 +827,7 @@ export function checkEmployeeCompliance(
     ...check24HourRestAfterLevel2(employeeId, empAssignments, patternMap),
     ...checkConsecutiveDays(employeeId, empAssignments),
     ...checkConsecutiveNights(employeeId, empAssignments, patternMap),
+    ...checkFatigueRiskIndex(employeeId, empAssignments, patternMap),
   ];
   
   const errors = violations.filter(v => v.severity === 'error');

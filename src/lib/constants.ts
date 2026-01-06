@@ -70,7 +70,7 @@ export const FATIGUE_DEFAULTS = {
 } as const;
 
 /**
- * FRI (Fatigue Risk Index) thresholds per HSE RR446
+ * FRI (Fatigue Risk Index) thresholds per HSE RR446 and NR/L2/OHS/003
  */
 export const FRI_THRESHOLDS = {
   /** Below this is low risk (green) */
@@ -79,6 +79,14 @@ export const FRI_THRESHOLDS = {
   ELEVATED: 1.1,
   /** Above ELEVATED, below CRITICAL is elevated risk (orange) */
   CRITICAL: 1.2,
+
+  /** Network Rail NR/L2/OHS/003 compliance thresholds */
+  /** Fatigue score threshold for daytime hours (Module 1, Section 4.3) */
+  FATIGUE_SCORE_DAYTIME: 35,
+  /** Fatigue score threshold for nighttime hours (Module 1, Section 4.3) */
+  FATIGUE_SCORE_NIGHTTIME: 45,
+  /** Risk score threshold regardless of time of day (Module 1, Section 4.3) */
+  RISK_SCORE_LIMIT: 1.6,
 } as const;
 
 // ==================== COMPLIANCE LIMITS ====================
