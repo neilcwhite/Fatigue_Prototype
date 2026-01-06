@@ -16,7 +16,8 @@
       "Bash(npm test:*)",
       "Bash(wc:*)",
       "Bash(rm:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

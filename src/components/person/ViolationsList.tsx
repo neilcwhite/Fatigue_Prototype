@@ -18,10 +18,12 @@ const getViolationIcon = (type: string): string => {
     case 'INSUFFICIENT_REST':
       return '😴';
     case 'MAX_WEEKLY_HOURS':
-      return '📊';
+      return '🚫';
     case 'APPROACHING_WEEKLY_LIMIT':
       return '⚠️';
     case 'MAX_CONSECUTIVE_DAYS':
+      return '📅';
+    case 'CONSECUTIVE_DAYS_WARNING':
       return '📅';
     case 'CONSECUTIVE_NIGHTS_WARNING':
       return '🌙';
@@ -39,23 +41,25 @@ const getViolationIcon = (type: string): string => {
 const getViolationTitle = (type: string): string => {
   switch (type) {
     case 'MAX_SHIFT_LENGTH':
-      return 'Maximum Shift Length Exceeded';
+      return 'Breach: Maximum Shift Length Exceeded';
     case 'INSUFFICIENT_REST':
-      return 'Insufficient Rest Period';
+      return 'Breach: Insufficient Rest Period';
     case 'MAX_WEEKLY_HOURS':
-      return 'Maximum Weekly Hours Exceeded';
+      return 'Breach: Maximum Weekly Hours Exceeded';
     case 'APPROACHING_WEEKLY_LIMIT':
-      return 'Approaching Weekly Limit';
+      return 'Caution: Approaching Weekly Limit';
     case 'MAX_CONSECUTIVE_DAYS':
-      return 'Too Many Consecutive Days';
+      return 'Breach: Too Many Consecutive Days';
+    case 'CONSECUTIVE_DAYS_WARNING':
+      return 'Caution: Extended Working Days';
     case 'CONSECUTIVE_NIGHTS_WARNING':
-      return 'Extended Night Shift Run';
+      return 'Caution: Extended Night Shift Run';
     case 'MAX_CONSECUTIVE_NIGHTS':
-      return 'Too Many Consecutive Nights';
+      return 'Breach: Too Many Consecutive Nights';
     case 'DAY_NIGHT_TRANSITION':
-      return 'Day-Night Transition Same Day';
+      return 'Breach: Day-Night Transition Same Day';
     case 'MULTIPLE_SHIFTS_SAME_DAY':
-      return 'Multiple Shifts Same Day';
+      return 'Breach: Multiple Shifts Same Day';
     default:
       return 'Compliance Issue';
   }
@@ -83,7 +87,7 @@ export function ViolationsList({ violations, onViolationClick }: ViolationsListP
       >
         <AlertTriangle className="w-4 h-4" />
         <Typography variant="subtitle2" fontWeight={600}>
-          Compliance Violations ({violations.length})
+          Compliance Issues ({violations.length})
         </Typography>
       </Box>
       <Box sx={{ p: 1.5, maxHeight: 200, overflow: 'auto' }}>
