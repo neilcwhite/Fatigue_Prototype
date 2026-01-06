@@ -145,6 +145,8 @@ export type ViolationType =
   | 'MAX_SHIFT_LENGTH'
   | 'INSUFFICIENT_REST'
   | 'MAX_WEEKLY_HOURS'
+  | 'LEVEL_1_EXCEEDANCE'         // 60-72 hours: amber warning with duty restrictions
+  | 'LEVEL_2_EXCEEDANCE'         // 72+ hours: red error, complete work prohibition
   | 'APPROACHING_WEEKLY_LIMIT'
   | 'MAX_CONSECUTIVE_DAYS'
   | 'CONSECUTIVE_DAYS_WARNING'

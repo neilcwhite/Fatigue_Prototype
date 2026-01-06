@@ -19,6 +19,10 @@ const getViolationIcon = (type: string): string => {
       return '😴';
     case 'MAX_WEEKLY_HOURS':
       return '🚫';
+    case 'LEVEL_1_EXCEEDANCE':
+      return '⚠️';
+    case 'LEVEL_2_EXCEEDANCE':
+      return '🚨';
     case 'APPROACHING_WEEKLY_LIMIT':
       return '⚠️';
     case 'MAX_CONSECUTIVE_DAYS':
@@ -46,6 +50,10 @@ const getViolationTitle = (type: string): string => {
       return 'Breach: Insufficient Rest Period';
     case 'MAX_WEEKLY_HOURS':
       return 'Breach: Maximum Weekly Hours Exceeded';
+    case 'LEVEL_1_EXCEEDANCE':
+      return 'Caution: Level 1 Exceedance (60-72h)';
+    case 'LEVEL_2_EXCEEDANCE':
+      return 'Breach: Level 2 Exceedance (72h+)';
     case 'APPROACHING_WEEKLY_LIMIT':
       return 'Caution: Approaching Weekly Limit';
     case 'MAX_CONSECUTIVE_DAYS':

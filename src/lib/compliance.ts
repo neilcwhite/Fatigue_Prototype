@@ -39,6 +39,11 @@ export const COMPLIANCE_LIMITS = {
   MAX_CONSECUTIVE_DAYS: 13,
   MAX_CONSECUTIVE_NIGHTS: 7,
 
+  // NR/L2/OHS/003 Exceedance Levels
+  LEVEL_1_THRESHOLD: 60,  // Level 1 exceedance: 60-72 hours (restrictions apply)
+  LEVEL_2_THRESHOLD: 72,  // Level 2 exceedance: 72+ hours (complete prohibition)
+  MANDATORY_REST_AFTER_LEVEL_2: 24, // 24 hours rest required after Level 2
+
   // Soft Limits (Warnings)
   APPROACHING_WEEKLY_HOURS: 66,
   CONSECUTIVE_NIGHTS_WARNING: 4,
@@ -57,6 +62,8 @@ export type ViolationType =
   | 'MAX_SHIFT_LENGTH'
   | 'INSUFFICIENT_REST'
   | 'MAX_WEEKLY_HOURS'
+  | 'LEVEL_1_EXCEEDANCE'         // 60-72 hours: amber warning with duty restrictions
+  | 'LEVEL_2_EXCEEDANCE'         // 72+ hours: red error, complete work prohibition
   | 'APPROACHING_WEEKLY_LIMIT'
   | 'MAX_CONSECUTIVE_DAYS'
   | 'CONSECUTIVE_DAYS_WARNING'
@@ -411,31 +418,159 @@ export function checkWeeklyHours(
       }
     });
 
-    if (totalHours > COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS) {
+    // NR/L2/OHS/003 Exceedance Levels
+    if (totalHours >= COMPLIANCE_LIMITS.LEVEL_2_THRESHOLD) {
+      // Level 2 Exceedance: 72+ hours - CRITICAL ERROR
+      // Complete prohibition on all work until 24 hours consecutive rest
       violations.push({
-        type: 'MAX_WEEKLY_HOURS',
+        type: 'LEVEL_2_EXCEEDANCE',
         severity: 'error',
         employeeId,
         date: assignment.date,
-        message: `${totalHours.toFixed(1)}h in last 7 days (maximum ${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS}h)`,
+        message: `LEVEL 2 EXCEEDANCE: ${totalHours.toFixed(1)}h in rolling 7 days (72h limit breached) - Complete work prohibition, 24h mandatory rest required`,
         value: Math.round(totalHours * 10) / 10,
-        limit: COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS,
+        limit: COMPLIANCE_LIMITS.LEVEL_2_THRESHOLD,
+        windowEnd: windowEnd.toISOString().split('T')[0],
+        relatedDates: windowDates,
+      });
+    } else if (totalHours >= COMPLIANCE_LIMITS.LEVEL_1_THRESHOLD) {
+      // Level 1 Exceedance: 60-72 hours - WARNING with restrictions
+      // No safety-critical duties (COSS, PICOP, lookout, driving, IWA)
+      violations.push({
+        type: 'LEVEL_1_EXCEEDANCE',
+        severity: 'warning',
+        employeeId,
+        date: assignment.date,
+        message: `LEVEL 1 EXCEEDANCE: ${totalHours.toFixed(1)}h in rolling 7 days (60-72h range) - Safety-critical duty restrictions apply`,
+        value: Math.round(totalHours * 10) / 10,
+        limit: COMPLIANCE_LIMITS.LEVEL_1_THRESHOLD,
         windowEnd: windowEnd.toISOString().split('T')[0],
         relatedDates: windowDates,
       });
     } else if (totalHours > COMPLIANCE_LIMITS.APPROACHING_WEEKLY_HOURS) {
+      // Approaching limits: 66+ hours - early warning
       violations.push({
         type: 'APPROACHING_WEEKLY_LIMIT',
         severity: 'warning',
         employeeId,
         date: assignment.date,
-        message: `${totalHours.toFixed(1)}h in last 7 days (limit is ${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS}h) - not yet breached`,
+        message: `${totalHours.toFixed(1)}h in rolling 7 days (approaching 60h Level 1 threshold)`,
         value: Math.round(totalHours * 10) / 10,
-        limit: COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS,
+        limit: COMPLIANCE_LIMITS.LEVEL_1_THRESHOLD,
         windowEnd: windowEnd.toISOString().split('T')[0],
       });
     }
   });
+
+  return violations;
+}
+
+/**
+ * Check 24-hour mandatory rest after Level 2 exceedance
+ * When an employee reaches 72+ hours (Level 2), they must have 24 consecutive hours
+ * of rest before returning to work. This checks if assignments violate this requirement.
+ */
+export function check24HourRestAfterLevel2(
+  employeeId: number,
+  assignments: AssignmentCamel[],
+  patternMap: Map<string, ShiftPatternCamel>
+): ComplianceViolation[] {
+  const violations: ComplianceViolation[] = [];
+
+  if (assignments.length === 0) return violations;
+
+  // Sort by date
+  const sorted = [...assignments].sort((a, b) =>
+    parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
+  );
+
+  // Track Level 2 exceedances
+  const level2Dates = new Set<string>();
+
+  // First pass: identify all dates with Level 2 exceedances
+  sorted.forEach(assignment => {
+    const windowEnd = parseLocalDate(assignment.date);
+    const windowStart = new Date(windowEnd);
+    windowStart.setDate(windowStart.getDate() - 6);
+
+    let totalHours = 0;
+
+    sorted.forEach(a => {
+      const aDate = parseLocalDate(a.date);
+      if (aDate >= windowStart && aDate <= windowEnd) {
+        const pattern = patternMap.get(a.shiftPatternId);
+        if (pattern) {
+          totalHours += getShiftDuration(pattern, a.date, a);
+        }
+      }
+    });
+
+    if (totalHours >= COMPLIANCE_LIMITS.LEVEL_2_THRESHOLD) {
+      level2Dates.add(assignment.date);
+    }
+  });
+
+  // Second pass: check if employee returns to work without 24h rest after Level 2
+  for (let i = 0; i < sorted.length; i++) {
+    const currentDate = sorted[i].date;
+
+    // Check if this date is after a Level 2 exceedance
+    // Find the most recent Level 2 date before current date
+    let lastLevel2Date: string | null = null;
+    for (let j = i - 1; j >= 0; j--) {
+      if (level2Dates.has(sorted[j].date)) {
+        lastLevel2Date = sorted[j].date;
+        break;
+      }
+    }
+
+    if (lastLevel2Date) {
+      const lastLevel2Pattern = patternMap.get(sorted.find(a => a.date === lastLevel2Date)!.shiftPatternId);
+      const currentPattern = patternMap.get(sorted[i].shiftPatternId);
+
+      if (lastLevel2Pattern && currentPattern) {
+        // Calculate time between end of last shift and start of current shift
+        const lastLevel2Assignment = sorted.find(a => a.date === lastLevel2Date);
+        const restHours = calculateRestBetweenShifts(
+          lastLevel2Pattern,
+          lastLevel2Date,
+          currentPattern,
+          currentDate,
+          lastLevel2Assignment,
+          sorted[i]
+        );
+
+        // Check if there was a full 24 hours of rest
+        if (restHours >= 0 && restHours < COMPLIANCE_LIMITS.MANDATORY_REST_AFTER_LEVEL_2) {
+          // Also verify no work occurred in between
+          let workInBetween = false;
+          for (let k = 0; k < sorted.length; k++) {
+            const betweenDate = parseLocalDate(sorted[k].date);
+            const level2EndDate = parseLocalDate(lastLevel2Date);
+            const currentStartDate = parseLocalDate(currentDate);
+
+            if (betweenDate > level2EndDate && betweenDate < currentStartDate) {
+              workInBetween = true;
+              break;
+            }
+          }
+
+          if (!workInBetween) {
+            violations.push({
+              type: 'INSUFFICIENT_REST',
+              severity: 'error',
+              employeeId,
+              date: currentDate,
+              message: `Only ${restHours.toFixed(1)}h rest after Level 2 exceedance (24h mandatory rest required per NR/L2/OHS/003)`,
+              value: Math.round(restHours * 10) / 10,
+              limit: COMPLIANCE_LIMITS.MANDATORY_REST_AFTER_LEVEL_2,
+              relatedDates: [lastLevel2Date],
+            });
+          }
+        }
+      }
+    }
+  }
 
   return violations;
 }
@@ -618,6 +753,7 @@ export function checkEmployeeCompliance(
     ...checkRestPeriods(employeeId, empAssignments, patternMap),
     ...checkMultipleShiftsSameDay(employeeId, empAssignments, patternMap),
     ...checkWeeklyHours(employeeId, empAssignments, patternMap),
+    ...check24HourRestAfterLevel2(employeeId, empAssignments, patternMap),
     ...checkConsecutiveDays(employeeId, empAssignments),
     ...checkConsecutiveNights(employeeId, empAssignments, patternMap),
   ];
