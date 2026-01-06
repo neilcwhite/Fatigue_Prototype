@@ -1236,7 +1236,7 @@ export function FatigueView({
                         </Button>
                       </Box>
                     ) : (
-                      <Box sx={{ overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'grey.400', borderRadius: 4 } }}>
+                      <Box sx={{ pb: 1 }}>
                         {/* Global Parameters Summary */}
                         <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1248,7 +1248,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 50px 50px 50px 50px 54px 54px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 760 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '5% 4% 5% 12% 12% 5% 5% 6% 6% 6% 6% 7% 7%', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1286,7 +1286,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '42px 38px 48px 90px 90px 48px 42px 50px 50px 50px 50px 54px 54px',
+                                gridTemplateColumns: '5% 4% 5% 12% 12% 5% 5% 6% 6% 6% 6% 7% 7%',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1296,7 +1296,6 @@ export function FatigueView({
                                 borderColor: isRestDay ? 'grey.300' : (index < 2 ? 'warning.200' : 'success.200'),
                                 mb: 0.5,
                                 opacity: isRestDay ? 0.7 : 1,
-                                minWidth: 760,
                               }}
                             >
                               <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'center' }}>{dayName}</Typography>

@@ -15,7 +15,8 @@
       "Bash(node -e:*)",
       "Bash(npm test:*)",
       "Bash(wc:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
