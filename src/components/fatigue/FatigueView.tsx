@@ -1145,9 +1145,9 @@ export function FatigueView({
       <Box sx={{ p: 3 }}>
         {/* Condensed Header - Project info, title, pattern info, and actions in one row */}
         {loadedProject && (
-          <Paper variant="outlined" sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
             {/* Project Info */}
-            <Box sx={{ minWidth: 180 }}>
+            <Box sx={{ minWidth: { xs: 'auto', sm: 180 } }}>
               <Typography variant="caption" color="text.secondary">Project</Typography>
               <Typography variant="subtitle1" fontWeight={600}>{loadedProject.name}</Typography>
             </Box>
@@ -1200,8 +1200,8 @@ export function FatigueView({
           <Grid size={{ xs: 12, lg: 7 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* 7-Day Weekly View */}
-              <Paper elevation={2}>
-                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Paper elevation={2} sx={{ overflow: 'hidden' }}>
+                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                     <Typography variant="subtitle1" fontWeight={600}>Network Rail Week (Sat-Fri)</Typography>
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       {!isReadOnly && (
@@ -1236,7 +1236,7 @@ export function FatigueView({
                         </Button>
                       </Box>
                     ) : (
-                      <Box sx={{ overflowX: 'auto' }}>
+                      <Box sx={{ overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 8 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'grey.400', borderRadius: 4 } }}>
                         {/* Global Parameters Summary */}
                         <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
