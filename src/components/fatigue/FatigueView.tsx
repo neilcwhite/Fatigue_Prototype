@@ -1252,12 +1252,9 @@ export function FatigueView({
                         '& .MuiTextField-root:hover input[type=number]::-webkit-outer-spin-button, & .MuiTextField-root:hover input[type=number]::-webkit-inner-spin-button': {
                           WebkitAppearance: 'inner-spin-button',
                         },
-                        // Hide time input icons by default, show on hover
+                        // Hide time input clock icon completely
                         '& input[type=time]::-webkit-calendar-picker-indicator': {
-                          opacity: 0,
-                        },
-                        '& .MuiTextField-root:hover input[type=time]::-webkit-calendar-picker-indicator': {
-                          opacity: 1,
+                          display: 'none',
                         },
                       }}>
                         {/* Global Parameters Summary */}
@@ -1333,12 +1330,13 @@ export function FatigueView({
                                 />
                               </Box>
 
-                              <Tooltip title="Commute time to work (minutes)" arrow>
+                              <Tooltip title="Commute time to work (minutes)" placement="right" arrow>
                                 <TextField
                                   type="number"
                                   size="small"
                                   value={shift?.commuteIn ?? 30}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
+                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
                                   slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
@@ -1365,12 +1363,13 @@ export function FatigueView({
                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'white' } }}
                               />
 
-                              <Tooltip title="Commute time from work (minutes)" arrow>
+                              <Tooltip title="Commute time from work (minutes)" placement="right" arrow>
                                 <TextField
                                   type="number"
                                   size="small"
                                   value={shift?.commuteOut ?? 30}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
+                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
                                   slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
@@ -1381,7 +1380,7 @@ export function FatigueView({
                                 {isRestDay ? '-' : duration.toFixed(1)}
                               </Typography>
 
-                              <Tooltip title="Workload: 1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High" arrow>
+                              <Tooltip title="Workload: 1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High" placement="right" arrow>
                                 <TextField
                                   select
                                   size="small"
@@ -1399,7 +1398,7 @@ export function FatigueView({
                                 </TextField>
                               </Tooltip>
 
-                              <Tooltip title="Attention: 1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant" arrow>
+                              <Tooltip title="Attention: 1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant" placement="right" arrow>
                                 <TextField
                                   select
                                   size="small"
@@ -1417,24 +1416,26 @@ export function FatigueView({
                                 </TextField>
                               </Tooltip>
 
-                              <Tooltip title="Minutes between breaks" arrow>
+                              <Tooltip title="Minutes between breaks" placement="right" arrow>
                                 <TextField
                                   type="number"
                                   size="small"
                                   value={shift?.breakFreq ?? params.breakFrequency}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
+                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
                                   slotProps={{ htmlInput: { min: 1, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
                                 />
                               </Tooltip>
 
-                              <Tooltip title="Break length (minutes per break)" arrow>
+                              <Tooltip title="Break length (minutes per break)" placement="right" arrow>
                                 <TextField
                                   type="number"
                                   size="small"
                                   value={shift?.breakLen ?? params.breakLength}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
+                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
                                   slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' } } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
