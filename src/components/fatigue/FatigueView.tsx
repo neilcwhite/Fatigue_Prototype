@@ -1268,7 +1268,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 72px 72px 44px 36px 48px 48px 48px 44px 52px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1306,7 +1306,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '40px 32px 44px 72px 72px 44px 36px 48px 48px 48px 44px 52px 52px',
+                                gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 52px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1336,9 +1336,8 @@ export function FatigueView({
                                   size="small"
                                   value={shift?.commuteIn ?? 30}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'commuteIn', parseInt(e.target.value) || 0)}
-                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
-                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' }, onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select() } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
                                 />
                               </Tooltip>
@@ -1369,9 +1368,8 @@ export function FatigueView({
                                   size="small"
                                   value={shift?.commuteOut ?? 30}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'commuteOut', parseInt(e.target.value) || 0)}
-                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
-                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                  slotProps={{ htmlInput: { min: 0, max: 180, style: { textAlign: 'center', padding: '4px' }, onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select() } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'info.50' } }}
                                 />
                               </Tooltip>
@@ -1422,9 +1420,8 @@ export function FatigueView({
                                   size="small"
                                   value={shift?.breakFreq ?? params.breakFrequency}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'breakFreq', parseInt(e.target.value) || 2)}
-                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
-                                  slotProps={{ htmlInput: { min: 1, max: 180, style: { textAlign: 'center', padding: '4px' } } }}
+                                  slotProps={{ htmlInput: { min: 1, max: 180, style: { textAlign: 'center', padding: '4px' }, onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select() } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
                                 />
                               </Tooltip>
@@ -1435,9 +1432,8 @@ export function FatigueView({
                                   size="small"
                                   value={shift?.breakLen ?? params.breakLength}
                                   onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
-                                  onFocus={(e) => e.target.select()}
                                   disabled={isRestDay || isReadOnly}
-                                  slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' } } }}
+                                  slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' }, onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select() } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
                                 />
                               </Tooltip>
