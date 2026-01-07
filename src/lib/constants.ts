@@ -51,20 +51,21 @@ export const NR_WEEK = {
 /**
  * Default HSE RR446 fatigue risk assessment parameters
  * All time values are in MINUTES
+ * Values matched to NR Excel tool VBA defaults
  */
 export const FATIGUE_DEFAULTS = {
-  /** Default one-way commute time (minutes) */
-  COMMUTE_TIME: 60,
-  /** Physical workload rating (1-4 scale per NR Excel tool) */
+  /** Default one-way commute time (minutes) - VBA default is 40 */
+  COMMUTE_TIME: 40,
+  /** Physical workload rating (1-4 scale: 1=most demanding, 4=least) */
   WORKLOAD: 2,
-  /** Attention/vigilance requirement (1-4 scale per NR Excel tool) */
-  ATTENTION: 2,
+  /** Attention/vigilance requirement (1-4 scale: 1=most demanding, 4=least) - VBA default maps to 3 */
+  ATTENTION: 3,
   /** How frequently rest breaks are typically provided/taken (minutes) - 3 hours */
   BREAK_FREQUENCY: 180,
   /** Average length of rest breaks (minutes) */
   BREAK_LENGTH: 15,
-  /** Longest period of continuous work before a break (minutes) - 4 hours */
-  CONTINUOUS_WORK: 240,
+  /** Longest period of continuous work before a break (minutes) - VBA default is 6 hours */
+  CONTINUOUS_WORK: 360,
   /** Length of break after longest continuous work period (minutes) */
   BREAK_AFTER_CONTINUOUS: 30,
 } as const;

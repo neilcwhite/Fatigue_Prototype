@@ -55,13 +55,14 @@ export interface FatigueParams {
 
 // Default fatigue parameters
 // Workload/Attention use 1-4 scale per NR Excel tool (1=highest demand, 4=lowest demand)
+// VBA defaults: Workload=2 (moderate), Attention=1 (some), Commute=40min
 export const DEFAULT_FATIGUE_PARAMS: FatigueParams = {
-  commuteTime: 60,
-  workload: 2,  // "Moderately demanding, little spare capacity"
-  attention: 2, // "Some of the time"
-  breakFrequency: 180,
-  breakLength: 15,
-  continuousWork: 240,
+  commuteTime: 40,       // VBA default is 40 minutes (not 60)
+  workload: 2,           // "Moderately demanding, little spare capacity" (maps to internal 2)
+  attention: 3,          // "Some of the time" (maps to internal 1)
+  breakFrequency: 180,   // 3 hours between breaks
+  breakLength: 15,       // 15 minute average break
+  continuousWork: 360,   // VBA default is 360 (6 hours), not 240
   breakAfterContinuous: 30,
 };
 
@@ -199,12 +200,12 @@ function calculateJobBreaksComponent(
 ): number {
   const { workload, attention, breakFrequency, breakLength, continuousWork, breakAfterContinuous } = params;
 
-  // NR Excel tool uses 1-4 scale where 1=highest demand, 4=lowest
-  // Convert to internal scale where higher = more demanding for calculation
-  // workload/attention of 1 → 4, of 2 → 3, of 3 → 2, of 4 → 1
-  const adjustedWorkload = 5 - workload;
-  const adjustedAttention = 5 - attention;
-  const workloadSum = adjustedWorkload + adjustedAttention;
+  // NR Excel tool uses 1-4 UI scale where 1=highest demand, 4=lowest
+  // VBA uses 0-3 internal scale where 3=highest demand, 0=lowest
+  // Convert: UI 1→3, UI 2→2, UI 3→1, UI 4→0
+  const adjustedWorkload = 4 - workload;
+  const adjustedAttention = 4 - attention;
+  const workloadSum = adjustedWorkload + adjustedAttention; // Range 0-6, baseline is 3
   const avgContinuous = (breakFrequency + continuousWork) / 2;
   const avgBreak = (breakLength + breakAfterContinuous) / 2;
 
@@ -530,11 +531,12 @@ function dutyFactorFatigue(
   contWorkMins: number,
   breakAfterContMins: number
 ): number {
-  // NR Excel tool uses 1-4 scale where 1=highest demand, 4=lowest
-  // Convert to internal scale where higher = more demanding for calculation
-  const adjustedWorkload = 5 - workload;
-  const adjustedAttention = 5 - attention;
-  const workloadSum = adjustedWorkload + adjustedAttention;
+  // NR Excel tool uses 1-4 UI scale where 1=highest demand, 4=lowest
+  // VBA uses 0-3 internal scale where 3=highest demand, 0=lowest
+  // Convert: UI 1→3, UI 2→2, UI 3→1, UI 4→0
+  const adjustedWorkload = 4 - workload;
+  const adjustedAttention = 4 - attention;
+  const workloadSum = adjustedWorkload + adjustedAttention; // Range 0-6, baseline is 3
 
   // Base workload effect
   let workloadEffect = 0.125 + 0.015 * workloadSum;

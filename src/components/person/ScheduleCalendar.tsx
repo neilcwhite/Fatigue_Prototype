@@ -37,6 +37,7 @@ const getFRICellSx = (fri: number | null | undefined) => {
 
 interface FatigueResult {
   riskIndex: number;
+  fatigueIndex: number;
 }
 
 interface ScheduleCalendarProps {
@@ -200,6 +201,10 @@ export function ScheduleCalendar({
                     dateAssignmentIndices.length > 0 && fatigueResults
                       ? Math.max(...dateAssignmentIndices.map((i) => fatigueResults[i]?.riskIndex || 0))
                       : null;
+                  const dateFGI =
+                    dateAssignmentIndices.length > 0 && fatigueResults
+                      ? Math.max(...dateAssignmentIndices.map((i) => fatigueResults[i]?.fatigueIndex || 0))
+                      : null;
                   const isHighlighted = highlightedDate === date;
                   const hasAssignments = dateAssignments.length > 0;
 
@@ -240,11 +245,26 @@ export function ScheduleCalendar({
                           {dateNum}
                         </Typography>
                         {showFRI && dateFRI !== null && (
-                          <Chip
-                            label={dateFRI.toFixed(3)}
-                            size="small"
-                            sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.55rem', height: 16, fontWeight: 700 }}
-                          />
+                          <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            <Chip
+                              label={`R:${dateFRI.toFixed(2)}`}
+                              size="small"
+                              sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.5rem', height: 14, fontWeight: 700 }}
+                            />
+                            {dateFGI !== null && (
+                              <Chip
+                                label={`F:${dateFGI.toFixed(0)}`}
+                                size="small"
+                                sx={{
+                                  fontSize: '0.5rem',
+                                  height: 14,
+                                  fontWeight: 700,
+                                  bgcolor: dateFGI >= 35 ? '#ef4444' : dateFGI >= 25 ? '#f97316' : dateFGI >= 17.5 ? '#eab308' : '#22c55e',
+                                  color: 'white'
+                                }}
+                              />
+                            )}
+                          </Box>
                         )}
                       </Box>
 

@@ -15,7 +15,7 @@ import FormControl from '@mui/material/FormControl';
 import { ChevronLeft, ChevronRight, Trash2, Download, Edit2, Eye, EyeOff, Activity, AlertTriangle } from '@/components/ui/Icons';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
-import { parseTimeToHours, calculateDutyLength, calculateFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
+import { parseTimeToHours, calculateDutyLength, calculateCombinedFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 import type { ShiftDefinition } from '@/lib/types';
 import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
 import type { EmployeeCamel, AssignmentCamel, ShiftPatternCamel, ProjectCamel, SupabaseUser } from '@/lib/types';
@@ -137,12 +137,15 @@ export function PersonView({
         breakLen: pattern?.breakLength,
       };
     });
-    const results = calculateFatigueSequence(shifts);
+    // Use combined function to get both Risk Index (FRI) and Fatigue Index (FGI)
+    const results = calculateCombinedFatigueSequence(shifts);
     const maxFRI = Math.max(...results.map(r => r.riskIndex));
     const avgFRI = results.reduce((sum, r) => sum + r.riskIndex, 0) / results.length;
     const criticalShifts = results.filter(r => r.riskIndex >= 1.2).length;
     const elevatedShifts = results.filter(r => r.riskIndex >= 1.1 && r.riskIndex < 1.2).length;
-    return { results, maxFRI, avgFRI, criticalShifts, elevatedShifts };
+    const maxFGI = Math.max(...results.map(r => r.fatigueIndex));
+    const avgFGI = results.reduce((sum, r) => sum + r.fatigueIndex, 0) / results.length;
+    return { results, maxFRI, avgFRI, criticalShifts, elevatedShifts, maxFGI, avgFGI };
   }, [periodAssignments, shiftPatterns, currentPeriod]);
 
   const periodPatterns = useMemo(() => {

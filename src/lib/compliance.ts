@@ -621,16 +621,18 @@ export function checkFatigueRiskIndex(
     const times = getShiftTimes(pattern, assignment.date, assignment);
     if (!times) return null;
 
+    // Use pattern values if available, otherwise use NR Excel VBA defaults
+    // (not worst-case values, to match what's displayed to user)
     return {
       day: index + 1, // Sequential day number
       startTime: times.start,
       endTime: times.end,
-      commuteIn: pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : 30,
-      commuteOut: pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : 30,
-      workload: pattern.workload || 1, // Use worst-case (1=most demanding) for compliance checking
-      attention: pattern.attention || 1, // Use worst-case (1=most attention) for compliance checking
+      commuteIn: pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : 20, // VBA default 40 total
+      commuteOut: pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : 20,
+      workload: pattern.workload || 2, // VBA default: 2 (moderate)
+      attention: pattern.attention || 3, // VBA default: 3 (maps to internal 1)
       breakFreq: pattern.breakFrequency || 180,
-      breakLen: pattern.breakLength || 30,
+      breakLen: pattern.breakLength || 15, // VBA default: 15 minutes
     };
   }).filter(Boolean);
 
