@@ -255,7 +255,7 @@ export function ScheduleCalendar({
                           {dateNum}
                         </Typography>
                         {showFRI && dateFRI !== null && (
-                          <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end', mr: -0.25 }}>
+                          <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <Chip
                               label={`R:${dateFRI.toFixed(2)}`}
                               size="small"
@@ -322,6 +322,7 @@ export function ScheduleCalendar({
                                   position: 'relative',
                                   borderRadius: 0.5,
                                   p: 0.5,
+                                  pb: 0.75,
                                   ...getNRComplianceChipSx(assignmentViolation),
                                 }}
                               >
