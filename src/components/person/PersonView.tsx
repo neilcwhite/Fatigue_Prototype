@@ -49,6 +49,7 @@ interface PersonViewProps {
     customStartTime?: string;
     customEndTime?: string;
   }) => Promise<void>;
+  onCreateFatigueAssessment?: (assessment: FatigueAssessment) => Promise<void>;
 }
 
 
@@ -66,6 +67,7 @@ export function PersonView({
   onUpdateAssignment,
   onUpdateShiftPattern,
   onCreateAssignment,
+  onCreateFatigueAssessment,
 }: PersonViewProps) {
   const { showSuccess, showError } = useNotification();
   // Calculate initial year and period based on today's date
@@ -774,9 +776,18 @@ export function PersonView({
           open={true}
           onClose={() => setAssessmentViolation(null)}
           onSave={async (assessment) => {
-            // For now, just log the assessment - will be saved to database later
-            console.log('Assessment saved:', assessment);
-            showSuccess('Fatigue assessment saved');
+            try {
+              if (onCreateFatigueAssessment) {
+                await onCreateFatigueAssessment(assessment as FatigueAssessment);
+                showSuccess('Fatigue assessment saved');
+              } else {
+                console.log('Assessment saved (local only):', assessment);
+                showSuccess('Fatigue assessment saved (not persisted)');
+              }
+            } catch (err) {
+              console.error('Failed to save assessment:', err);
+              showError('Failed to save fatigue assessment');
+            }
             setAssessmentViolation(null);
           }}
           employee={employee}

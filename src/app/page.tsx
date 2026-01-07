@@ -401,6 +401,7 @@ export default function Home() {
             onUpdateAssignment={updateAssignment}
             onUpdateShiftPattern={updateShiftPattern}
             onCreateAssignment={createAssignment}
+            onCreateFatigueAssessment={createFatigueAssessment}
           />
         )}
 
