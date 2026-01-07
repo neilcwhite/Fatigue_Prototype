@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
-import { Edit2, Trash2, AlertTriangle, AlertCircle } from '@/components/ui/Icons';
+import { Edit2, Trash2, AlertTriangle, AlertCircle, Copy } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
 import type {
   ProjectCamel,
@@ -38,6 +38,7 @@ interface TimelineViewProps {
   onDeleteAssignment: (id: number) => Promise<void>;
   onEditAssignment?: (assignment: AssignmentCamel) => void;
   onNavigateToPerson?: (employeeId: number) => void;
+  onRepeatAssignment?: (shiftPatternId: string, date: string, employeeIds: number[]) => void;
   onCreateAssignment?: (data: {
     employeeId: number;
     projectId: number;
@@ -70,6 +71,7 @@ export function TimelineView({
   onDeleteAssignment,
   onEditAssignment,
   onNavigateToPerson,
+  onRepeatAssignment,
   onCreateAssignment,
 }: TimelineViewProps) {
   // Use all assignments/patterns for compliance (cross-project), fall back to project-only
@@ -523,7 +525,7 @@ export function TimelineView({
                                 <span className="font-medium truncate">
                                   {assignment.employeeName}
                                 </span>
-                                {/* Edit/Delete buttons - overlay on hover with solid background matching tile */}
+                                {/* Edit/Repeat/Delete buttons - overlay on hover with solid background matching tile */}
                                 <div className={`absolute right-0 top-0 bottom-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-r px-0.5 ${getTileBackground(assignment.violations)}`}>
                                   <button
                                     onClick={(e) => {
@@ -535,6 +537,20 @@ export function TimelineView({
                                   >
                                     <Edit2 className="w-2 h-2" />
                                   </button>
+                                  {onRepeatAssignment && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Get all employees assigned to this shift on this date
+                                        const sameCellAssignments = cellAssignments.map(a => a.employeeId);
+                                        onRepeatAssignment(pattern.id, date, sameCellAssignments);
+                                      }}
+                                      className="hover:bg-blue-200 rounded p-0.5"
+                                      title="Repeat this shift for date range"
+                                    >
+                                      <Copy className="w-2 h-2" />
+                                    </button>
+                                  )}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();

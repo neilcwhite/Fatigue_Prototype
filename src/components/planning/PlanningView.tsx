@@ -23,6 +23,7 @@ import { WeeklyView } from './WeeklyView';
 import { CustomTimeModal } from '@/components/modals/CustomTimeModal';
 import { ImportModal } from '@/components/modals/ImportModal';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
+import { BulkAssignmentModal } from '@/components/modals/BulkAssignmentModal';
 import { exportToExcel, processImport, type ParsedAssignment } from '@/lib/importExport';
 import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
 import { getEmployeeComplianceStatus } from '@/lib/compliance';
@@ -125,6 +126,13 @@ export function PlanningView({
 
   // Edit assignment modal state
   const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
+
+  // Bulk assignment modal state
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+  const [bulkAssignPrefill, setBulkAssignPrefill] = useState<{
+    shiftPatternId?: string;
+    startDate?: string;
+  } | null>(null);
 
   // Error notification state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -417,6 +425,26 @@ export function PlanningView({
     });
   };
 
+  // Bulk assignment handler
+  const handleBulkAssignments = async (assignments: Array<{
+    employeeId: number;
+    projectId: number;
+    shiftPatternId: string;
+    date: string;
+  }>) => {
+    // Create all assignments sequentially
+    for (const assignment of assignments) {
+      await onCreateAssignment(assignment);
+    }
+    clearSelection();
+  };
+
+  // Open bulk assign modal
+  const openBulkAssignModal = (prefill?: { shiftPatternId?: string; startDate?: string }) => {
+    setBulkAssignPrefill(prefill || null);
+    setShowBulkAssignModal(true);
+  };
+
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: 'grey.100' }}>
       {/* Header */}
@@ -545,6 +573,12 @@ export function PlanningView({
             onEditAssignment={setEditingAssignment}
             onNavigateToPerson={onNavigateToPerson}
             onCreateAssignment={onCreateAssignment}
+            onRepeatAssignment={(shiftPatternId, startDate, employeeIds) => {
+              // Select the employees and open bulk assign modal pre-filled
+              const empsToSelect = employees.filter(e => employeeIds.includes(e.id));
+              setSelectedEmployees(empsToSelect);
+              openBulkAssignModal({ shiftPatternId, startDate });
+            }}
           />
         )}
 
@@ -657,6 +691,14 @@ export function PlanningView({
               <Typography variant="body2" color="primary" fontWeight={600}>
                 {selectedEmployees.length} selected
               </Typography>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => openBulkAssignModal()}
+                sx={{ mr: 1 }}
+              >
+                Bulk Assign
+              </Button>
               <Button size="small" onClick={clearSelection}>
                 Clear
               </Button>
@@ -847,6 +889,25 @@ export function PlanningView({
           onClose={() => setEditingAssignment(null)}
           onSave={onUpdateAssignment}
           onDelete={onDeleteAssignment}
+        />
+      )}
+
+      {/* Bulk Assignment Modal */}
+      {showBulkAssignModal && (
+        <BulkAssignmentModal
+          open={showBulkAssignModal}
+          onClose={() => {
+            setShowBulkAssignModal(false);
+            setBulkAssignPrefill(null);
+          }}
+          employees={employees}
+          selectedEmployees={selectedEmployees}
+          shiftPatterns={projectShiftPatterns}
+          existingAssignments={projectAssignments}
+          projectId={project.id}
+          onCreateAssignments={handleBulkAssignments}
+          prefilledShiftPatternId={bulkAssignPrefill?.shiftPatternId}
+          prefilledStartDate={bulkAssignPrefill?.startDate}
         />
       )}
 
