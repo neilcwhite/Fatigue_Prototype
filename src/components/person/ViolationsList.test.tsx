@@ -6,6 +6,7 @@ import type { ComplianceViolation } from '@/lib/compliance';
 jest.mock('@/components/ui/Icons', () => ({
   XCircle: ({ className }: { className?: string }) => <span data-testid="x-circle" className={className}>X</span>,
   AlertTriangle: ({ className }: { className?: string }) => <span data-testid="alert-triangle" className={className}>!</span>,
+  FileText: ({ className }: { className?: string }) => <span data-testid="file-text" className={className}>📄</span>,
 }));
 
 describe('ViolationsList', () => {
@@ -52,7 +53,7 @@ describe('ViolationsList', () => {
       <ViolationsList violations={mockViolations} onViolationClick={mockOnClick} />
     );
 
-    expect(screen.getByText('Compliance Violations (3)')).toBeInTheDocument();
+    expect(screen.getByText('Compliance Issues (3)')).toBeInTheDocument();
   });
 
   it('sorts violations by date (soonest first)', () => {
@@ -125,28 +126,36 @@ describe('getViolationIcon', () => {
   it('returns correct icons for each violation type', () => {
     expect(getViolationIcon('MAX_SHIFT_LENGTH')).toBe('⏱️');
     expect(getViolationIcon('INSUFFICIENT_REST')).toBe('😴');
-    expect(getViolationIcon('MAX_WEEKLY_HOURS')).toBe('📊');
+    expect(getViolationIcon('MAX_WEEKLY_HOURS')).toBe('🚫');
+    expect(getViolationIcon('LEVEL_1_EXCEEDANCE')).toBe('⚠️');
+    expect(getViolationIcon('LEVEL_2_EXCEEDANCE')).toBe('🚨');
     expect(getViolationIcon('APPROACHING_WEEKLY_LIMIT')).toBe('⚠️');
     expect(getViolationIcon('MAX_CONSECUTIVE_DAYS')).toBe('📅');
+    expect(getViolationIcon('CONSECUTIVE_DAYS_WARNING')).toBe('📅');
     expect(getViolationIcon('CONSECUTIVE_NIGHTS_WARNING')).toBe('🌙');
     expect(getViolationIcon('MAX_CONSECUTIVE_NIGHTS')).toBe('🌙');
     expect(getViolationIcon('DAY_NIGHT_TRANSITION')).toBe('🔄');
     expect(getViolationIcon('MULTIPLE_SHIFTS_SAME_DAY')).toBe('⚡');
+    expect(getViolationIcon('ELEVATED_FATIGUE_INDEX')).toBe('😵');
     expect(getViolationIcon('UNKNOWN_TYPE')).toBe('⚠️');
   });
 });
 
 describe('getViolationTitle', () => {
   it('returns correct titles for each violation type', () => {
-    expect(getViolationTitle('MAX_SHIFT_LENGTH')).toBe('Maximum Shift Length Exceeded');
-    expect(getViolationTitle('INSUFFICIENT_REST')).toBe('Insufficient Rest Period');
-    expect(getViolationTitle('MAX_WEEKLY_HOURS')).toBe('Maximum Weekly Hours Exceeded');
-    expect(getViolationTitle('APPROACHING_WEEKLY_LIMIT')).toBe('Approaching Weekly Limit');
-    expect(getViolationTitle('MAX_CONSECUTIVE_DAYS')).toBe('Too Many Consecutive Days');
-    expect(getViolationTitle('CONSECUTIVE_NIGHTS_WARNING')).toBe('Extended Night Shift Run');
-    expect(getViolationTitle('MAX_CONSECUTIVE_NIGHTS')).toBe('Too Many Consecutive Nights');
-    expect(getViolationTitle('DAY_NIGHT_TRANSITION')).toBe('Day-Night Transition Same Day');
-    expect(getViolationTitle('MULTIPLE_SHIFTS_SAME_DAY')).toBe('Multiple Shifts Same Day');
+    expect(getViolationTitle('MAX_SHIFT_LENGTH')).toBe('STOP: Shift Too Long');
+    expect(getViolationTitle('INSUFFICIENT_REST')).toBe('STOP: Rest Period Too Short');
+    expect(getViolationTitle('MAX_WEEKLY_HOURS')).toBe('STOP: Weekly Hours Exceeded');
+    expect(getViolationTitle('LEVEL_1_EXCEEDANCE')).toBe('Level 1: Requires Risk Assessment');
+    expect(getViolationTitle('LEVEL_2_EXCEEDANCE')).toBe('Level 2: Requires Risk Assessment');
+    expect(getViolationTitle('APPROACHING_WEEKLY_LIMIT')).toBe('Warning: Approaching Weekly Limit');
+    expect(getViolationTitle('MAX_CONSECUTIVE_DAYS')).toBe('STOP: Too Many Consecutive Days');
+    expect(getViolationTitle('CONSECUTIVE_DAYS_WARNING')).toBe('Warning: Extended Working Days');
+    expect(getViolationTitle('CONSECUTIVE_NIGHTS_WARNING')).toBe('Warning: Extended Night Shift Run');
+    expect(getViolationTitle('MAX_CONSECUTIVE_NIGHTS')).toBe('STOP: Too Many Consecutive Nights');
+    expect(getViolationTitle('DAY_NIGHT_TRANSITION')).toBe('STOP: Day-Night Transition Same Day');
+    expect(getViolationTitle('MULTIPLE_SHIFTS_SAME_DAY')).toBe('STOP: Multiple Shifts Same Day');
+    expect(getViolationTitle('ELEVATED_FATIGUE_INDEX')).toBe('STOP: Fatigue Risk Index Exceeded');
     expect(getViolationTitle('UNKNOWN_TYPE')).toBe('Compliance Issue');
   });
 });

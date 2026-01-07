@@ -11,6 +11,7 @@ import { TeamsView } from '@/components/teams/TeamsView';
 import { PersonView } from '@/components/person/PersonView';
 import { SummaryView } from '@/components/summary/SummaryView';
 import { FatigueView } from '@/components/fatigue/FatigueView';
+import { AssessmentsView } from '@/components/assessments';
 import { ProjectModal } from '@/components/modals/ProjectModal';
 import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
 import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
@@ -20,9 +21,9 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { OnboardingPanel } from '@/components/onboarding/OnboardingPanel';
 import { TutorialOverlay } from '@/components/onboarding/TutorialOverlay';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
+import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel, FatigueAssessment } from '@/lib/types';
 
-type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
+type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments';
 
 // Check Supabase configuration at module level
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,6 +41,9 @@ export default function Home() {
   const [editingShiftPattern, setEditingShiftPattern] = useState<ShiftPatternCamel | null>(null);
   const [shiftBuilderCreateMode, setShiftBuilderCreateMode] = useState<{ projectId: number } | null>(null);
   const [tutorialTaskId, setTutorialTaskId] = useState<string | null>(null);
+
+  // Local state for fatigue assessments (until database hook is implemented)
+  const [fatigueAssessments, setFatigueAssessments] = useState<FatigueAssessment[]>([]);
 
   // Load app data once we have an organisation
   const {
@@ -453,6 +457,24 @@ export default function Home() {
             onDeleteTeam={deleteTeam}
             onCreateAssignment={createAssignment}
             onCreateEmployee={createEmployee}
+          />
+        )}
+
+        {currentView === 'assessments' && (
+          <AssessmentsView
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            employees={employees}
+            assessments={fatigueAssessments}
+            onCreateAssessment={(assessment) => {
+              setFatigueAssessments(prev => [...prev, assessment]);
+            }}
+            onUpdateAssessment={(id, updates) => {
+              setFatigueAssessments(prev =>
+                prev.map(a => a.id === id ? { ...a, ...updates } : a)
+              );
+            }}
           />
         )}
 

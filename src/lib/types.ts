@@ -293,3 +293,176 @@ export interface TeamCamel {
   memberIds: number[];
   organisationId: string;
 }
+
+// ==================== FATIGUE ASSESSMENT (FAMP) ====================
+
+// Reasons that can trigger a fatigue assessment
+export type FAMPAssessmentReason =
+  | 'more_than_12_hours_shift'
+  | 'less_than_12_hours_rest'
+  | 'door_to_door_14_hours'
+  | 'more_than_13_days_in_14'
+  | 'daytime_fri_35_plus'
+  | 'nighttime_fri_45_plus'
+  | 'fri_risk_score_1_6_plus'
+  | 'on_call_work'
+  | 'fatigue_concern_self'
+  | 'fatigue_concern_others'
+  | 'more_than_72_hours_weekly'    // Auto HIGH risk
+  | 'more_than_60_hours_weekly';   // Auto MEDIUM risk
+
+// Question IDs for the 13 scored assessment questions
+export type FAMPQuestionId =
+  | 'hours_worked_today'
+  | 'physical_activity_level'
+  | 'concentration_required'
+  | 'hours_left_in_shift'
+  | 'remaining_activity_type'
+  | 'breaks_and_refreshment'
+  | 'sleep_duration_24h'
+  | 'sleep_quality_24h'
+  | 'food_and_drink'
+  | 'time_between_shifts'
+  | 'shift_type'
+  | 'fri_score_end_shift'
+  | 'drive_time_home';
+
+// Answer for a single assessment question
+export interface FAMPQuestionAnswer {
+  questionId: FAMPQuestionId;
+  answerValue: string;
+  answerLabel: string;
+  score: number;
+}
+
+// Risk levels for FAMP
+export type FAMPRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+// Exceedance levels
+export type FAMPExceedanceLevel = 'none' | 'level1' | 'level2';
+
+// Status of a fatigue assessment
+export type FAMPStatus = 'draft' | 'pending_employee' | 'pending_manager' | 'completed' | 'cancelled';
+
+// Mitigation controls that can be applied
+export type FAMPMitigation =
+  | 'no_lookout_duties'
+  | 'no_individual_working_alone'
+  | 'no_safety_critical_duties'
+  | 'no_management_of_trains'
+  | 'no_driving_duties'
+  | 'no_otp_operation'
+  | 'no_otm_operation'
+  | 'relieve_from_duty'
+  | 'minimum_24_hours_rest'
+  | 'minimum_12_hours_rest'
+  | 'additional_meal_rest_breaks'
+  | 'change_scheduled_work'
+  | 'rotation_of_activity'
+  | 'additional_supervision'
+  | 'reduction_in_shift_length'
+  | 'provision_of_accommodation'
+  | 'provision_of_rested_drivers'
+  | 'share_driving_duties'
+  | 'use_local_staff'
+  | 'other';
+
+// Full fatigue assessment record
+export interface FatigueAssessment {
+  id: string;
+  organisationId: string;
+
+  // Part 1: Details
+  employeeId: number;
+  employeeName: string;
+  jobTitle?: string;
+  contractNo?: string;
+  location?: string;
+  assessmentDate: string;  // YYYY-MM-DD
+  shiftStartTime?: string;
+  shiftEndTime?: string;
+  assessorName: string;
+  assessorRole?: string;
+
+  // Link to violation that triggered this (optional)
+  violationType?: ViolationType;
+  violationDate?: string;
+  assignmentId?: number;
+
+  // Part 2: Reasons for assessment
+  assessmentReasons: FAMPAssessmentReason[];
+
+  // Part 3: Assessment scores
+  assessmentAnswers: FAMPQuestionAnswer[];
+  totalScore: number;
+
+  // Part 4: Risk assessment result
+  exceedanceLevel: FAMPExceedanceLevel;
+  calculatedRiskLevel: FAMPRiskLevel;
+  finalRiskLevel: FAMPRiskLevel;  // May be adjusted by assessor
+  riskAdjustmentNotes?: string;
+
+  // Part 5: Mitigations
+  appliedMitigations: FAMPMitigation[];
+  otherMitigationDetails?: string;
+
+  // Part 6: Authorisation
+  employeeAccepted: boolean;
+  employeeAcceptanceDate?: string;
+  employeeComments?: string;
+
+  managerApproved: boolean;
+  managerApprovalDate?: string;
+  managerName?: string;
+  managerComments?: string;
+
+  // Status and audit
+  status: FAMPStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
+// For creating a new assessment
+export interface FatigueAssessmentCreate extends Omit<FatigueAssessment,
+  'id' | 'organisationId' | 'createdAt' | 'updatedAt' | 'totalScore' | 'calculatedRiskLevel'
+> {}
+
+// Database row format (snake_case)
+export interface FatigueAssessmentRow {
+  id: string;
+  organisation_id: string;
+  employee_id: number;
+  employee_name: string;
+  job_title?: string;
+  contract_no?: string;
+  location?: string;
+  assessment_date: string;
+  shift_start_time?: string;
+  shift_end_time?: string;
+  assessor_name: string;
+  assessor_role?: string;
+  violation_type?: string;
+  violation_date?: string;
+  assignment_id?: number;
+  assessment_reasons: FAMPAssessmentReason[];
+  assessment_answers: FAMPQuestionAnswer[];
+  total_score: number;
+  exceedance_level: FAMPExceedanceLevel;
+  calculated_risk_level: FAMPRiskLevel;
+  final_risk_level: FAMPRiskLevel;
+  risk_adjustment_notes?: string;
+  applied_mitigations: FAMPMitigation[];
+  other_mitigation_details?: string;
+  employee_accepted: boolean;
+  employee_acceptance_date?: string;
+  employee_comments?: string;
+  manager_approved: boolean;
+  manager_approval_date?: string;
+  manager_name?: string;
+  manager_comments?: string;
+  status: FAMPStatus;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+}

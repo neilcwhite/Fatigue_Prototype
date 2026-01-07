@@ -12,9 +12,9 @@ import IconButton from '@mui/material/IconButton';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
-import { Home, Calendar, Users, BarChart, Settings, ChevronLeft, ChevronRight, HelpCircle } from '@/components/ui/Icons';
+import { Home, Calendar, Users, BarChart, Settings, ChevronLeft, ChevronRight, HelpCircle, FileText } from '@/components/ui/Icons';
 
-export type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams';
+export type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments';
 
 interface NavItem {
   id: ViewMode;
@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
   { id: 'planning', label: 'Planning', icon: <Calendar className="w-5 h-5" />, requiresProject: true },
   { id: 'summary', label: 'Project View', icon: <BarChart className="w-5 h-5" />, requiresProject: true },
   { id: 'person', label: 'Person View', icon: <Users className="w-5 h-5" />, requiresEmployee: true },
+  { id: 'assessments', label: 'Assessments', icon: <FileText className="w-5 h-5" /> },
   { id: 'teams', label: 'Teams', icon: <Users className="w-5 h-5" /> },
   { id: 'fatigue', label: 'Shift Builder', icon: <Settings className="w-5 h-5" /> },
 ];

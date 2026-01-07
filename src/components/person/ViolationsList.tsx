@@ -3,12 +3,14 @@
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import { AlertTriangle, XCircle } from '@/components/ui/Icons';
+import Button from '@mui/material/Button';
+import { AlertTriangle, XCircle, FileText } from '@/components/ui/Icons';
 import type { ComplianceViolation } from '@/lib/compliance';
 
 interface ViolationsListProps {
   violations: ComplianceViolation[];
   onViolationClick: (violation: ComplianceViolation) => void;
+  onCreateAssessment?: (violation: ComplianceViolation) => void;
 }
 
 const getViolationIcon = (type: string): string => {
@@ -119,7 +121,12 @@ const getSeverityColors = (severity: string) => {
   }
 };
 
-export function ViolationsList({ violations, onViolationClick }: ViolationsListProps) {
+// Check if violation requires FAMP assessment
+const requiresAssessment = (type: string): boolean => {
+  return ['LEVEL_1_EXCEEDANCE', 'LEVEL_2_EXCEEDANCE', 'ELEVATED_FATIGUE_INDEX'].includes(type);
+};
+
+export function ViolationsList({ violations, onViolationClick, onCreateAssessment }: ViolationsListProps) {
   if (violations.length === 0) return null;
 
   // Sort by date, soonest first
@@ -196,19 +203,46 @@ export function ViolationsList({ violations, onViolationClick }: ViolationsListP
                 >
                   {violation.message}
                 </Typography>
-                <Typography variant="caption" sx={{ color: '#374151' }}>
-                  {new Date(violation.date).toLocaleDateString('en-GB', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: '#374151' }}>
+                    {new Date(violation.date).toLocaleDateString('en-GB', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Typography>
+                  {requiresAssessment(violation.type) && onCreateAssessment && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCreateAssessment(violation);
+                      }}
+                      startIcon={<FileText className="w-3 h-3" />}
+                      sx={{
+                        fontSize: '0.65rem',
+                        py: 0.25,
+                        px: 0.75,
+                        minHeight: 0,
+                        borderColor: getSeverityColors(violation.severity).border,
+                        color: getSeverityColors(violation.severity).title,
+                        '&:hover': {
+                          borderColor: getSeverityColors(violation.severity).icon,
+                          bgcolor: getSeverityColors(violation.severity).bgHover,
+                        },
+                      }}
+                    >
+                      Create FAMP
+                    </Button>
+                  )}
                   <Box
                     component="span"
-                    sx={{ color: 'primary.main', ml: 1, fontWeight: 500 }}
+                    sx={{ color: 'primary.main', fontWeight: 500, fontSize: '0.7rem' }}
                   >
-                    → Click to view
+                    → View
                   </Box>
-                </Typography>
+                </Box>
               </Box>
             </Box>
           </Box>

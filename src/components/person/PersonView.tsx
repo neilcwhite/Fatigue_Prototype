@@ -14,7 +14,9 @@ import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import { ChevronLeft, ChevronRight, Trash2, Download, Edit2, Eye, EyeOff, Activity, AlertTriangle } from '@/components/ui/Icons';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
+import { FatigueAssessmentModal } from '@/components/modals/FatigueAssessmentModal';
 import { checkEmployeeCompliance, type ComplianceViolation } from '@/lib/compliance';
+import type { FatigueAssessment } from '@/lib/types';
 import { parseTimeToHours, calculateDutyLength, calculateCombinedFatigueSequence, DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 import type { ShiftDefinition } from '@/lib/types';
 import { generateNetworkRailPeriods, getAvailableYears, findPeriodForDate } from '@/lib/periods';
@@ -93,6 +95,7 @@ export function PersonView({
   } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<AssignmentCamel | null>(null);
   const [addShiftDate, setAddShiftDate] = useState<string | null>(null);
+  const [assessmentViolation, setAssessmentViolation] = useState<ComplianceViolation | null>(null);
 
   const networkRailPeriods = useMemo(() => generateNetworkRailPeriods(selectedYear), [selectedYear]);
   const availableYears = getAvailableYears();
@@ -514,6 +517,7 @@ export function PersonView({
         <ViolationsList
           violations={compliance.violations}
           onViolationClick={handleViolationClick}
+          onCreateAssessment={setAssessmentViolation}
         />
 
         {/* Schedule Calendar Grid - extracted component */}
@@ -761,6 +765,23 @@ export function PersonView({
             showSuccess(`Shift added for ${employee.name}`);
             setAddShiftDate(null);
           }}
+        />
+      )}
+
+      {/* Fatigue Assessment Modal */}
+      {assessmentViolation && (
+        <FatigueAssessmentModal
+          open={true}
+          onClose={() => setAssessmentViolation(null)}
+          onSave={async (assessment) => {
+            // For now, just log the assessment - will be saved to database later
+            console.log('Assessment saved:', assessment);
+            showSuccess('Fatigue assessment saved');
+            setAssessmentViolation(null);
+          }}
+          employee={employee}
+          violation={assessmentViolation}
+          assessorName={user.email || ''}
         />
       )}
     </Box>
