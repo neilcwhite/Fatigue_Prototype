@@ -126,14 +126,19 @@ export function ScheduleCalendar({
               Chip (NR):
             </Typography>
             <Chip
-              label="Error"
+              label="Prohibited"
               size="small"
-              sx={{ bgcolor: '#dc2626', color: 'white', fontSize: '0.6rem', height: 18 }}
+              sx={{ bgcolor: '#ef4444', color: 'white', fontSize: '0.6rem', height: 18 }}
             />
             <Chip
-              label="Warning"
+              label="Level 2"
               size="small"
-              sx={{ bgcolor: '#f59e0b', color: 'white', fontSize: '0.6rem', height: 18 }}
+              sx={{ bgcolor: '#f97316', color: 'white', fontSize: '0.6rem', height: 18 }}
+            />
+            <Chip
+              label="Level 1"
+              size="small"
+              sx={{ bgcolor: '#eab308', color: 'white', fontSize: '0.6rem', height: 18 }}
             />
             <Chip
               label="OK"
