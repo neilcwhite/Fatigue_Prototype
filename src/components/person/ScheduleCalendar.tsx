@@ -218,9 +218,9 @@ export function ScheduleCalendar({
                       key={date}
                       data-testid={`calendar-cell-${date}`}
                       sx={{
-                        height: 90,
-                        minHeight: 90,
-                        maxHeight: 90,
+                        height: 95,
+                        minHeight: 95,
+                        maxHeight: 95,
                         p: 0.75,
                         borderRadius: 1,
                         border: 2,
