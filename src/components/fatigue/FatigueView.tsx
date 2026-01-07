@@ -30,7 +30,9 @@ import Tooltip from '@mui/material/Tooltip';
 import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X, Edit } from '@/components/ui/Icons';
 import {
   calculateFatigueSequence,
+  calculateFatigueIndexSequence,
   getRiskLevel,
+  getFatigueLevel,
   DEFAULT_FATIGUE_PARAMS,
   FATIGUE_TEMPLATES,
   parseTimeToHours,
@@ -199,6 +201,23 @@ const getRiskCardSx = (level: string) => {
     case 'moderate': return { bgcolor: '#fef9c3', color: '#854d0e', borderColor: '#fde047' };
     case 'elevated': return { bgcolor: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' };
     case 'critical': return { bgcolor: '#fee2e2', color: '#991b1b', borderColor: '#fca5a5' };
+    default: return { bgcolor: 'grey.100', color: 'grey.800', borderColor: 'grey.300' };
+  }
+};
+
+// Helper for Fatigue Index chip styling (uses same colors as risk)
+const getFatigueChipSx = (level: string) => {
+  // Same colors as risk - consistent visual language
+  return getRiskChipSx(level);
+};
+
+const getFatigueCardSx = (level: string) => {
+  // Blue-tinted variants to distinguish from FRI
+  switch (level) {
+    case 'low': return { bgcolor: '#dbeafe', color: '#1e40af', borderColor: '#93c5fd' };
+    case 'moderate': return { bgcolor: '#fef3c7', color: '#92400e', borderColor: '#fcd34d' };
+    case 'elevated': return { bgcolor: '#fed7aa', color: '#9a3412', borderColor: '#fdba74' };
+    case 'critical': return { bgcolor: '#fecaca', color: '#991b1b', borderColor: '#fca5a5' };
     default: return { bgcolor: 'grey.100', color: 'grey.800', borderColor: 'grey.300' };
   }
 };
@@ -440,17 +459,28 @@ export function FatigueView({
       breakLen: s.breakLen,
     }));
 
-    const calculations = calculateFatigueSequence(shiftDefinitions, params);
+    // Calculate both Risk Index and Fatigue Index
+    const riskCalculations = calculateFatigueSequence(shiftDefinitions, params);
+    const fatigueCalculations = calculateFatigueIndexSequence(shiftDefinitions, params);
 
-    const calculationsWithDuty = calculations.map((calc, idx) => {
+    const calculationsWithDuty = riskCalculations.map((calc, idx) => {
       const shift = sortedShifts[idx];
       const startHour = parseTimeToHours(shift.startTime);
       let endHour = parseTimeToHours(shift.endTime);
       if (endHour <= startHour) endHour += 24;
       const dutyLength = calculateDutyLength(startHour, endHour);
+      const fatigueCalc = fatigueCalculations[idx];
+      const isNightShift = startHour >= 20 || startHour < 6;
 
       return {
         ...calc,
+        // Add Fatigue Index fields
+        fatigueIndex: fatigueCalc.fatigueIndex,
+        fatigueCumulative: fatigueCalc.cumulative,
+        fatigueTimeOfDay: fatigueCalc.timeOfDay,
+        fatigueTask: fatigueCalc.task,
+        fatigueLevel: fatigueCalc.fatigueLevel,
+        isNightShift,
         id: shift.id,
         startTime: shift.startTime,
         endTime: shift.endTime,
@@ -468,6 +498,15 @@ export function FatigueView({
     const avgTiming = calculationsWithDuty.reduce((a, c) => a + c.timing, 0) / calculationsWithDuty.length;
     const avgJobBreaks = calculationsWithDuty.reduce((a, c) => a + c.jobBreaks, 0) / calculationsWithDuty.length;
 
+    // Fatigue Index summary
+    const fatigueIndices = calculationsWithDuty.map(c => c.fatigueIndex);
+    const avgFatigue = fatigueIndices.reduce((a, b) => a + b, 0) / fatigueIndices.length;
+    const maxFatigue = Math.max(...fatigueIndices);
+    // Count high fatigue days (day threshold 35, night threshold 45)
+    const highFatigueCount = calculationsWithDuty.filter(c =>
+      c.isNightShift ? c.fatigueIndex >= 45 : c.fatigueIndex >= 35
+    ).length;
+
     return {
       calculations: calculationsWithDuty,
       summary: {
@@ -479,6 +518,10 @@ export function FatigueView({
         avgCumulative: Math.round(avgCumulative * 1000) / 1000,
         avgTiming: Math.round(avgTiming * 1000) / 1000,
         avgJobBreaks: Math.round(avgJobBreaks * 1000) / 1000,
+        // Fatigue Index summary
+        avgFatigue: Math.round(avgFatigue * 10) / 10,
+        maxFatigue: Math.round(maxFatigue * 10) / 10,
+        highFatigueCount,
       },
     };
   }, [shifts, params, startDayOfWeek]);
@@ -1268,7 +1311,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 46px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1280,7 +1323,8 @@ export function FatigueView({
                           <Tooltip title="Attention Required (1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>A</Typography></Tooltip>
                           <Tooltip title="Minutes between breaks" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
                           <Tooltip title="Break Length (minutes per break)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BL</Typography></Tooltip>
-                          <Tooltip title="Fatigue Risk Index for current role parameters" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}>FRI</Typography></Tooltip>
+                          <Tooltip title="Fatigue Risk Index (multiplicative model)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}>FRI</Typography></Tooltip>
+                          <Tooltip title="Fatigue Index (probability model, Day≥35 / Night≥45 = breach)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'primary.main', cursor: 'help' }}>FGI</Typography></Tooltip>
                           <Tooltip title="Worst-case FRI (Workload=5, Attention=5)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main', cursor: 'help' }}>Worst</Typography></Tooltip>
                         </Box>
 
@@ -1296,6 +1340,9 @@ export function FatigueView({
                           const dayResult = results?.calculations.find(c => c.day === nrDayIndexToShiftDay(index));
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
+                          // Fatigue Index data
+                          const dayFGI = dayResult?.fatigueIndex;
+                          const dayFatigueLevel = dayResult?.fatigueLevel?.level || 'low';
 
                           const worstResult = worstCaseResults?.get(nrDayIndexToShiftDay(index));
                           const worstCaseFRI = worstResult?.riskIndex;
@@ -1306,7 +1353,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 52px',
+                                gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 46px 52px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,
@@ -1448,6 +1495,17 @@ export function FatigueView({
                                 )}
                               </Box>
 
+                              {/* Fatigue Index (FGI) column */}
+                              <Box sx={{ textAlign: 'center' }}>
+                                {isRestDay ? (
+                                  <Typography variant="caption" color="text.disabled">-</Typography>
+                                ) : dayFGI !== undefined ? (
+                                  <Chip size="small" label={dayFGI.toFixed(1)} sx={{ ...getFatigueChipSx(dayFatigueLevel), fontSize: '0.7rem', fontWeight: 700, height: 22 }} />
+                                ) : (
+                                  <Typography variant="caption" color="text.disabled">-</Typography>
+                                )}
+                              </Box>
+
                               <Box sx={{ textAlign: 'center' }}>
                                 {isRestDay ? (
                                   <Typography variant="caption" color="text.disabled">-</Typography>
@@ -1479,6 +1537,7 @@ export function FatigueView({
                           </Grid>
                           {results && (
                             <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                              {/* FRI Summary Row */}
                               <Grid container spacing={2}>
                                 <Grid size={{ xs: 6 }}>
                                   <Paper sx={{ p: 1.5, textAlign: 'center', ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
@@ -1493,9 +1552,24 @@ export function FatigueView({
                                   </Paper>
                                 </Grid>
                               </Grid>
+                              {/* FGI Summary Row */}
+                              <Grid container spacing={2} sx={{ mt: 1 }}>
+                                <Grid size={{ xs: 6 }}>
+                                  <Paper sx={{ p: 1.5, textAlign: 'center', ...getFatigueCardSx(getFatigueLevel(results.summary.avgFatigue).level) }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Avg FGI</Typography>
+                                    <Typography variant="h6" fontWeight={700}>{results.summary.avgFatigue.toFixed(1)}</Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid size={{ xs: 6 }}>
+                                  <Paper sx={{ p: 1.5, textAlign: 'center', ...getFatigueCardSx(getFatigueLevel(results.summary.maxFatigue).level) }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>Peak FGI</Typography>
+                                    <Typography variant="h6" fontWeight={700}>{results.summary.maxFatigue.toFixed(1)}</Typography>
+                                  </Paper>
+                                </Grid>
+                              </Grid>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
-                                {results.summary.highRiskCount > 0
-                                  ? `${results.summary.highRiskCount} day(s) above 1.1 - monitor these roles`
+                                {results.summary.highRiskCount > 0 || results.summary.highFatigueCount > 0
+                                  ? `${results.summary.highRiskCount} FRI caution${results.summary.highRiskCount !== 1 ? 's' : ''}, ${results.summary.highFatigueCount} FGI breach${results.summary.highFatigueCount !== 1 ? 'es' : ''}`
                                   : 'All days within acceptable limits'}
                               </Typography>
                             </Box>

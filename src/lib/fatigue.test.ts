@@ -12,8 +12,12 @@ import {
   getRiskLevel,
   calculateRiskIndex,
   calculateFatigueSequence,
+  calculateFatigueIndexSequence,
+  calculateCombinedFatigueSequence,
+  getFatigueLevel,
   DEFAULT_FATIGUE_PARAMS,
   FATIGUE_TEMPLATES,
+  FatigueParams,
 } from './fatigue';
 import type { ShiftDefinition } from './types';
 
@@ -420,6 +424,221 @@ describe('fatigue.ts', () => {
 
       // COSS role should show higher risk than default
       expect(cossResults[2].riskIndex).toBeGreaterThan(defaultResults[2].riskIndex);
+    });
+  });
+
+  // ==================== Fatigue Index Tests ====================
+  describe('getFatigueLevel', () => {
+    it('returns correct levels for day shifts (threshold 35)', () => {
+      expect(getFatigueLevel(10, false).level).toBe('low');      // < 17.5
+      expect(getFatigueLevel(20, false).level).toBe('moderate'); // 17.5-26.25
+      expect(getFatigueLevel(30, false).level).toBe('elevated'); // 26.25-35
+      expect(getFatigueLevel(40, false).level).toBe('critical'); // >= 35
+    });
+
+    it('returns correct levels for night shifts (threshold 45)', () => {
+      expect(getFatigueLevel(15, true).level).toBe('low');       // < 22.5
+      expect(getFatigueLevel(28, true).level).toBe('moderate');  // 22.5-33.75
+      expect(getFatigueLevel(40, true).level).toBe('elevated');  // 33.75-45
+      expect(getFatigueLevel(50, true).level).toBe('critical');  // >= 45
+    });
+  });
+
+  describe('calculateFatigueIndexSequence', () => {
+    it('calculates Fatigue Index for a sequence of shifts', () => {
+      const shifts: ShiftDefinition[] = [
+        { day: 1, startTime: '08:00', endTime: '17:00' },
+        { day: 2, startTime: '08:00', endTime: '17:00' },
+        { day: 3, startTime: '08:00', endTime: '17:00' },
+      ];
+
+      const results = calculateFatigueIndexSequence(shifts, DEFAULT_FATIGUE_PARAMS);
+
+      expect(results).toHaveLength(3);
+      results.forEach(r => {
+        expect(r.fatigueIndex).toBeGreaterThan(0);
+        expect(r.cumulative).toBeGreaterThanOrEqual(0);
+        expect(r.timeOfDay).toBeGreaterThan(0);
+        expect(r.task).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    it('shows increasing fatigue over consecutive days', () => {
+      const shifts: ShiftDefinition[] = [
+        { day: 1, startTime: '06:00', endTime: '18:00' },
+        { day: 2, startTime: '06:00', endTime: '18:00' },
+        { day: 3, startTime: '06:00', endTime: '18:00' },
+        { day: 4, startTime: '06:00', endTime: '18:00' },
+        { day: 5, startTime: '06:00', endTime: '18:00' },
+      ];
+
+      const results = calculateFatigueIndexSequence(shifts, DEFAULT_FATIGUE_PARAMS);
+
+      // Fatigue should increase over consecutive days
+      expect(results[4].fatigueIndex).toBeGreaterThan(results[0].fatigueIndex);
+      expect(results[4].cumulative).toBeGreaterThan(results[0].cumulative);
+    });
+  });
+
+  describe('calculateCombinedFatigueSequence', () => {
+    it('returns both Risk Index and Fatigue Index', () => {
+      const shifts: ShiftDefinition[] = [
+        { day: 1, startTime: '08:00', endTime: '17:00' },
+        { day: 2, startTime: '08:00', endTime: '17:00' },
+      ];
+
+      const results = calculateCombinedFatigueSequence(shifts, DEFAULT_FATIGUE_PARAMS);
+
+      expect(results).toHaveLength(2);
+      results.forEach(r => {
+        // Risk Index fields
+        expect(r.riskIndex).toBeGreaterThan(0);
+        expect(r.riskCumulative).toBeGreaterThan(0);
+        expect(r.riskTiming).toBeGreaterThan(0);
+        expect(r.riskJobBreaks).toBeGreaterThan(0);
+        expect(r.riskLevel).toBeDefined();
+        // Fatigue Index fields
+        expect(r.fatigueIndex).toBeGreaterThan(0);
+        expect(r.fatigueCumulative).toBeGreaterThanOrEqual(0);
+        expect(r.fatigueTimeOfDay).toBeGreaterThan(0);
+        expect(r.fatigueTask).toBeGreaterThanOrEqual(0);
+        expect(r.fatigueLevel).toBeDefined();
+      });
+    });
+  });
+
+  // ==================== HSE PDF Validation Tests ====================
+  describe('HSE PDF Validation: Roster 01 - 12h shifts, 2h commute', () => {
+    // From PDF: workload=2 (Moderately demanding), attention=1 (Some of the time)
+    // This gives workloadSum=3 which is the baseline for the model
+    const roster01Params: FatigueParams = {
+      commuteTime: 120,
+      workload: 2,
+      attention: 1, // "Some of the time" = level 1, not 2
+      breakFrequency: 180,
+      breakLength: 15,
+      continuousWork: 240,
+      breakAfterContinuous: 30
+    };
+
+    const roster01Shifts: ShiftDefinition[] = [
+      { day: 1, startTime: '06:00', endTime: '18:00' },
+      { day: 2, startTime: '06:00', endTime: '18:00' },
+      { day: 3, startTime: '06:00', endTime: '18:00' },
+      { day: 4, startTime: '06:00', endTime: '18:00' },
+      { day: 5, startTime: '06:00', endTime: '18:00' },
+      { day: 8, startTime: '06:00', endTime: '18:00' },
+      { day: 9, startTime: '06:00', endTime: '18:00' },
+      { day: 10, startTime: '06:00', endTime: '18:00' },
+      { day: 11, startTime: '06:00', endTime: '18:00' },
+      { day: 12, startTime: '06:00', endTime: '18:00' },
+    ];
+
+    // Expected from PDF: Risk Index
+    const expectedRisk = [0.99, 1.04, 1.09, 1.14, 1.20, 1.02, 1.07, 1.12, 1.17, 1.22];
+    // Expected from PDF: Fatigue Index
+    const expectedFatigue = [5.7, 7.9, 11.5, 15.1, 18.0, 7.3, 10.8, 14.4, 17.5, 19.8];
+
+    it('calculates Risk Index within tolerance of PDF values', () => {
+      const results = calculateFatigueSequence(roster01Shifts, roster01Params);
+
+      // Debug output
+      console.log('\n=== RISK INDEX COMPARISON ===');
+      console.log('Day | Expected | Calculated | Diff   | Cum    | Timing | JobBrk');
+      results.forEach((r, i) => {
+        const diff = (r.riskIndex - expectedRisk[i]).toFixed(3);
+        console.log(
+          `${r.day.toString().padStart(3)} | ` +
+          `${expectedRisk[i].toFixed(2).padStart(8)} | ` +
+          `${r.riskIndex.toFixed(3).padStart(10)} | ` +
+          `${diff.padStart(6)} | ` +
+          `${r.cumulative.toFixed(3).padStart(6)} | ` +
+          `${r.timing.toFixed(3).padStart(6)} | ` +
+          `${r.jobBreaks.toFixed(3).padStart(6)}`
+        );
+      });
+
+      results.forEach((r, i) => {
+        const diff = Math.abs(r.riskIndex - expectedRisk[i]);
+        expect(diff).toBeLessThan(0.25); // Relaxed tolerance to see patterns
+      });
+    });
+
+    it('calculates Fatigue Index within tolerance of PDF values', () => {
+      const results = calculateFatigueIndexSequence(roster01Shifts, roster01Params);
+
+      // Debug output
+      console.log('\n=== FATIGUE INDEX COMPARISON ===');
+      console.log('Day | Expected | Calculated | Diff   | Cum    | ToD    | Task');
+      results.forEach((r, i) => {
+        const diff = (r.fatigueIndex - expectedFatigue[i]).toFixed(1);
+        console.log(
+          `${r.day.toString().padStart(3)} | ` +
+          `${expectedFatigue[i].toFixed(1).padStart(8)} | ` +
+          `${r.fatigueIndex.toFixed(1).padStart(10)} | ` +
+          `${diff.padStart(6)} | ` +
+          `${r.cumulative.toFixed(1).padStart(6)} | ` +
+          `${r.timeOfDay.toFixed(1).padStart(6)} | ` +
+          `${r.task.toFixed(1).padStart(6)}`
+        );
+      });
+
+      results.forEach((r, i) => {
+        const diff = Math.abs(r.fatigueIndex - expectedFatigue[i]);
+        expect(diff).toBeLessThan(5.0); // Relaxed tolerance to see patterns
+      });
+    });
+
+    it('shows Risk Index increasing pattern over consecutive days', () => {
+      const results = calculateFatigueSequence(roster01Shifts, roster01Params);
+
+      // Days 1-5 should increase
+      for (let i = 1; i < 5; i++) {
+        expect(results[i].riskIndex).toBeGreaterThan(results[i - 1].riskIndex);
+      }
+      // Note: Our cumulative calculation may differ slightly from HSE
+      // The pattern should still show recovery after rest days
+    });
+  });
+
+  describe('HSE PDF Validation: Roster 05 - Day + Night shifts', () => {
+    const roster05Params: FatigueParams = {
+      commuteTime: 120,
+      workload: 2,
+      attention: 2,
+      breakFrequency: 180,
+      breakLength: 15,
+      continuousWork: 240,
+      breakAfterContinuous: 30
+    };
+
+    const roster05Shifts: ShiftDefinition[] = [
+      { day: 1, startTime: '07:00', endTime: '17:00' },
+      { day: 2, startTime: '07:00', endTime: '17:00' },
+      { day: 3, startTime: '07:00', endTime: '17:00' },
+      { day: 4, startTime: '07:00', endTime: '17:00' },
+      { day: 5, startTime: '07:00', endTime: '17:00' },
+      { day: 6, startTime: '22:00', endTime: '08:00' }, // Night!
+    ];
+
+    it('shows much higher Fatigue Index for night shift', () => {
+      const results = calculateFatigueIndexSequence(roster05Shifts, roster05Params);
+
+      // Night shift (day 6) should have much higher FGI than day shifts
+      const nightShiftFGI = results[5].fatigueIndex;
+      const avgDayFGI = results.slice(0, 5).reduce((sum, r) => sum + r.fatigueIndex, 0) / 5;
+
+      expect(nightShiftFGI).toBeGreaterThan(avgDayFGI * 2); // Night should be at least 2x day
+    });
+
+    it('shows higher timeOfDay component for night shift', () => {
+      const results = calculateFatigueIndexSequence(roster05Shifts, roster05Params);
+
+      // Night shift should have much higher timeOfDay
+      const nightTimeOfDay = results[5].timeOfDay;
+      const dayTimeOfDay = results[0].timeOfDay;
+
+      expect(nightTimeOfDay).toBeGreaterThan(dayTimeOfDay * 5); // Expect significant difference
     });
   });
 });

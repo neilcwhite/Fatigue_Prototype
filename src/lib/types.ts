@@ -138,6 +138,39 @@ export interface FatigueResult {
   riskLevel: RiskLevel;
 }
 
+// Fatigue Index result (additive probability-based model)
+export interface FatigueIndexResult {
+  day: number;
+  cumulative: number;      // 0-100 scale
+  timeOfDay: number;       // 0-100 scale
+  task: number;            // 0-100 scale
+  fatigueIndex: number;    // Final FGI value
+  fatigueLevel: FatigueLevel;
+}
+
+export interface FatigueLevel {
+  level: 'low' | 'moderate' | 'elevated' | 'critical';
+  label: string;
+  color: string;
+}
+
+// Combined result for both indices
+export interface CombinedFatigueResult {
+  day: number;
+  // Risk Index components (multiplicative)
+  riskCumulative: number;
+  riskTiming: number;
+  riskJobBreaks: number;
+  riskIndex: number;
+  riskLevel: RiskLevel;
+  // Fatigue Index components (additive/probability)
+  fatigueCumulative: number;
+  fatigueTimeOfDay: number;
+  fatigueTask: number;
+  fatigueIndex: number;
+  fatigueLevel: FatigueLevel;
+}
+
 // ==================== COMPLIANCE ====================
 // These types must match compliance.ts - single source of truth is compliance.ts
 
