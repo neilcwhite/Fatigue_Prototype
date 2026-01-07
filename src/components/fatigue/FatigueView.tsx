@@ -1311,7 +1311,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 46px 52px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '32px 32px 42px 56px 56px 42px 34px 44px 44px 44px 42px 50px 46px 50px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1353,7 +1353,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '40px 32px 44px 58px 58px 44px 36px 48px 48px 48px 44px 52px 46px 52px',
+                                gridTemplateColumns: '32px 32px 42px 56px 56px 42px 34px 44px 44px 44px 42px 50px 46px 50px',
                                 gap: 0.5,
                                 p: 1,
                                 borderRadius: 1,

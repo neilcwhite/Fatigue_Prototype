@@ -17,7 +17,11 @@
       "Bash(wc:*)",
       "Bash(rm:*)",
       "Bash(findstr:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(dir \"K:\\\\Quality\\\\23 FATIGUE_Guidance & Calculator\\\\01 Assessed Rosters_Working Patterns\\\\Roster 01\\\\*Fatigue*\")",
+      "Bash(npx ts-node:*)",
+      "Bash(npx jest --testPathPattern=fatigue.test.ts)",
+      "Bash(npx jest:*)"
     ]
   }
 }
