@@ -114,13 +114,17 @@ export function WeeklyView({
     }
   };
 
-  // Get cell style based on violations
+  // Get cell style based on violations (4-tier NR system)
   const getCellViolationBorder = (violations: ComplianceViolation[]): string => {
-    const hasError = violations.some(v => v.severity === 'error');
+    const hasBreach = violations.some(v => v.severity === 'breach');
+    const hasLevel2 = violations.some(v => v.severity === 'level2');
+    const hasLevel1 = violations.some(v => v.severity === 'level1');
     const hasWarning = violations.some(v => v.severity === 'warning');
 
-    if (hasError) return 'border-red-500 border-2';
-    if (hasWarning) return 'border-amber-500 border-2';
+    if (hasBreach) return 'border-red-500 border-2';
+    if (hasLevel2) return 'border-orange-500 border-2';
+    if (hasLevel1) return 'border-yellow-500 border-2';
+    if (hasWarning) return 'border-gray-500 border-2';
     return 'border-slate-200';
   };
 

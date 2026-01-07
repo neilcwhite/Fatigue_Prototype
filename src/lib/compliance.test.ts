@@ -107,7 +107,7 @@ describe('compliance.ts', () => {
       const violations = checkMaxShiftLength(100, assignments, patternMap);
       expect(violations).toHaveLength(1);
       expect(violations[0].type).toBe('MAX_SHIFT_LENGTH');
-      expect(violations[0].severity).toBe('error');
+      expect(violations[0].severity).toBe('breach');
       expect(violations[0].value).toBe(13);
     });
 
@@ -165,7 +165,7 @@ describe('compliance.ts', () => {
       const violations = checkRestPeriods(100, assignments, patternMap);
       expect(violations).toHaveLength(1);
       expect(violations[0].type).toBe('INSUFFICIENT_REST');
-      expect(violations[0].severity).toBe('error');
+      expect(violations[0].severity).toBe('breach');
       expect(violations[0].value).toBe(8);
     });
 
@@ -251,7 +251,7 @@ describe('compliance.ts', () => {
     });
 
     it('flags weekly hours exceeding 72', () => {
-      // 7 x 12 hour shifts = 84 hours - OVER LIMIT
+      // 7 x 12 hour shifts = 84 hours - OVER LIMIT (Level 2 exceedance)
       const assignments = [
         createAssignment(1, 100, 1, '12h', '2024-01-15'),
         createAssignment(2, 100, 1, '12h', '2024-01-16'),
@@ -263,12 +263,13 @@ describe('compliance.ts', () => {
       ];
 
       const violations = checkWeeklyHours(100, assignments, patternMap);
-      const errors = violations.filter(v => v.type === 'MAX_WEEKLY_HOURS');
+      // Level 2 exceedance for 72+ hours (was MAX_WEEKLY_HOURS in old system)
+      const errors = violations.filter(v => v.type === 'LEVEL_2_EXCEEDANCE');
       expect(errors.length).toBeGreaterThan(0);
     });
 
-    it('warns when approaching 72 hour limit', () => {
-      // 7 x 10 hour shifts = 70 hours - WARNING zone (>66)
+    it('generates Level 1 exceedance for 60-72 hour range', () => {
+      // 7 x 10 hour shifts = 70 hours - Level 1 Exceedance zone (60-72h)
       const assignments = [
         createAssignment(1, 100, 1, '10h', '2024-01-15'),
         createAssignment(2, 100, 1, '10h', '2024-01-16'),
@@ -280,8 +281,9 @@ describe('compliance.ts', () => {
       ];
 
       const violations = checkWeeklyHours(100, assignments, patternMap);
-      const warnings = violations.filter(v => v.type === 'APPROACHING_WEEKLY_LIMIT');
-      expect(warnings.length).toBeGreaterThan(0);
+      // With 70 hours, this triggers Level 1 exceedance (60-72h range)
+      const level1 = violations.filter(v => v.type === 'LEVEL_1_EXCEEDANCE');
+      expect(level1.length).toBeGreaterThan(0);
     });
 
     it('uses rolling 7-day window', () => {
@@ -298,7 +300,8 @@ describe('compliance.ts', () => {
 
       // No single 7-day window should exceed 72 hours (36 hours max in any window)
       const violations = checkWeeklyHours(100, assignments, patternMap);
-      const errors = violations.filter(v => v.type === 'MAX_WEEKLY_HOURS');
+      // No Level 2 exceedance (was MAX_WEEKLY_HOURS in old system)
+      const errors = violations.filter(v => v.type === 'LEVEL_2_EXCEEDANCE');
       expect(errors).toHaveLength(0);
     });
   });
@@ -558,9 +561,9 @@ describe('compliance.ts', () => {
   describe('getDateCellViolations', () => {
     it('filters violations for specific employee and date', () => {
       const violations = [
-        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'error' as const, employeeId: 100, date: '2024-01-15', message: 'Test' },
-        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'error' as const, employeeId: 100, date: '2024-01-16', message: 'Test' },
-        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'error' as const, employeeId: 101, date: '2024-01-15', message: 'Test' },
+        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'breach' as const, employeeId: 100, date: '2024-01-15', message: 'Test' },
+        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'breach' as const, employeeId: 100, date: '2024-01-16', message: 'Test' },
+        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'breach' as const, employeeId: 101, date: '2024-01-15', message: 'Test' },
       ];
 
       const result = getDateCellViolations(100, '2024-01-15', violations);
@@ -571,7 +574,7 @@ describe('compliance.ts', () => {
 
     it('returns empty array when no violations match', () => {
       const violations = [
-        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'error' as const, employeeId: 101, date: '2024-01-15', message: 'Test' },
+        { type: 'MAX_SHIFT_LENGTH' as const, severity: 'breach' as const, employeeId: 101, date: '2024-01-15', message: 'Test' },
       ];
 
       const result = getDateCellViolations(100, '2024-01-15', violations);

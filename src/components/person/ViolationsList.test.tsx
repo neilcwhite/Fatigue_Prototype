@@ -12,7 +12,7 @@ describe('ViolationsList', () => {
   const mockViolations: ComplianceViolation[] = [
     {
       type: 'MAX_WEEKLY_HOURS',
-      severity: 'error',
+      severity: 'breach',
       employeeId: 1,
       date: '2024-01-15',
       message: 'Weekly hours exceeded (75/72)',
@@ -26,7 +26,7 @@ describe('ViolationsList', () => {
     },
     {
       type: 'INSUFFICIENT_REST',
-      severity: 'error',
+      severity: 'breach',
       employeeId: 1,
       date: '2024-01-12',
       message: 'Only 8 hours rest between shifts',

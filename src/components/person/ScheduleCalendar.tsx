@@ -17,11 +17,13 @@ const getFRIChipSx = (fri: number | null | undefined) => {
   return { bgcolor: '#22c55e', color: 'white' };
 };
 
-// Helper to get NR compliance chip colors for MUI
-const getNRComplianceChipSx = (severity: 'error' | 'warning' | null) => {
-  if (severity === 'error') return { bgcolor: '#dc2626', color: 'white' };
-  if (severity === 'warning') return { bgcolor: '#f59e0b', color: 'white' };
-  return { bgcolor: '#22c55e', color: 'white' };
+// Helper to get NR compliance chip colors for MUI (4-tier system)
+const getNRComplianceChipSx = (severity: 'breach' | 'level2' | 'level1' | 'warning' | null) => {
+  if (severity === 'breach') return { bgcolor: '#ef4444', color: 'white' };  // Red - breach
+  if (severity === 'level2') return { bgcolor: '#f97316', color: 'white' };  // Orange - Level 2
+  if (severity === 'level1') return { bgcolor: '#eab308', color: 'white' };  // Yellow - Level 1
+  if (severity === 'warning') return { bgcolor: '#6b7280', color: 'white' }; // Gray - warning
+  return { bgcolor: '#22c55e', color: 'white' };  // Green - compliant
 };
 
 // Helper to get FRI cell background colors
@@ -44,7 +46,7 @@ interface ScheduleCalendarProps {
   periodAssignments: AssignmentCamel[];
   shiftPatterns: ShiftPatternCamel[];
   projects: ProjectCamel[];
-  violationAssignmentSeverity: Map<number, 'error' | 'warning'>;
+  violationAssignmentSeverity: Map<number, 'breach' | 'level2' | 'level1' | 'warning'>;
   fatigueResults: FatigueResult[] | null;
   highlightedDate: string | null;
   showFRI: boolean;
@@ -181,11 +183,14 @@ export function ScheduleCalendar({
                 {weekDates.map((date) => {
                   const { date: dateNum, isWeekend, isToday } = formatDateHeader(date);
                   const dateAssignments = periodAssignments.filter((a) => a.date === date);
-                  const dateViolationSeverity = dateAssignments.reduce<'error' | 'warning' | null>((worst, a) => {
+                  // Severity priority: breach > level2 > level1 > warning
+                  const severityPriority: Record<string, number> = { breach: 4, level2: 3, level1: 2, warning: 1 };
+                  const dateViolationSeverity = dateAssignments.reduce<'breach' | 'level2' | 'level1' | 'warning' | null>((worst, a) => {
                     const severity = violationAssignmentSeverity.get(a.id);
                     if (!severity) return worst;
-                    if (severity === 'error') return 'error';
-                    if (!worst) return severity;
+                    const newPriority = severityPriority[severity] || 0;
+                    const worstPriority = worst ? severityPriority[worst] || 0 : 0;
+                    if (newPriority > worstPriority) return severity;
                     return worst;
                   }, null);
                   const dateAssignmentIndices = periodAssignments

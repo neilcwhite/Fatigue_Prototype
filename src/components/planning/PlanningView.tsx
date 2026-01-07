@@ -690,28 +690,34 @@ export function PlanningView({
                       transition: 'all 0.2s',
                       bgcolor: isSelected
                         ? 'primary.main'
-                        : complianceStatus.status === 'error'
-                          ? 'error.50'
-                          : complianceStatus.status === 'warning'
-                            ? 'warning.50'
-                            : 'success.50',
+                        : complianceStatus.status === 'breach'
+                          ? '#fee2e2'  // red-100
+                          : complianceStatus.status === 'level2'
+                            ? '#ffedd5'  // orange-100
+                            : complianceStatus.status === 'level1'
+                              ? '#fef9c3'  // yellow-100
+                              : '#dcfce7',  // green-100
                       color: isSelected ? 'white' : 'text.primary',
                       border: 2,
                       borderColor: isSelected
                         ? 'primary.main'
-                        : complianceStatus.status === 'error'
-                          ? 'error.300'
-                          : complianceStatus.status === 'warning'
-                            ? 'warning.300'
-                            : 'success.300',
+                        : complianceStatus.status === 'breach'
+                          ? '#ef4444'  // red-500
+                          : complianceStatus.status === 'level2'
+                            ? '#f97316'  // orange-500
+                            : complianceStatus.status === 'level1'
+                              ? '#eab308'  // yellow-500
+                              : '#22c55e',  // green-500
                       '&:hover': {
                         borderColor: isSelected
                           ? 'primary.dark'
-                          : complianceStatus.status === 'error'
-                            ? 'error.400'
-                            : complianceStatus.status === 'warning'
-                              ? 'warning.400'
-                              : 'success.400',
+                          : complianceStatus.status === 'breach'
+                            ? '#dc2626'  // red-600
+                            : complianceStatus.status === 'level2'
+                              ? '#ea580c'  // orange-600
+                              : complianceStatus.status === 'level1'
+                                ? '#ca8a04'  // yellow-600
+                                : '#16a34a',  // green-600
                       },
                     }}
                     title={complianceStatus.violations.length > 0
@@ -720,13 +726,18 @@ export function PlanningView({
                     }
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                      {complianceStatus.status === 'error' && !isSelected && (
+                      {complianceStatus.status === 'breach' && !isSelected && (
                         <Box sx={{ color: '#ef4444', flexShrink: 0, display: 'flex' }}>
                           <AlertTriangle className="w-2.5 h-2.5" />
                         </Box>
                       )}
-                      {complianceStatus.status === 'warning' && !isSelected && (
-                        <Box sx={{ color: '#f59e0b', flexShrink: 0, display: 'flex' }}>
+                      {complianceStatus.status === 'level2' && !isSelected && (
+                        <Box sx={{ color: '#f97316', flexShrink: 0, display: 'flex' }}>
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                        </Box>
+                      )}
+                      {complianceStatus.status === 'level1' && !isSelected && (
+                        <Box sx={{ color: '#eab308', flexShrink: 0, display: 'flex' }}>
                           <AlertTriangle className="w-2.5 h-2.5" />
                         </Box>
                       )}

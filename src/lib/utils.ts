@@ -206,12 +206,19 @@ export function getViolationMetadata(type: ViolationType): ViolationMetadata {
 }
 
 /**
- * Get severity color class for violations
+ * Get severity color class for violations (4-tier NR system)
  */
-export function getViolationSeverityColor(severity: 'error' | 'warning'): string {
-  return severity === 'error'
-    ? 'bg-red-100 text-red-800 border-red-300'
-    : 'bg-amber-100 text-amber-800 border-amber-300';
+export function getViolationSeverityColor(severity: 'breach' | 'level2' | 'level1' | 'warning'): string {
+  switch (severity) {
+    case 'breach':
+      return 'bg-red-100 text-red-800 border-red-300';
+    case 'level2':
+      return 'bg-orange-100 text-orange-800 border-orange-300';
+    case 'level1':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-300';
+  }
 }
 
 // ==================== DATE FORMATTING ====================

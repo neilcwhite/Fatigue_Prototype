@@ -47,33 +47,75 @@ const getViolationIcon = (type: string): string => {
 const getViolationTitle = (type: string): string => {
   switch (type) {
     case 'MAX_SHIFT_LENGTH':
-      return 'Breach: Maximum Shift Length Exceeded';
+      return 'STOP: Shift Too Long';
     case 'INSUFFICIENT_REST':
-      return 'Breach: Insufficient Rest Period';
+      return 'STOP: Rest Period Too Short';
     case 'MAX_WEEKLY_HOURS':
-      return 'Breach: Maximum Weekly Hours Exceeded';
+      return 'STOP: Weekly Hours Exceeded';
     case 'LEVEL_1_EXCEEDANCE':
-      return 'Caution: Level 1 Exceedance (60-72h)';
+      return 'Level 1: Requires Risk Assessment';
     case 'LEVEL_2_EXCEEDANCE':
-      return 'Breach: Level 2 Exceedance (72h+)';
+      return 'Level 2: Requires Risk Assessment';
     case 'APPROACHING_WEEKLY_LIMIT':
-      return 'Caution: Approaching Weekly Limit';
+      return 'Warning: Approaching Weekly Limit';
     case 'MAX_CONSECUTIVE_DAYS':
-      return 'Breach: Too Many Consecutive Days';
+      return 'STOP: Too Many Consecutive Days';
     case 'CONSECUTIVE_DAYS_WARNING':
-      return 'Caution: Extended Working Days';
+      return 'Warning: Extended Working Days';
     case 'CONSECUTIVE_NIGHTS_WARNING':
-      return 'Caution: Extended Night Shift Run';
+      return 'Warning: Extended Night Shift Run';
     case 'MAX_CONSECUTIVE_NIGHTS':
-      return 'Breach: Too Many Consecutive Nights';
+      return 'STOP: Too Many Consecutive Nights';
     case 'DAY_NIGHT_TRANSITION':
-      return 'Breach: Day-Night Transition Same Day';
+      return 'STOP: Day-Night Transition Same Day';
     case 'MULTIPLE_SHIFTS_SAME_DAY':
-      return 'Breach: Multiple Shifts Same Day';
+      return 'STOP: Multiple Shifts Same Day';
     case 'ELEVATED_FATIGUE_INDEX':
-      return 'Breach: Fatigue Risk Index Exceeded';
+      return 'STOP: Fatigue Risk Index Exceeded';
     default:
       return 'Compliance Issue';
+  }
+};
+
+// Get colors based on 4-tier severity system
+const getSeverityColors = (severity: string) => {
+  switch (severity) {
+    case 'breach':
+      return {
+        border: '#ef4444',    // red-500
+        bg: '#fef2f2',        // red-50
+        bgHover: '#fee2e2',   // red-100
+        icon: '#b91c1c',      // red-700
+        title: '#991b1b',     // red-800
+        text: '#7f1d1d',      // red-900
+      };
+    case 'level2':
+      return {
+        border: '#f97316',    // orange-500
+        bg: '#fff7ed',        // orange-50
+        bgHover: '#ffedd5',   // orange-100
+        icon: '#c2410c',      // orange-700
+        title: '#9a3412',     // orange-800
+        text: '#7c2d12',      // orange-900
+      };
+    case 'level1':
+      return {
+        border: '#eab308',    // yellow-500
+        bg: '#fefce8',        // yellow-50
+        bgHover: '#fef9c3',   // yellow-100
+        icon: '#a16207',      // yellow-700
+        title: '#854d0e',     // yellow-800
+        text: '#713f12',      // yellow-900
+      };
+    default: // warning
+      return {
+        border: '#6b7280',    // gray-500
+        bg: '#f9fafb',        // gray-50
+        bgHover: '#f3f4f6',   // gray-100
+        icon: '#374151',      // gray-700
+        title: '#1f2937',     // gray-800
+        text: '#111827',      // gray-900
+      };
   }
 };
 
@@ -114,22 +156,22 @@ export function ViolationsList({ violations, onViolationClick }: ViolationsListP
               borderRadius: 1,
               cursor: 'pointer',
               borderLeft: 4,
-              borderColor: violation.severity === 'error' ? 'error.main' : 'warning.main',
-              bgcolor: violation.severity === 'error' ? '#fef2f2' : '#fffbeb',
+              borderColor: getSeverityColors(violation.severity).border,
+              bgcolor: getSeverityColors(violation.severity).bg,
               '&:hover': {
                 boxShadow: 2,
-                bgcolor: violation.severity === 'error' ? '#fee2e2' : '#fef3c7',
+                bgcolor: getSeverityColors(violation.severity).bgHover,
               },
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
               <Box
                 sx={{
-                  color: violation.severity === 'error' ? '#b91c1c' : '#b45309',
+                  color: getSeverityColors(violation.severity).icon,
                   mt: 0.25,
                 }}
               >
-                {violation.severity === 'error' ? (
+                {violation.severity === 'breach' ? (
                   <XCircle className="w-3 h-3" />
                 ) : (
                   <AlertTriangle className="w-3 h-3" />
@@ -140,7 +182,7 @@ export function ViolationsList({ violations, onViolationClick }: ViolationsListP
                   variant="caption"
                   fontWeight={600}
                   sx={{
-                    color: violation.severity === 'error' ? '#991b1b' : '#92400e',
+                    color: getSeverityColors(violation.severity).title,
                   }}
                 >
                   {getViolationIcon(violation.type)} {getViolationTitle(violation.type)}
@@ -149,7 +191,7 @@ export function ViolationsList({ violations, onViolationClick }: ViolationsListP
                   variant="caption"
                   display="block"
                   sx={{
-                    color: violation.severity === 'error' ? '#7f1d1d' : '#78350f',
+                    color: getSeverityColors(violation.severity).text,
                   }}
                 >
                   {violation.message}

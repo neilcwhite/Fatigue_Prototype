@@ -141,8 +141,8 @@ export function TimelineView({
     });
 
     return {
-      hasWarning: futureViolations.some(v => v.severity === 'warning'),
-      hasError: futureViolations.some(v => v.severity === 'error'),
+      hasWarning: futureViolations.some(v => v.severity === 'warning' || v.severity === 'level1'),
+      hasError: futureViolations.some(v => v.severity === 'breach' || v.severity === 'level2'),
     };
   };
 
@@ -292,7 +292,7 @@ export function TimelineView({
     };
   };
 
-  // Get tile color based on violations
+  // Get tile color based on violations (4-tier NR system)
   // - violations: violations on THIS specific date (fill color)
   // - futureViolations: whether employee has any violations from this date onwards (border)
   const getTileStyle = (
@@ -300,38 +300,52 @@ export function TimelineView({
     futureViolations?: { hasWarning: boolean; hasError: boolean }
   ) => {
     // Current date has a violation - change fill color
-    const hasError = violations.some(v => v.severity === 'error');
+    const hasBreach = violations.some(v => v.severity === 'breach');
+    const hasLevel2 = violations.some(v => v.severity === 'level2');
+    const hasLevel1 = violations.some(v => v.severity === 'level1');
     const hasWarning = violations.some(v => v.severity === 'warning');
 
     // Future violations - change border color (but not fill unless this date is a violation)
     const hasFutureError = futureViolations?.hasError || false;
     const hasFutureWarning = futureViolations?.hasWarning || false;
 
-    // Fill color based on THIS date's violations
+    // Fill color based on THIS date's violations (4-tier)
     let fillClass = 'bg-green-100 text-green-800';
-    if (hasError) {
+    if (hasBreach) {
       fillClass = 'bg-red-100 text-red-800';
+    } else if (hasLevel2) {
+      fillClass = 'bg-orange-100 text-orange-800';
+    } else if (hasLevel1) {
+      fillClass = 'bg-yellow-100 text-yellow-800';
     } else if (hasWarning) {
-      fillClass = 'bg-amber-100 text-amber-800';
+      fillClass = 'bg-gray-100 text-gray-800';
     }
 
     // Border based on future violations (shows upcoming issues)
     let borderClass = 'border border-green-300';
-    if (hasError || hasFutureError) {
+    if (hasBreach || hasFutureError) {
       borderClass = 'border-2 border-red-400';
-    } else if (hasWarning || hasFutureWarning) {
-      borderClass = 'border-2 border-amber-400';
+    } else if (hasLevel2) {
+      borderClass = 'border-2 border-orange-400';
+    } else if (hasLevel1 || hasFutureWarning) {
+      borderClass = 'border-2 border-yellow-400';
+    } else if (hasWarning) {
+      borderClass = 'border border-gray-400';
     }
 
     return `${fillClass} ${borderClass}`;
   };
 
-  // Get just the background color for the hover buttons overlay
+  // Get just the background color for the hover buttons overlay (4-tier)
   const getTileBackground = (violations: ComplianceViolation[]) => {
-    const hasError = violations.some(v => v.severity === 'error');
+    const hasBreach = violations.some(v => v.severity === 'breach');
+    const hasLevel2 = violations.some(v => v.severity === 'level2');
+    const hasLevel1 = violations.some(v => v.severity === 'level1');
     const hasWarning = violations.some(v => v.severity === 'warning');
-    if (hasError) return 'bg-red-100';
-    if (hasWarning) return 'bg-amber-100';
+    if (hasBreach) return 'bg-red-100';
+    if (hasLevel2) return 'bg-orange-100';
+    if (hasLevel1) return 'bg-yellow-100';
+    if (hasWarning) return 'bg-gray-100';
     return 'bg-green-100';
   };
 
@@ -462,8 +476,8 @@ export function TimelineView({
                         .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
                         .map((assignment) => {
                           const hasViolations = assignment.violations.length > 0;
-                          const hasError = assignment.violations.some(v => v.severity === 'error');
-                          const hasWarning = assignment.violations.some(v => v.severity === 'warning');
+                          const hasError = assignment.violations.some(v => v.severity === 'breach' || v.severity === 'level2');
+                          const hasWarning = assignment.violations.some(v => v.severity === 'warning' || v.severity === 'level1');
 
                           // Check for future violations (from this date onwards)
                           const futureViolations = hasFutureViolations(assignment.employeeId, date);

@@ -56,7 +56,19 @@ export const COMPLIANCE_LIMITS = {
 
 // ==================== TYPES ====================
 
-export type ViolationSeverity = 'error' | 'warning';
+/**
+ * Compliance severity levels (4-tier system per NR/L2/OHS/003):
+ * - 'ok': Green - Fully compliant, no issues
+ * - 'level1': Yellow - Level 1 Exceedance (60-72h), requires risk assessment
+ * - 'level2': Amber - Level 2 Exceedance (72h+), requires risk assessment
+ * - 'breach': Red - Hard breach (e.g., <12h rest), stop working immediately
+ */
+export type ViolationSeverity = 'breach' | 'level2' | 'level1' | 'warning';
+
+/**
+ * Compliance status for display (4-tier)
+ */
+export type ComplianceStatus = 'ok' | 'level1' | 'level2' | 'breach';
 
 export type ViolationType =
   | 'MAX_SHIFT_LENGTH'
@@ -97,7 +109,7 @@ export interface ComplianceResult {
 
 export interface EmployeeComplianceStatus {
   employeeId: number;
-  status: 'ok' | 'warning' | 'error';
+  status: ComplianceStatus;
   violations: ComplianceViolation[];
 }
 
@@ -253,7 +265,7 @@ export function checkMaxShiftLength(
     if (duration > COMPLIANCE_LIMITS.MAX_SHIFT_HOURS) {
       violations.push({
         type: 'MAX_SHIFT_LENGTH',
-        severity: 'error',
+        severity: 'breach',  // Red - hard limit exceeded, stop working
         employeeId,
         date: assignment.date,
         message: `Shift exceeds ${COMPLIANCE_LIMITS.MAX_SHIFT_HOURS}h limit (${duration.toFixed(1)}h)`,
@@ -299,7 +311,7 @@ export function checkRestPeriods(
     if (restHours < COMPLIANCE_LIMITS.MIN_REST_HOURS) {
       violations.push({
         type: 'INSUFFICIENT_REST',
-        severity: 'error',
+        severity: 'breach',  // Red - hard limit breached, stop working
         employeeId,
         date: curr.date,
         message: `Only ${restHours.toFixed(1)}h rest before this shift (minimum ${COMPLIANCE_LIMITS.MIN_REST_HOURS}h required)`,
@@ -346,7 +358,7 @@ export function checkMultipleShiftsSameDay(
       if (hasDayShift && hasNightShift) {
         violations.push({
           type: 'DAY_NIGHT_TRANSITION',
-          severity: 'error',
+          severity: 'breach',  // Red - hard limit breached
           employeeId,
           date,
           message: 'Day shift followed by night shift on same date - insufficient rest',
@@ -354,7 +366,7 @@ export function checkMultipleShiftsSameDay(
       } else {
         violations.push({
           type: 'MULTIPLE_SHIFTS_SAME_DAY',
-          severity: 'error',
+          severity: 'breach',  // Red - hard limit breached
           employeeId,
           date,
           message: `${dayAssignments.length} shifts assigned on same date`,
@@ -420,11 +432,11 @@ export function checkWeeklyHours(
 
     // NR/L2/OHS/003 Exceedance Levels
     if (totalHours >= COMPLIANCE_LIMITS.LEVEL_2_THRESHOLD) {
-      // Level 2 Exceedance: 72+ hours - CRITICAL ERROR
+      // Level 2 Exceedance: 72+ hours - AMBER (requires risk assessment)
       // Complete prohibition on all work until 24 hours consecutive rest
       violations.push({
         type: 'LEVEL_2_EXCEEDANCE',
-        severity: 'error',
+        severity: 'level2',  // Amber - Level 2 exceedance, needs risk assessment
         employeeId,
         date: assignment.date,
         message: `LEVEL 2 EXCEEDANCE: ${totalHours.toFixed(1)}h in rolling 7 days (72h limit breached) - Complete work prohibition, 24h mandatory rest required`,
@@ -434,11 +446,11 @@ export function checkWeeklyHours(
         relatedDates: windowDates,
       });
     } else if (totalHours >= COMPLIANCE_LIMITS.LEVEL_1_THRESHOLD) {
-      // Level 1 Exceedance: 60-72 hours - WARNING with restrictions
+      // Level 1 Exceedance: 60-72 hours - YELLOW (requires risk assessment)
       // No safety-critical duties (COSS, PICOP, lookout, driving, IWA)
       violations.push({
         type: 'LEVEL_1_EXCEEDANCE',
-        severity: 'warning',
+        severity: 'level1',  // Yellow - Level 1 exceedance, needs risk assessment
         employeeId,
         date: assignment.date,
         message: `LEVEL 1 EXCEEDANCE: ${totalHours.toFixed(1)}h in rolling 7 days (60-72h range) - Safety-critical duty restrictions apply`,
@@ -558,7 +570,7 @@ export function check24HourRestAfterLevel2(
           if (!workInBetween) {
             violations.push({
               type: 'INSUFFICIENT_REST',
-              severity: 'error',
+              severity: 'breach',  // Red - mandatory rest not taken after Level 2
               employeeId,
               date: currentDate,
               message: `Only ${restHours.toFixed(1)}h rest after Level 2 exceedance (24h mandatory rest required per NR/L2/OHS/003)`,
@@ -633,7 +645,7 @@ export function checkFatigueRiskIndex(
     if (friResult.riskIndex > FRI_THRESHOLDS.RISK_SCORE_LIMIT) {
       violations.push({
         type: 'ELEVATED_FATIGUE_INDEX',
-        severity: 'error',
+        severity: 'breach',  // Red - FRI limit exceeded
         employeeId,
         date: assignment.date,
         message: `FRI risk score ${friResult.riskIndex.toFixed(2)} exceeds Network Rail limit of ${FRI_THRESHOLDS.RISK_SCORE_LIMIT} (NR/L2/OHS/003 Module 1)`,
@@ -684,7 +696,7 @@ export function checkConsecutiveDays(
         if (!addedViolationDates.has(violationDate)) {
           violations.push({
             type: 'MAX_CONSECUTIVE_DAYS',
-            severity: 'error',
+            severity: 'breach',  // Red - hard limit exceeded
             employeeId,
             date: violationDate,
             message: `${consecutiveCount} consecutive days worked (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS})`,
@@ -764,12 +776,12 @@ export function checkConsecutiveNights(
       // Flag violation on the specific day when threshold is exceeded
       // Warning on 5th night (CONSECUTIVE_NIGHTS_WARNING + 1), Error on 8th night (MAX_CONSECUTIVE_NIGHTS + 1)
       if (consecutiveCount === COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS + 1) {
-        // Exceeded max - flag this day as an error
+        // Exceeded max - flag this day as a breach
         const violationDate = uniqueNightDates[i];
         if (!addedViolationDates.has(violationDate)) {
           violations.push({
             type: 'MAX_CONSECUTIVE_NIGHTS',
-            severity: 'error',
+            severity: 'breach',  // Red - hard limit exceeded
             employeeId,
             date: violationDate,
             message: `${consecutiveCount} consecutive night shifts (maximum ${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS})`,
@@ -830,16 +842,18 @@ export function checkEmployeeCompliance(
     ...checkFatigueRiskIndex(employeeId, empAssignments, patternMap),
   ];
   
-  const errors = violations.filter(v => v.severity === 'error');
+  const breaches = violations.filter(v => v.severity === 'breach');
+  const level2Violations = violations.filter(v => v.severity === 'level2');
+  const level1Violations = violations.filter(v => v.severity === 'level1');
   const warnings = violations.filter(v => v.severity === 'warning');
-  
+
   return {
-    isCompliant: errors.length === 0,
-    hasErrors: errors.length > 0,
-    hasWarnings: warnings.length > 0,
+    isCompliant: breaches.length === 0 && level2Violations.length === 0 && level1Violations.length === 0,
+    hasErrors: breaches.length > 0,
+    hasWarnings: warnings.length > 0 || level1Violations.length > 0 || level2Violations.length > 0,
     violations,
-    errorCount: errors.length,
-    warningCount: warnings.length,
+    errorCount: breaches.length,
+    warningCount: warnings.length + level1Violations.length + level2Violations.length,
   };
 }
 
@@ -852,10 +866,24 @@ export function getEmployeeComplianceStatus(
   shiftPatterns: ShiftPatternCamel[]
 ): EmployeeComplianceStatus {
   const result = checkEmployeeCompliance(employeeId, assignments, shiftPatterns);
-  
+
+  // Determine status based on highest severity violation (4-tier: ok, level1, level2, breach)
+  const hasBreach = result.violations.some(v => v.severity === 'breach');
+  const hasLevel2 = result.violations.some(v => v.severity === 'level2');
+  const hasLevel1 = result.violations.some(v => v.severity === 'level1');
+
+  let status: ComplianceStatus = 'ok';
+  if (hasBreach) {
+    status = 'breach';
+  } else if (hasLevel2) {
+    status = 'level2';
+  } else if (hasLevel1) {
+    status = 'level1';
+  }
+
   return {
     employeeId,
-    status: result.hasErrors ? 'error' : result.hasWarnings ? 'warning' : 'ok',
+    status,
     violations: result.violations,
   };
 }
@@ -887,16 +915,18 @@ export function checkProjectCompliance(
     allViolations.push(...result.violations);
   });
 
-  const errors = allViolations.filter(v => v.severity === 'error');
+  const breaches = allViolations.filter(v => v.severity === 'breach');
+  const level2Violations = allViolations.filter(v => v.severity === 'level2');
+  const level1Violations = allViolations.filter(v => v.severity === 'level1');
   const warnings = allViolations.filter(v => v.severity === 'warning');
 
   return {
-    isCompliant: errors.length === 0,
-    hasErrors: errors.length > 0,
-    hasWarnings: warnings.length > 0,
+    isCompliant: breaches.length === 0 && level2Violations.length === 0 && level1Violations.length === 0,
+    hasErrors: breaches.length > 0,
+    hasWarnings: warnings.length > 0 || level1Violations.length > 0 || level2Violations.length > 0,
     violations: allViolations,
-    errorCount: errors.length,
-    warningCount: warnings.length,
+    errorCount: breaches.length,
+    warningCount: warnings.length + level1Violations.length + level2Violations.length,
   };
 }
 
@@ -945,7 +975,7 @@ export function validateNewAssignment(
     if (duration > COMPLIANCE_LIMITS.MAX_SHIFT_HOURS) {
       violations.push({
         type: 'MAX_SHIFT_LENGTH',
-        severity: 'error',
+        severity: 'breach',  // Red - hard limit exceeded
         employeeId,
         date,
         message: `Shift exceeds ${COMPLIANCE_LIMITS.MAX_SHIFT_HOURS}h limit`,
@@ -954,13 +984,13 @@ export function validateNewAssignment(
       });
     }
   }
-  
+
   // Check for multiple shifts same day
   const sameDayAssignments = allAssignments.filter(a => a.date === date);
   if (sameDayAssignments.length > 1) {
     violations.push({
       type: 'MULTIPLE_SHIFTS_SAME_DAY',
-      severity: 'error',
+      severity: 'breach',  // Red - hard limit breached
       employeeId,
       date,
       message: 'Already assigned to a shift on this date',

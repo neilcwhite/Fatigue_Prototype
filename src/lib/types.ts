@@ -189,7 +189,7 @@ export type ViolationType =
   | 'MULTIPLE_SHIFTS_SAME_DAY'
   | 'ELEVATED_FATIGUE_INDEX';
 
-export type ViolationSeverity = 'error' | 'warning';
+export type ViolationSeverity = 'breach' | 'level2' | 'level1' | 'warning';
 
 export interface ComplianceViolation {
   type: ViolationType;

@@ -46,12 +46,20 @@ describe('ScheduleCalendar Helper Functions', () => {
   });
 
   describe('getNRComplianceChipSx', () => {
-    it('returns red for error severity', () => {
-      expect(getNRComplianceChipSx('error')).toEqual({ bgcolor: '#dc2626', color: 'white' });
+    it('returns red for breach severity', () => {
+      expect(getNRComplianceChipSx('breach')).toEqual({ bgcolor: '#ef4444', color: 'white' });
     });
 
-    it('returns amber for warning severity', () => {
-      expect(getNRComplianceChipSx('warning')).toEqual({ bgcolor: '#f59e0b', color: 'white' });
+    it('returns orange for level2 severity', () => {
+      expect(getNRComplianceChipSx('level2')).toEqual({ bgcolor: '#f97316', color: 'white' });
+    });
+
+    it('returns yellow for level1 severity', () => {
+      expect(getNRComplianceChipSx('level1')).toEqual({ bgcolor: '#eab308', color: 'white' });
+    });
+
+    it('returns gray for warning severity', () => {
+      expect(getNRComplianceChipSx('warning')).toEqual({ bgcolor: '#6b7280', color: 'white' });
     });
 
     it('returns green for null severity (compliant)', () => {
@@ -288,7 +296,7 @@ describe('ScheduleCalendar Component', () => {
 
   const mockCalendarDates = generateCalendarDates('2024-04-06');
   const mockCalendarDayHeaders = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const mockViolationSeverity = new Map<number, 'error' | 'warning'>();
+  const mockViolationSeverity = new Map<number, 'breach' | 'level2' | 'level1' | 'warning'>();
   const mockOnDelete = jest.fn();
   const mockOnEdit = jest.fn();
 

@@ -165,7 +165,7 @@ export function PersonView({
   }, [periodAssignments, shiftPatterns, fatigueAnalysis]);
 
   const violationAssignmentSeverity = useMemo(() => {
-    const severityMap = new Map<number, 'error' | 'warning'>();
+    const severityMap = new Map<number, 'breach' | 'level2' | 'level1' | 'warning'>();
     compliance.violations.forEach(violation => {
       let violationAssignments: AssignmentCamel[] = [];
       if (violation.type === 'MAX_WEEKLY_HOURS' || violation.type === 'APPROACHING_WEEKLY_LIMIT') {
@@ -192,9 +192,13 @@ export function PersonView({
       } else {
         violationAssignments = empAssignments.filter(a => a.date === violation.date);
       }
+      // Severity priority: breach > level2 > level1 > warning
+      const severityPriority = { breach: 4, level2: 3, level1: 2, warning: 1 };
       violationAssignments.forEach(a => {
         const existingSeverity = severityMap.get(a.id);
-        if (!existingSeverity || (existingSeverity === 'warning' && violation.severity === 'error')) {
+        const existingPriority = existingSeverity ? severityPriority[existingSeverity] : 0;
+        const newPriority = severityPriority[violation.severity] || 0;
+        if (newPriority > existingPriority) {
           severityMap.set(a.id, violation.severity);
         }
       });
@@ -553,7 +557,7 @@ export function PersonView({
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         borderLeft: 3,
-                        borderColor: assignmentViolationSeverity === 'error' ? 'error.main' : assignmentViolationSeverity === 'warning' ? 'warning.main' : 'transparent',
+                        borderColor: assignmentViolationSeverity === 'breach' ? '#ef4444' : assignmentViolationSeverity === 'level2' ? '#f97316' : assignmentViolationSeverity === 'level1' ? '#eab308' : assignmentViolationSeverity === 'warning' ? '#6b7280' : 'transparent',
                         bgcolor: (showFRI && fri !== undefined)
                           ? (fri >= 1.2 ? 'error.light' : fri >= 1.1 ? 'warning.light' : fri >= 1.0 ? 'warning.50' : 'success.light')
                           : 'action.hover',

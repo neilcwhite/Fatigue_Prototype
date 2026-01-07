@@ -125,13 +125,17 @@ export function GanttView({
     return getDateCellViolations(employeeId, date, allViolations);
   };
 
-  // Get cell style based on violations
+  // Get cell style based on violations (4-tier NR system)
   const getCellViolationStyle = (violations: ComplianceViolation[]): string => {
-    const hasError = violations.some(v => v.severity === 'error');
+    const hasBreach = violations.some(v => v.severity === 'breach');
+    const hasLevel2 = violations.some(v => v.severity === 'level2');
+    const hasLevel1 = violations.some(v => v.severity === 'level1');
     const hasWarning = violations.some(v => v.severity === 'warning');
 
-    if (hasError) return 'ring-2 ring-red-500 ring-inset';
-    if (hasWarning) return 'ring-2 ring-amber-500 ring-inset';
+    if (hasBreach) return 'ring-2 ring-red-500 ring-inset';
+    if (hasLevel2) return 'ring-2 ring-orange-500 ring-inset';
+    if (hasLevel1) return 'ring-2 ring-yellow-500 ring-inset';
+    if (hasWarning) return 'ring-2 ring-gray-500 ring-inset';
     return '';
   };
 

@@ -187,6 +187,30 @@ export const RISK_COLORS = {
 } as const;
 
 /**
+ * Compliance status colors (4-tier NR system)
+ * - OK: Green - fully compliant
+ * - LEVEL1: Yellow - Level 1 exceedance (60-72h), requires risk assessment
+ * - LEVEL2: Amber/Orange - Level 2 exceedance (72h+), requires risk assessment
+ * - BREACH: Red - hard breach, stop working immediately
+ */
+export const COMPLIANCE_COLORS = {
+  OK: '#22c55e',       // green-500 - compliant
+  LEVEL1: '#eab308',   // yellow-500 - Level 1 exceedance
+  LEVEL2: '#f97316',   // orange-500 - Level 2 exceedance
+  BREACH: '#ef4444',   // red-500 - hard breach
+} as const;
+
+/**
+ * Compliance status background colors (lighter variants for cards/cells)
+ */
+export const COMPLIANCE_BG_COLORS = {
+  OK: '#dcfce7',       // green-100
+  LEVEL1: '#fef9c3',   // yellow-100
+  LEVEL2: '#ffedd5',   // orange-100
+  BREACH: '#fee2e2',   // red-100
+} as const;
+
+/**
  * Application metadata
  */
 export const APP_META = {

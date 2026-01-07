@@ -479,7 +479,13 @@ export function SummaryView({
                 const emp = employees.find(e => e.id === Number(empId));
                 const empName = emp?.name || 'Unknown';
                 const empRole = emp?.role || '';
-                const hasErrors = empViolations.some(v => v.severity === 'error');
+                // 4-tier severity: breach > level2 > level1 > warning
+                const hasBreach = empViolations.some(v => v.severity === 'breach');
+                const hasLevel2 = empViolations.some(v => v.severity === 'level2');
+                const hasLevel1 = empViolations.some(v => v.severity === 'level1');
+                const borderColor = hasBreach ? '#ef4444' : hasLevel2 ? '#f97316' : hasLevel1 ? '#eab308' : '#6b7280';
+                const bgColor = hasBreach ? '#fee2e2' : hasLevel2 ? '#ffedd5' : hasLevel1 ? '#fef9c3' : '#f3f4f6';
+                const bgColorHover = hasBreach ? '#ef4444' : hasLevel2 ? '#f97316' : hasLevel1 ? '#eab308' : '#6b7280';
 
                 return (
                   <Paper
@@ -489,7 +495,7 @@ export function SummaryView({
                       mb: 2,
                       overflow: 'hidden',
                       borderLeft: 4,
-                      borderColor: hasErrors ? 'error.main' : 'warning.main',
+                      borderColor: borderColor,
                     }}
                   >
                     {/* Employee Header */}
@@ -500,13 +506,13 @@ export function SummaryView({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        bgcolor: hasErrors ? 'error.light' : 'warning.light',
+                        bgcolor: bgColor,
                         cursor: 'pointer',
-                        '&:hover': { bgcolor: hasErrors ? 'error.main' : 'warning.main', color: 'white' },
+                        '&:hover': { bgcolor: bgColorHover, color: 'white' },
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {hasErrors ? <XCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                        {hasBreach ? <XCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
                         <Typography fontWeight={600}>{empName}</Typography>
                         {empRole && (
                           <Typography variant="caption" sx={{ opacity: 0.7 }}>({empRole})</Typography>
@@ -517,7 +523,7 @@ export function SummaryView({
                           size="small"
                           label={`${empViolations.length} issue${empViolations.length !== 1 ? 's' : ''}`}
                           sx={{
-                            bgcolor: hasErrors ? 'error.dark' : 'warning.dark',
+                            bgcolor: hasBreach ? '#b91c1c' : hasLevel2 ? '#c2410c' : hasLevel1 ? '#a16207' : '#4b5563',
                             color: 'white',
                           }}
                         />
@@ -526,7 +532,7 @@ export function SummaryView({
                     </Box>
 
                     {/* Violations */}
-                    <Box sx={{ bgcolor: hasErrors ? 'rgba(239, 68, 68, 0.05)' : 'rgba(249, 115, 22, 0.05)' }}>
+                    <Box sx={{ bgcolor: hasBreach ? 'rgba(239, 68, 68, 0.05)' : hasLevel2 ? 'rgba(249, 115, 22, 0.05)' : hasLevel1 ? 'rgba(234, 179, 8, 0.05)' : 'rgba(107, 114, 128, 0.05)' }}>
                       {empViolations.map((violation, idx) => (
                         <Box
                           key={idx}
@@ -545,7 +551,7 @@ export function SummaryView({
                               <Typography
                                 variant="body2"
                                 fontWeight={500}
-                                sx={{ color: violation.severity === 'error' ? 'error.main' : 'warning.main' }}
+                                sx={{ color: violation.severity === 'breach' ? '#ef4444' : violation.severity === 'level2' ? '#f97316' : violation.severity === 'level1' ? '#eab308' : '#6b7280' }}
                               >
                                 {violation.message}
                               </Typography>
