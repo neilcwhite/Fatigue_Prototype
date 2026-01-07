@@ -221,6 +221,8 @@ export function ScheduleCalendar({
                         border: 2,
                         transition: 'all 0.2s',
                         overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
                         ...(isHighlighted
                           ? {
                               bgcolor: 'primary.light',
@@ -248,11 +250,11 @@ export function ScheduleCalendar({
                           {dateNum}
                         </Typography>
                         {showFRI && dateFRI !== null && (
-                          <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end', mr: -0.25 }}>
                             <Chip
                               label={`R:${dateFRI.toFixed(2)}`}
                               size="small"
-                              sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.5rem', height: 14, fontWeight: 700 }}
+                              sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.5rem', height: 14, fontWeight: 700, '& .MuiChip-label': { px: 0.5 } }}
                             />
                             {dateFGI !== null && (
                               <Chip
@@ -263,7 +265,8 @@ export function ScheduleCalendar({
                                   height: 14,
                                   fontWeight: 700,
                                   bgcolor: dateFGI >= 35 ? '#ef4444' : dateFGI >= 25 ? '#f97316' : dateFGI >= 17.5 ? '#eab308' : '#22c55e',
-                                  color: 'white'
+                                  color: 'white',
+                                  '& .MuiChip-label': { px: 0.5 }
                                 }}
                               />
                             )}
@@ -302,7 +305,7 @@ export function ScheduleCalendar({
                           </Typography>
                         )
                       ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
                           {dateAssignments.map((assignment) => {
                             const { pattern, project } = getAssignmentInfo(assignment);
                             const assignmentViolation = violationAssignmentSeverity.get(assignment.id) || null;
