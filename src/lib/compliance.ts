@@ -615,8 +615,8 @@ export function checkFatigueRiskIndex(
       endTime: times.end,
       commuteIn: pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : 30,
       commuteOut: pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : 30,
-      workload: pattern.workload || 5, // Use worst-case (5) for compliance checking
-      attention: pattern.attention || 5, // Use worst-case (5) for compliance checking
+      workload: pattern.workload || 1, // Use worst-case (1=most demanding) for compliance checking
+      attention: pattern.attention || 1, // Use worst-case (1=most attention) for compliance checking
       breakFreq: pattern.breakFrequency || 180,
       breakLen: pattern.breakLength || 30,
     };

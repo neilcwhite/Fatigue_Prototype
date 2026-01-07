@@ -130,17 +130,18 @@ const TEMPLATES = {
   },
 };
 
+// Role presets using NR Excel tool scale: 1=highest demand, 4=lowest
 const ROLE_PRESETS = {
   custom: { name: 'Custom', workload: 2, attention: 2, description: 'Set your own values' },
-  coss: { name: 'COSS', workload: 4, attention: 5, description: 'Controller of Site Safety - highest responsibility' },
-  picop: { name: 'PICOP', workload: 4, attention: 5, description: 'Person In Charge Of Possession' },
-  lookout: { name: 'Lookout', workload: 2, attention: 5, description: 'High vigilance required' },
-  siteWarden: { name: 'Site Warden', workload: 3, attention: 4, description: 'Site access control' },
-  machineOp: { name: 'Machine Operator', workload: 4, attention: 4, description: 'Heavy plant operation' },
-  banksman: { name: 'Banksman', workload: 3, attention: 4, description: 'Plant movement guidance' },
-  skilledOp: { name: 'Skilled Operative', workload: 3, attention: 3, description: 'Experienced track worker' },
-  labourer: { name: 'Labourer', workload: 3, attention: 2, description: 'General duties' },
-  trainee: { name: 'Trainee/Learner', workload: 2, attention: 2, description: 'Under supervision' },
+  coss: { name: 'COSS', workload: 1, attention: 1, description: 'Controller of Site Safety - highest responsibility' },
+  picop: { name: 'PICOP', workload: 1, attention: 1, description: 'Person In Charge Of Possession' },
+  lookout: { name: 'Lookout', workload: 3, attention: 1, description: 'High vigilance required' },
+  siteWarden: { name: 'Site Warden', workload: 2, attention: 2, description: 'Site access control' },
+  machineOp: { name: 'Machine Operator', workload: 1, attention: 2, description: 'Heavy plant operation' },
+  banksman: { name: 'Banksman', workload: 2, attention: 2, description: 'Plant movement guidance' },
+  skilledOp: { name: 'Skilled Operative', workload: 2, attention: 2, description: 'Experienced track worker' },
+  labourer: { name: 'Labourer', workload: 2, attention: 3, description: 'General duties' },
+  trainee: { name: 'Trainee/Learner', workload: 3, attention: 3, description: 'Under supervision' },
 } as const;
 
 type RoleKey = keyof typeof ROLE_PRESETS;
@@ -531,19 +532,20 @@ export function FatigueView({
     if (workingShifts.length === 0) return null;
 
     const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
+    // Worst-case uses 1 (most demanding/most attention) since scale is 1=highest, 4=lowest
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
       day: s.day,
       startTime: s.startTime,
       endTime: s.endTime,
       commuteIn: s.commuteIn,
       commuteOut: s.commuteOut,
-      workload: 5,
-      attention: 5,
+      workload: 1,
+      attention: 1,
       breakFreq: s.breakFreq,
       breakLen: s.breakLen,
     }));
 
-    const worstParams = { ...params, workload: 5, attention: 5 };
+    const worstParams = { ...params, workload: 1, attention: 1 };
     const calculations = calculateFatigueSequence(shiftDefinitions, worstParams);
 
     const calcByDay = new Map<number, { riskIndex: number; riskLevel: { level: string } }>();
@@ -1082,8 +1084,8 @@ export function FatigueView({
           <div class="params">
             <div class="params-grid">
               <div class="param"><span class="param-label">Commute Time:</span> <span class="param-value">${params.commuteTime} min</span></div>
-              <div class="param"><span class="param-label">Workload:</span> <span class="param-value">${params.workload}/5</span></div>
-              <div class="param"><span class="param-label">Attention:</span> <span class="param-value">${params.attention}/5</span></div>
+              <div class="param"><span class="param-label">Workload:</span> <span class="param-value">${params.workload}/4</span></div>
+              <div class="param"><span class="param-label">Attention:</span> <span class="param-value">${params.attention}/4</span></div>
               <div class="param"><span class="param-label">Break Frequency:</span> <span class="param-value">${params.breakFrequency} min</span></div>
               <div class="param"><span class="param-label">Break Length:</span> <span class="param-value">${params.breakLength} min</span></div>
               <div class="param"><span class="param-label">Continuous Work:</span> <span class="param-value">${params.continuousWork} min</span></div>
@@ -1300,12 +1302,12 @@ export function FatigueView({
                           display: 'none',
                         },
                       }}>
-                        {/* Global Parameters Summary */}
-                        <Alert severity="warning" sx={{ mb: 2, py: 0.5 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="caption" fontWeight={600}>Global Settings:</Typography>
+                        {/* Global Break Parameters Summary (matches NR Excel tool) */}
+                        <Alert severity="info" sx={{ mb: 2, py: 0.5 }}>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" fontWeight={600}>Break Settings:</Typography>
                             <Typography variant="caption">
-                              Max continuous work: <strong>{params.continuousWork}m</strong> | Break length: <strong>{params.breakAfterContinuous}m</strong>
+                              Frequency: <strong>{params.breakFrequency}m</strong> | Length: <strong>{params.breakLength}m</strong> | Max continuous: <strong>{params.continuousWork}m</strong> | Break after: <strong>{params.breakAfterContinuous}m</strong>
                             </Typography>
                           </Box>
                         </Alert>
@@ -1319,13 +1321,13 @@ export function FatigueView({
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>End</Typography>
                           <Tooltip title="Commute time from work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>Out</Typography></Tooltip>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Hrs</Typography>
-                          <Tooltip title="Workload (1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>W</Typography></Tooltip>
-                          <Tooltip title="Attention Required (1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>A</Typography></Tooltip>
-                          <Tooltip title="Minutes between breaks" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
-                          <Tooltip title="Break Length (minutes per break)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BL</Typography></Tooltip>
+                          <Tooltip title="Workload (1=Extremely demanding, 4=Extremely undemanding)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>W</Typography></Tooltip>
+                          <Tooltip title="Attention (1=All/nearly all the time, 4=Rarely/never)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>A</Typography></Tooltip>
+                          <Tooltip title="Break Frequency - minutes between breaks" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
+                          <Tooltip title="Break Length - average break duration (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BL</Typography></Tooltip>
                           <Tooltip title="Fatigue Risk Index (multiplicative model)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}>FRI</Typography></Tooltip>
                           <Tooltip title="Fatigue Index (probability model, Day≥35 / Night≥45 = breach)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'primary.main', cursor: 'help' }}>FGI</Typography></Tooltip>
-                          <Tooltip title="Worst-case FRI (Workload=5, Attention=5)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main', cursor: 'help' }}>Worst</Typography></Tooltip>
+                          <Tooltip title="Worst-case FRI (Workload=1, Attention=1)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main', cursor: 'help' }}>Worst</Typography></Tooltip>
                         </Box>
 
                         {/* Day Rows */}
@@ -1425,7 +1427,7 @@ export function FatigueView({
                                 {isRestDay ? '-' : duration.toFixed(1)}
                               </Typography>
 
-                              <Tooltip title="Workload: 1=Low, 2=Light, 3=Moderate, 4=High, 5=Very High" placement="right" arrow>
+                              <Tooltip title="Workload: 1=Extremely demanding, 2=Moderately demanding, 3=Moderately undemanding, 4=Extremely undemanding" placement="right" arrow>
                                 <TextField
                                   select
                                   size="small"
@@ -1435,15 +1437,14 @@ export function FatigueView({
                                   slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
                                 >
-                                  <MenuItem value={1}>1 - Low</MenuItem>
-                                  <MenuItem value={2}>2 - Light</MenuItem>
-                                  <MenuItem value={3}>3 - Moderate</MenuItem>
-                                  <MenuItem value={4}>4 - High</MenuItem>
-                                  <MenuItem value={5}>5 - Very High</MenuItem>
+                                  <MenuItem value={1}>1 - Extreme</MenuItem>
+                                  <MenuItem value={2}>2 - Moderate</MenuItem>
+                                  <MenuItem value={3}>3 - Light</MenuItem>
+                                  <MenuItem value={4}>4 - Minimal</MenuItem>
                                 </TextField>
                               </Tooltip>
 
-                              <Tooltip title="Attention: 1=Minimal, 2=Low, 3=Moderate, 4=High, 5=Constant" placement="right" arrow>
+                              <Tooltip title="Attention: 1=All/nearly all the time, 2=Most of the time, 3=Some of the time, 4=Rarely/never" placement="right" arrow>
                                 <TextField
                                   select
                                   size="small"
@@ -1453,11 +1454,10 @@ export function FatigueView({
                                   slotProps={{ htmlInput: { style: { padding: '4px', textAlign: 'center' } } }}
                                   sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'secondary.50' } }}
                                 >
-                                  <MenuItem value={1}>1 - Minimal</MenuItem>
-                                  <MenuItem value={2}>2 - Low</MenuItem>
-                                  <MenuItem value={3}>3 - Moderate</MenuItem>
-                                  <MenuItem value={4}>4 - High</MenuItem>
-                                  <MenuItem value={5}>5 - Constant</MenuItem>
+                                  <MenuItem value={1}>1 - Constant</MenuItem>
+                                  <MenuItem value={2}>2 - Most</MenuItem>
+                                  <MenuItem value={3}>3 - Some</MenuItem>
+                                  <MenuItem value={4}>4 - Rarely</MenuItem>
                                 </TextField>
                               </Tooltip>
 
@@ -1669,85 +1669,99 @@ export function FatigueView({
                     <Grid container spacing={2} sx={{ mb: 2 }}>
                       <Grid size={{ xs: 6 }}>
                         <FormControl fullWidth size="small">
-                          <InputLabel>Workload (1-5)</InputLabel>
+                          <InputLabel>Workload (1-4)</InputLabel>
                           <Select
                             value={params.workload}
-                            label="Workload (1-5)"
+                            label="Workload (1-4)"
                             onChange={(e) => setParams({ ...params, workload: parseInt(String(e.target.value)) })}
                           >
-                            <MenuItem value={1}>1 - Light</MenuItem>
-                            <MenuItem value={2}>2 - Moderate</MenuItem>
-                            <MenuItem value={3}>3 - Average</MenuItem>
-                            <MenuItem value={4}>4 - Heavy</MenuItem>
-                            <MenuItem value={5}>5 - Very Heavy</MenuItem>
+                            <MenuItem value={1}>1 - Extremely demanding</MenuItem>
+                            <MenuItem value={2}>2 - Moderately demanding</MenuItem>
+                            <MenuItem value={3}>3 - Moderately undemanding</MenuItem>
+                            <MenuItem value={4}>4 - Extremely undemanding</MenuItem>
                           </Select>
                         </FormControl>
                       </Grid>
                       <Grid size={{ xs: 6 }}>
                         <FormControl fullWidth size="small">
-                          <InputLabel>Attention (1-5)</InputLabel>
+                          <InputLabel>Attention (1-4)</InputLabel>
                           <Select
                             value={params.attention}
-                            label="Attention (1-5)"
+                            label="Attention (1-4)"
                             onChange={(e) => setParams({ ...params, attention: parseInt(String(e.target.value)) })}
                           >
-                            <MenuItem value={1}>1 - Low</MenuItem>
-                            <MenuItem value={2}>2 - Moderate</MenuItem>
-                            <MenuItem value={3}>3 - Average</MenuItem>
-                            <MenuItem value={4}>4 - High</MenuItem>
-                            <MenuItem value={5}>5 - Very High</MenuItem>
+                            <MenuItem value={1}>1 - All/nearly all the time</MenuItem>
+                            <MenuItem value={2}>2 - Most of the time</MenuItem>
+                            <MenuItem value={3}>3 - Some of the time</MenuItem>
+                            <MenuItem value={4}>4 - Rarely or never</MenuItem>
                           </Select>
                         </FormControl>
                       </Grid>
                     </Grid>
 
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                      Break parameters (matching NR Excel tool):
+                    </Typography>
+
                     <Grid container spacing={2} sx={{ mb: 2 }}>
                       <Grid size={{ xs: 6 }}>
-                        <TextField
-                          type="number"
-                          label="Break Frequency (mins)"
-                          value={params.breakFrequency}
-                          onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })}
-                          fullWidth
-                          size="small"
-                          slotProps={{ htmlInput: { min: 30, max: 480 } }}
-                        />
+                        <Tooltip title="How frequently (to the nearest 15 mins) are rest breaks typically provided OR taken?" arrow>
+                          <TextField
+                            type="number"
+                            label="Break Frequency (mins)"
+                            value={params.breakFrequency}
+                            onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })}
+                            fullWidth
+                            size="small"
+                            slotProps={{ htmlInput: { min: 15, max: 480, step: 15 } }}
+                            helperText="Interval between breaks"
+                          />
+                        </Tooltip>
                       </Grid>
                       <Grid size={{ xs: 6 }}>
-                        <TextField
-                          type="number"
-                          label="Break Length (mins)"
-                          value={params.breakLength}
-                          onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 30 })}
-                          fullWidth
-                          size="small"
-                          slotProps={{ htmlInput: { min: 5, max: 60 } }}
-                        />
+                        <Tooltip title="What is the typical average length of these breaks (to the nearest 5 minutes) that are provided or taken?" arrow>
+                          <TextField
+                            type="number"
+                            label="Avg Break Length (mins)"
+                            value={params.breakLength}
+                            onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 15 })}
+                            fullWidth
+                            size="small"
+                            slotProps={{ htmlInput: { min: 5, max: 60, step: 5 } }}
+                            helperText="Average break duration"
+                          />
+                        </Tooltip>
                       </Grid>
                     </Grid>
 
                     <Grid container spacing={2}>
                       <Grid size={{ xs: 6 }}>
-                        <TextField
-                          type="number"
-                          label="Continuous Work (mins)"
-                          value={params.continuousWork}
-                          onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 180 })}
-                          fullWidth
-                          size="small"
-                          slotProps={{ htmlInput: { min: 30, max: 480 } }}
-                        />
+                        <Tooltip title="What is typically the longest (to the nearest 15mins) period of continuous work before a break?" arrow>
+                          <TextField
+                            type="number"
+                            label="Longest Continuous Work"
+                            value={params.continuousWork}
+                            onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 240 })}
+                            fullWidth
+                            size="small"
+                            slotProps={{ htmlInput: { min: 15, max: 480, step: 15 } }}
+                            helperText="Max work before break"
+                          />
+                        </Tooltip>
                       </Grid>
                       <Grid size={{ xs: 6 }}>
-                        <TextField
-                          type="number"
-                          label="Break After Continuous"
-                          value={params.breakAfterContinuous}
-                          onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })}
-                          fullWidth
-                          size="small"
-                          slotProps={{ htmlInput: { min: 5, max: 60 } }}
-                        />
+                        <Tooltip title="What is typically the length of the break taken after this longest period of continuous work (to the nearest 5 mins)?" arrow>
+                          <TextField
+                            type="number"
+                            label="Break After Longest"
+                            value={params.breakAfterContinuous}
+                            onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })}
+                            fullWidth
+                            size="small"
+                            slotProps={{ htmlInput: { min: 5, max: 60, step: 5 } }}
+                            helperText="Break after max work"
+                          />
+                        </Tooltip>
                       </Grid>
                     </Grid>
                   </Box>

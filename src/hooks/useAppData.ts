@@ -14,7 +14,7 @@ import type {
 
 /**
  * Validate fatigue parameters are within acceptable bounds
- * RR446 specifies workload/attention as 1-5 scale
+ * NR Excel tool specifies workload/attention as 1-4 scale (1=highest demand, 4=lowest)
  */
 export function validateFatigueParams(params: {
   workload?: number;
@@ -25,11 +25,11 @@ export function validateFatigueParams(params: {
 }): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  if (params.workload !== undefined && (params.workload < 1 || params.workload > 5)) {
-    errors.push('Workload must be between 1 and 5');
+  if (params.workload !== undefined && (params.workload < 1 || params.workload > 4)) {
+    errors.push('Workload must be between 1 and 4');
   }
-  if (params.attention !== undefined && (params.attention < 1 || params.attention > 5)) {
-    errors.push('Attention must be between 1 and 5');
+  if (params.attention !== undefined && (params.attention < 1 || params.attention > 4)) {
+    errors.push('Attention must be between 1 and 4');
   }
   if (params.commuteTime !== undefined && (params.commuteTime < 0 || params.commuteTime > 480)) {
     errors.push('Commute time must be between 0 and 480 minutes (8 hours)');
@@ -144,11 +144,11 @@ export function validateDaySchedule(day: DayScheduleEntry | null | undefined): {
   if (day.commuteOut !== undefined && (day.commuteOut < 0 || day.commuteOut > 480)) {
     errors.push('Commute out must be between 0 and 480 minutes');
   }
-  if (day.workload !== undefined && (day.workload < 1 || day.workload > 5)) {
-    errors.push('Workload must be between 1 and 5');
+  if (day.workload !== undefined && (day.workload < 1 || day.workload > 4)) {
+    errors.push('Workload must be between 1 and 4');
   }
-  if (day.attention !== undefined && (day.attention < 1 || day.attention > 5)) {
-    errors.push('Attention must be between 1 and 5');
+  if (day.attention !== undefined && (day.attention < 1 || day.attention > 4)) {
+    errors.push('Attention must be between 1 and 4');
   }
   if (day.breakFreq !== undefined && (day.breakFreq < 0 || day.breakFreq > 720)) {
     errors.push('Break frequency must be between 0 and 720 minutes');

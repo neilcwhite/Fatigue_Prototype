@@ -31,17 +31,18 @@ export interface FatigueParams {
   breakAfterContinuous: number;
 }
 
+// Role presets using NR Excel tool scale: 1=highest demand, 4=lowest
 export const ROLE_PRESETS = {
   custom: { name: 'Custom', workload: 2, attention: 2, description: 'Set your own values' },
-  coss: { name: 'COSS', workload: 4, attention: 5, description: 'Controller of Site Safety - highest responsibility' },
-  picop: { name: 'PICOP', workload: 4, attention: 5, description: 'Person In Charge Of Possession' },
-  lookout: { name: 'Lookout', workload: 2, attention: 5, description: 'High vigilance required' },
-  siteWarden: { name: 'Site Warden', workload: 3, attention: 4, description: 'Site access control' },
-  machineOp: { name: 'Machine Operator', workload: 4, attention: 4, description: 'Heavy plant operation' },
-  banksman: { name: 'Banksman', workload: 3, attention: 4, description: 'Plant movement guidance' },
-  skilledOp: { name: 'Skilled Operative', workload: 3, attention: 3, description: 'Experienced track worker' },
-  labourer: { name: 'Labourer', workload: 3, attention: 2, description: 'General duties' },
-  trainee: { name: 'Trainee/Learner', workload: 2, attention: 2, description: 'Under supervision' },
+  coss: { name: 'COSS', workload: 1, attention: 1, description: 'Controller of Site Safety - highest responsibility' },
+  picop: { name: 'PICOP', workload: 1, attention: 1, description: 'Person In Charge Of Possession' },
+  lookout: { name: 'Lookout', workload: 3, attention: 1, description: 'High vigilance required' },
+  siteWarden: { name: 'Site Warden', workload: 2, attention: 2, description: 'Site access control' },
+  machineOp: { name: 'Machine Operator', workload: 1, attention: 2, description: 'Heavy plant operation' },
+  banksman: { name: 'Banksman', workload: 2, attention: 2, description: 'Plant movement guidance' },
+  skilledOp: { name: 'Skilled Operative', workload: 2, attention: 2, description: 'Experienced track worker' },
+  labourer: { name: 'Labourer', workload: 2, attention: 3, description: 'General duties' },
+  trainee: { name: 'Trainee/Learner', workload: 3, attention: 3, description: 'Under supervision' },
 } as const;
 
 export type RoleKey = keyof typeof ROLE_PRESETS;

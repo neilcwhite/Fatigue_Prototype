@@ -243,33 +243,31 @@ export function ShiftPatternEditModal({
               <Grid size={{ xs: 6 }}>
                 <TextField
                   select
-                  label="Workload (1-5)"
+                  label="Workload (1-4)"
                   value={workload}
                   onChange={(e) => setWorkload(parseInt(e.target.value))}
                   fullWidth
                   size="small"
                 >
-                  <MenuItem value={1}>1 - Light</MenuItem>
-                  <MenuItem value={2}>2 - Moderate</MenuItem>
-                  <MenuItem value={3}>3 - Average</MenuItem>
-                  <MenuItem value={4}>4 - Heavy</MenuItem>
-                  <MenuItem value={5}>5 - Very Heavy</MenuItem>
+                  <MenuItem value={1}>1 - Extremely demanding</MenuItem>
+                  <MenuItem value={2}>2 - Moderately demanding</MenuItem>
+                  <MenuItem value={3}>3 - Moderately undemanding</MenuItem>
+                  <MenuItem value={4}>4 - Extremely undemanding</MenuItem>
                 </TextField>
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <TextField
                   select
-                  label="Attention (1-5)"
+                  label="Attention (1-4)"
                   value={attention}
                   onChange={(e) => setAttention(parseInt(e.target.value))}
                   fullWidth
                   size="small"
                 >
-                  <MenuItem value={1}>1 - Low</MenuItem>
-                  <MenuItem value={2}>2 - Moderate</MenuItem>
-                  <MenuItem value={3}>3 - Average</MenuItem>
-                  <MenuItem value={4}>4 - High</MenuItem>
-                  <MenuItem value={5}>5 - Very High</MenuItem>
+                  <MenuItem value={1}>1 - All/nearly all the time</MenuItem>
+                  <MenuItem value={2}>2 - Most of the time</MenuItem>
+                  <MenuItem value={3}>3 - Some of the time</MenuItem>
+                  <MenuItem value={4}>4 - Rarely or never</MenuItem>
                 </TextField>
               </Grid>
             </Grid>

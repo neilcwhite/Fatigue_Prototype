@@ -55,17 +55,17 @@ export const NR_WEEK = {
 export const FATIGUE_DEFAULTS = {
   /** Default one-way commute time (minutes) */
   COMMUTE_TIME: 60,
-  /** Physical workload rating (1-5 scale) */
-  WORKLOAD: 3,
-  /** Attention/vigilance requirement (1-5 scale) */
-  ATTENTION: 3,
-  /** Maximum time between breaks (minutes) - 3 hours */
+  /** Physical workload rating (1-4 scale per NR Excel tool) */
+  WORKLOAD: 2,
+  /** Attention/vigilance requirement (1-4 scale per NR Excel tool) */
+  ATTENTION: 2,
+  /** How frequently rest breaks are typically provided/taken (minutes) - 3 hours */
   BREAK_FREQUENCY: 180,
-  /** Standard break duration (minutes) */
-  BREAK_LENGTH: 30,
-  /** Maximum continuous work before mandated break (minutes) */
-  CONTINUOUS_WORK: 180,
-  /** Break duration after continuous work period (minutes) */
+  /** Average length of rest breaks (minutes) */
+  BREAK_LENGTH: 15,
+  /** Longest period of continuous work before a break (minutes) - 4 hours */
+  CONTINUOUS_WORK: 240,
+  /** Length of break after longest continuous work period (minutes) */
   BREAK_AFTER_CONTINUOUS: 30,
 } as const;
 

@@ -70,9 +70,9 @@ export interface ShiftPattern {
   organisation_id: string;
   created_at?: string;
   updated_at?: string;
-  // Fatigue parameters
-  workload?: number;      // 1-5 scale
-  attention?: number;     // 1-5 scale
+  // Fatigue parameters (NR Excel tool scale: 1=highest demand, 4=lowest)
+  workload?: number;      // 1-4 scale
+  attention?: number;     // 1-4 scale
   commute_time?: number;  // minutes
   break_frequency?: number; // minutes between breaks
   break_length?: number;  // minutes per break
@@ -267,9 +267,9 @@ export interface ShiftPatternCamel {
   isNight: boolean;
   organisationId: string;
   createdAt?: string;     // ISO timestamp for sorting
-  // Fatigue parameters
-  workload?: number;      // 1-5 scale
-  attention?: number;     // 1-5 scale
+  // Fatigue parameters (NR Excel tool scale: 1=highest demand, 4=lowest)
+  workload?: number;      // 1-4 scale
+  attention?: number;     // 1-4 scale
   commuteTime?: number;   // minutes
   breakFrequency?: number; // minutes between breaks
   breakLength?: number;   // minutes per break

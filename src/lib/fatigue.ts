@@ -54,13 +54,14 @@ export interface FatigueParams {
 }
 
 // Default fatigue parameters
+// Workload/Attention use 1-4 scale per NR Excel tool (1=highest demand, 4=lowest demand)
 export const DEFAULT_FATIGUE_PARAMS: FatigueParams = {
   commuteTime: 60,
-  workload: 3,
-  attention: 3,
+  workload: 2,  // "Moderately demanding, little spare capacity"
+  attention: 2, // "Some of the time"
   breakFrequency: 180,
-  breakLength: 30,
-  continuousWork: 180,
+  breakLength: 15,
+  continuousWork: 240,
   breakAfterContinuous: 30,
 };
 
@@ -198,7 +199,12 @@ function calculateJobBreaksComponent(
 ): number {
   const { workload, attention, breakFrequency, breakLength, continuousWork, breakAfterContinuous } = params;
 
-  const workloadSum = workload + attention;
+  // NR Excel tool uses 1-4 scale where 1=highest demand, 4=lowest
+  // Convert to internal scale where higher = more demanding for calculation
+  // workload/attention of 1 → 4, of 2 → 3, of 3 → 2, of 4 → 1
+  const adjustedWorkload = 5 - workload;
+  const adjustedAttention = 5 - attention;
+  const workloadSum = adjustedWorkload + adjustedAttention;
   const avgContinuous = (breakFrequency + continuousWork) / 2;
   const avgBreak = (breakLength + breakAfterContinuous) / 2;
 
@@ -524,7 +530,11 @@ function dutyFactorFatigue(
   contWorkMins: number,
   breakAfterContMins: number
 ): number {
-  const workloadSum = workload + attention;
+  // NR Excel tool uses 1-4 scale where 1=highest demand, 4=lowest
+  // Convert to internal scale where higher = more demanding for calculation
+  const adjustedWorkload = 5 - workload;
+  const adjustedAttention = 5 - attention;
+  const workloadSum = adjustedWorkload + adjustedAttention;
 
   // Base workload effect
   let workloadEffect = 0.125 + 0.015 * workloadSum;

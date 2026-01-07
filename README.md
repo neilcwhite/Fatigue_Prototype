@@ -201,14 +201,18 @@ Based on HSE Research Report RR446, the system calculates:
 
 ### Fatigue Parameters (per shift pattern)
 
+Parameters match the NR Excel Fatigue/Risk Assessment tool. Note that Workload and Attention use a **descending scale** where **1 = highest demand, 4 = lowest demand**.
+
 | Parameter | Range | Default | Description |
 |-----------|-------|---------|-------------|
-| Workload | 1-5 | 3 | Physical/mental workload (1=Light, 2=Moderate, 3=Average, 4=Heavy, 5=Very Heavy) |
-| Attention | 1-5 | 3 | Required attention level (1=Low, 2=Moderate, 3=Average, 4=High, 5=Very High) |
+| Workload | 1-4 | 2 | Physical/mental workload (1=Extremely demanding, 2=Moderately demanding, 3=Moderately undemanding, 4=Extremely undemanding) |
+| Attention | 1-4 | 2 | Required attention level (1=All/nearly all the time, 2=Most of the time, 3=Some of the time, 4=Rarely/never) |
 | Commute In | 0-180 min | 90 Mon, 30 other | Travel time to work |
 | Commute Out | 0-180 min | 90 Fri, 30 other | Travel time from work |
-| Break Frequency | 30-480 min | 180 | Maximum continuous work before break |
-| Break Length | 5-60 min | 30 | Duration of breaks |
+| Break Frequency | 15-480 min | 180 | How frequently rest breaks are typically provided/taken |
+| Break Length | 5-60 min | 15 | Average length of rest breaks |
+| Longest Continuous Work | 15-480 min | 240 | Longest period of continuous work before a break |
+| Break After Longest | 5-60 min | 30 | Length of break after longest continuous work period |
 
 ## Compliance Rules
 
