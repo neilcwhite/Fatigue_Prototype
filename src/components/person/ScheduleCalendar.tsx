@@ -163,7 +163,7 @@ export function ScheduleCalendar({
         {/* Day Headers */}
         <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
           <Box sx={{ width: 40, minWidth: 40 }} />
-          <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+          <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, alignItems: 'start' }}>
             {calendarDayHeaders.map((day) => (
               <Typography key={day} variant="caption" fontWeight={600} textAlign="center" color="text.secondary">
                 {day}
@@ -185,7 +185,7 @@ export function ScheduleCalendar({
                   {weekMonthName}
                 </Typography>
               </Box>
-              <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5 }}>
+              <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, alignItems: 'start' }}>
                 {weekDates.map((date) => {
                   const { date: dateNum, isWeekend, isToday } = formatDateHeader(date);
                   const dateAssignments = periodAssignments.filter((a) => a.date === date);
