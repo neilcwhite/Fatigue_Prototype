@@ -310,7 +310,7 @@ export function ScheduleCalendar({
                           </Typography>
                         )
                       ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                           {dateAssignments.map((assignment) => {
                             const { pattern, project } = getAssignmentInfo(assignment);
                             const assignmentViolation = violationAssignmentSeverity.get(assignment.id) || null;
