@@ -212,20 +212,22 @@ export function ScheduleCalendar({
                       : null;
                   const isHighlighted = highlightedDate === date;
                   const hasAssignments = dateAssignments.length > 0;
+                  const hasMultipleAssignments = dateAssignments.length > 1;
 
                   return (
                     <Box
                       key={date}
                       data-testid={`calendar-cell-${date}`}
                       sx={{
-                        height: 95,
                         minHeight: 95,
-                        maxHeight: 95,
+                        // Allow cell to grow for multiple assignments
+                        height: hasMultipleAssignments ? 'auto' : 95,
+                        maxHeight: hasMultipleAssignments ? 'none' : 95,
                         p: 0.75,
                         borderRadius: 1,
                         border: 2,
                         transition: 'all 0.2s',
-                        overflow: 'hidden',
+                        overflow: hasMultipleAssignments ? 'visible' : 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
                         ...(isHighlighted
@@ -247,13 +249,23 @@ export function ScheduleCalendar({
                       }}
                     >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
-                        <Typography
-                          variant="caption"
-                          fontWeight={600}
-                          sx={{ color: isToday ? 'primary.main' : 'text.primary' }}
-                        >
-                          {dateNum}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography
+                            variant="caption"
+                            fontWeight={600}
+                            sx={{ color: isToday ? 'primary.main' : 'text.primary' }}
+                          >
+                            {dateNum}
+                          </Typography>
+                          {hasMultipleAssignments && (
+                            <Chip
+                              label={`${dateAssignments.length} shifts`}
+                              size="small"
+                              color="warning"
+                              sx={{ fontSize: '0.5rem', height: 14, '& .MuiChip-label': { px: 0.5 } }}
+                            />
+                          )}
+                        </Box>
                         {showFRI && dateFRI !== null && (
                           <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <Chip

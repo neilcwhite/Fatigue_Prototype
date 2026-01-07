@@ -7,7 +7,9 @@ import type {
   ProjectCamel,
   TeamCamel,
   ShiftPatternCamel,
-  AssignmentCamel
+  AssignmentCamel,
+  FatigueAssessment,
+  FatigueAssessmentRow,
 } from '@/lib/types';
 
 // ==================== VALIDATION HELPERS ====================
@@ -196,6 +198,7 @@ interface AppData {
   teams: TeamCamel[];
   shiftPatterns: ShiftPatternCamel[];
   assignments: AssignmentCamel[];
+  fatigueAssessments: FatigueAssessment[];
   loading: boolean;
   error: string | null;
 }
@@ -222,6 +225,10 @@ interface UseAppDataReturn extends AppData {
   createAssignment: (data: Omit<AssignmentCamel, 'id' | 'organisationId'>) => Promise<void>;
   updateAssignment: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   deleteAssignment: (id: number) => Promise<void>;
+  // Fatigue assessment operations
+  createFatigueAssessment: (data: FatigueAssessment) => Promise<void>;
+  updateFatigueAssessment: (id: string, data: Partial<FatigueAssessment>) => Promise<void>;
+  deleteFatigueAssessment: (id: string) => Promise<void>;
 }
 
 export function useAppData(organisationId: string | null): UseAppDataReturn {
@@ -231,6 +238,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     teams: [],
     shiftPatterns: [],
     assignments: [],
+    fatigueAssessments: [],
     loading: true,
     error: null,
   });
@@ -248,21 +256,25 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         setData(prev => ({ ...prev, loading: true, error: null }));
       }
 
-      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes] = await Promise.all([
+      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes] = await Promise.all([
         supabase.from('employees').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('projects').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('teams').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('shift_patterns').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('assignments').select('*').eq('organisation_id', organisationId).order('date'),
+        supabase.from('fatigue_assessments').select('*').eq('organisation_id', organisationId).order('assessment_date', { ascending: false }),
       ]);
 
       // Check for errors on any query - surface them instead of silently showing empty data
+      // Note: fatigue_assessments table may not exist yet, so we handle that gracefully
       const errors = [
         employeesRes.error && `Employees: ${employeesRes.error.message}`,
         projectsRes.error && `Projects: ${projectsRes.error.message}`,
         teamsRes.error && `Teams: ${teamsRes.error.message}`,
         patternsRes.error && `Shift patterns: ${patternsRes.error.message}`,
         assignmentsRes.error && `Assignments: ${assignmentsRes.error.message}`,
+        // Don't fail if fatigue_assessments table doesn't exist - it's optional
+        assessmentsRes.error && !assessmentsRes.error.message.includes('does not exist') && `Assessments: ${assessmentsRes.error.message}`,
       ].filter(Boolean);
 
       if (errors.length > 0) {
@@ -325,12 +337,51 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         organisationId: a.organisation_id,
       }));
 
+      // Map fatigue assessments from snake_case to camelCase
+      const fatigueAssessments: FatigueAssessment[] = (assessmentsRes.data || []).map((fa: FatigueAssessmentRow) => ({
+        id: fa.id,
+        organisationId: fa.organisation_id,
+        employeeId: fa.employee_id,
+        employeeName: fa.employee_name,
+        jobTitle: fa.job_title,
+        contractNo: fa.contract_no,
+        location: fa.location,
+        assessmentDate: fa.assessment_date,
+        shiftStartTime: fa.shift_start_time,
+        shiftEndTime: fa.shift_end_time,
+        assessorName: fa.assessor_name,
+        assessorRole: fa.assessor_role,
+        violationType: fa.violation_type as FatigueAssessment['violationType'],
+        violationDate: fa.violation_date,
+        assignmentId: fa.assignment_id,
+        assessmentReasons: fa.assessment_reasons || [],
+        assessmentAnswers: fa.assessment_answers || [],
+        totalScore: fa.total_score,
+        exceedanceLevel: fa.exceedance_level,
+        calculatedRiskLevel: fa.calculated_risk_level,
+        finalRiskLevel: fa.final_risk_level,
+        riskAdjustmentNotes: fa.risk_adjustment_notes,
+        appliedMitigations: fa.applied_mitigations || [],
+        otherMitigationDetails: fa.other_mitigation_details,
+        employeeAccepted: fa.employee_accepted,
+        employeeAcceptanceDate: fa.employee_acceptance_date,
+        employeeComments: fa.employee_comments,
+        managerApproved: fa.manager_approved,
+        managerApprovalDate: fa.manager_approval_date,
+        managerName: fa.manager_name,
+        managerComments: fa.manager_comments,
+        status: fa.status,
+        createdAt: fa.created_at,
+        updatedAt: fa.updated_at,
+      }));
+
       setData({
         employees,
         projects,
         teams,
         shiftPatterns,
         assignments,
+        fatigueAssessments,
         loading: false,
         error: null,
       });
@@ -357,7 +408,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   useEffect(() => {
     if (!supabase || !organisationId) return;
 
-    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments'];
+    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments'];
 
     const channel = supabase.channel(`org-${organisationId}-changes`);
 
@@ -719,6 +770,108 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     await loadAllData();
   };
 
+  // ==================== FATIGUE ASSESSMENT OPERATIONS ====================
+
+  const createFatigueAssessment = async (assessment: FatigueAssessment) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Generate a new ID if not provided
+    const id = assessment.id || crypto.randomUUID();
+
+    const { error } = await supabase.from('fatigue_assessments').insert({
+      id,
+      organisation_id: organisationId,
+      employee_id: assessment.employeeId,
+      employee_name: assessment.employeeName,
+      job_title: assessment.jobTitle,
+      contract_no: assessment.contractNo,
+      location: assessment.location,
+      assessment_date: assessment.assessmentDate,
+      shift_start_time: assessment.shiftStartTime,
+      shift_end_time: assessment.shiftEndTime,
+      assessor_name: assessment.assessorName,
+      assessor_role: assessment.assessorRole,
+      violation_type: assessment.violationType,
+      violation_date: assessment.violationDate,
+      assignment_id: assessment.assignmentId,
+      assessment_reasons: assessment.assessmentReasons,
+      assessment_answers: assessment.assessmentAnswers,
+      total_score: assessment.totalScore,
+      exceedance_level: assessment.exceedanceLevel,
+      calculated_risk_level: assessment.calculatedRiskLevel,
+      final_risk_level: assessment.finalRiskLevel,
+      risk_adjustment_notes: assessment.riskAdjustmentNotes,
+      applied_mitigations: assessment.appliedMitigations,
+      other_mitigation_details: assessment.otherMitigationDetails,
+      employee_accepted: assessment.employeeAccepted,
+      employee_acceptance_date: assessment.employeeAcceptanceDate,
+      employee_comments: assessment.employeeComments,
+      manager_approved: assessment.managerApproved,
+      manager_approval_date: assessment.managerApprovalDate,
+      manager_name: assessment.managerName,
+      manager_comments: assessment.managerComments,
+      status: assessment.status,
+    });
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
+  const updateFatigueAssessment = async (id: string, updateData: Partial<FatigueAssessment>) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Build the update object, only including defined fields
+    const updateObj: Record<string, unknown> = {};
+    if (updateData.employeeName !== undefined) updateObj.employee_name = updateData.employeeName;
+    if (updateData.jobTitle !== undefined) updateObj.job_title = updateData.jobTitle;
+    if (updateData.contractNo !== undefined) updateObj.contract_no = updateData.contractNo;
+    if (updateData.location !== undefined) updateObj.location = updateData.location;
+    if (updateData.assessmentDate !== undefined) updateObj.assessment_date = updateData.assessmentDate;
+    if (updateData.shiftStartTime !== undefined) updateObj.shift_start_time = updateData.shiftStartTime;
+    if (updateData.shiftEndTime !== undefined) updateObj.shift_end_time = updateData.shiftEndTime;
+    if (updateData.assessorName !== undefined) updateObj.assessor_name = updateData.assessorName;
+    if (updateData.assessorRole !== undefined) updateObj.assessor_role = updateData.assessorRole;
+    if (updateData.assessmentReasons !== undefined) updateObj.assessment_reasons = updateData.assessmentReasons;
+    if (updateData.assessmentAnswers !== undefined) updateObj.assessment_answers = updateData.assessmentAnswers;
+    if (updateData.totalScore !== undefined) updateObj.total_score = updateData.totalScore;
+    if (updateData.exceedanceLevel !== undefined) updateObj.exceedance_level = updateData.exceedanceLevel;
+    if (updateData.calculatedRiskLevel !== undefined) updateObj.calculated_risk_level = updateData.calculatedRiskLevel;
+    if (updateData.finalRiskLevel !== undefined) updateObj.final_risk_level = updateData.finalRiskLevel;
+    if (updateData.riskAdjustmentNotes !== undefined) updateObj.risk_adjustment_notes = updateData.riskAdjustmentNotes;
+    if (updateData.appliedMitigations !== undefined) updateObj.applied_mitigations = updateData.appliedMitigations;
+    if (updateData.otherMitigationDetails !== undefined) updateObj.other_mitigation_details = updateData.otherMitigationDetails;
+    if (updateData.employeeAccepted !== undefined) updateObj.employee_accepted = updateData.employeeAccepted;
+    if (updateData.employeeAcceptanceDate !== undefined) updateObj.employee_acceptance_date = updateData.employeeAcceptanceDate;
+    if (updateData.employeeComments !== undefined) updateObj.employee_comments = updateData.employeeComments;
+    if (updateData.managerApproved !== undefined) updateObj.manager_approved = updateData.managerApproved;
+    if (updateData.managerApprovalDate !== undefined) updateObj.manager_approval_date = updateData.managerApprovalDate;
+    if (updateData.managerName !== undefined) updateObj.manager_name = updateData.managerName;
+    if (updateData.managerComments !== undefined) updateObj.manager_comments = updateData.managerComments;
+    if (updateData.status !== undefined) updateObj.status = updateData.status;
+
+    const { error } = await supabase
+      .from('fatigue_assessments')
+      .update(updateObj)
+      .eq('id', id)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
+  const deleteFatigueAssessment = async (id: string) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const { error } = await supabase
+      .from('fatigue_assessments')
+      .delete()
+      .eq('id', id)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
   return {
     ...data,
     reload: loadAllData,
@@ -737,5 +890,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     createAssignment,
     updateAssignment,
     deleteAssignment,
+    createFatigueAssessment,
+    updateFatigueAssessment,
+    deleteFatigueAssessment,
   };
 }

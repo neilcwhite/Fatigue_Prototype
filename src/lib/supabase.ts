@@ -80,6 +80,7 @@ export const TABLES = {
   assignments: 'assignments',
   userProfiles: 'user_profiles',
   organisations: 'organisations',
+  fatigueAssessments: 'fatigue_assessments',
 } as const;
 
 // Convert camelCase to snake_case

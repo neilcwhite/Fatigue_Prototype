@@ -380,13 +380,28 @@ export function FatigueAssessmentModal({
     </Box>
   );
 
-  const renderReasonsStep = () => (
+  const renderReasonsStep = () => {
+    // Sort reasons: selected items first, then by original order
+    const sortedReasons = [...ASSESSMENT_REASONS].sort((a, b) => {
+      const aSelected = selectedReasons.includes(a.id);
+      const bSelected = selectedReasons.includes(b.id);
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      return 0;
+    });
+
+    return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
         Part 2: Reason for Assessment (tick all that apply)
       </Typography>
+      {selectedReasons.length > 0 && (
+        <Alert severity="info" sx={{ py: 0.5 }}>
+          {selectedReasons.length} reason(s) selected - auto-selected reasons shown first
+        </Alert>
+      )}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {ASSESSMENT_REASONS.map(reason => (
+        {sortedReasons.map(reason => (
           <Paper
             key={reason.id}
             variant="outlined"
@@ -436,7 +451,8 @@ export function FatigueAssessmentModal({
         ))}
       </Box>
     </Box>
-  );
+    );
+  };
 
   const renderQuestionsStep = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -453,6 +469,8 @@ export function FatigueAssessmentModal({
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 400, overflowY: 'auto', pr: 1 }}>
         {ASSESSMENT_QUESTIONS.map(question => {
           const currentAnswer = answers[question.id];
+          // Add help text for FRI question
+          const isFriQuestion = question.id === 'fri_score_end_shift';
           return (
             <Paper key={question.id} variant="outlined" sx={{ p: 2 }}>
               <FormControl component="fieldset" fullWidth>
@@ -460,6 +478,12 @@ export function FatigueAssessmentModal({
                   <Typography variant="body2" fontWeight={500}>
                     {question.number}. {question.question}
                   </Typography>
+                  {isFriQuestion && (
+                    <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
+                      Tip: View the FRI score in the employee&apos;s Person View calendar or the Project Summary heatmap.
+                      If no score is available, select the highest scoring option.
+                    </Typography>
+                  )}
                 </FormLabel>
                 <RadioGroup
                   value={currentAnswer?.answerValue || ''}
@@ -585,7 +609,11 @@ export function FatigueAssessmentModal({
     </Box>
   );
 
-  const renderMitigationsStep = () => (
+  const renderMitigationsStep = () => {
+    const selectedRequiredCount = requiredMitigations.filter(m => selectedMitigations.includes(m.id)).length;
+    const allRequiredSelected = selectedRequiredCount === requiredMitigations.length;
+
+    return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
         Part 5: Minimum Mitigation / Additional Controls Required
@@ -598,40 +626,59 @@ export function FatigueAssessmentModal({
       </Alert>
 
       {/* Required Mitigations */}
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Typography variant="body2" fontWeight={600} gutterBottom>
-          Required Mitigations for {finalRiskLevel} Risk
-        </Typography>
+      <Paper variant="outlined" sx={{ p: 2, borderColor: !allRequiredSelected && requiredMitigations.length > 0 ? 'error.main' : 'divider' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="body2" fontWeight={600}>
+            Required Mitigations for {finalRiskLevel} Risk
+          </Typography>
+          {requiredMitigations.length > 0 && (
+            <Chip
+              size="small"
+              label={`${selectedRequiredCount}/${requiredMitigations.length} selected`}
+              color={allRequiredSelected ? 'success' : 'error'}
+              sx={{ fontSize: '0.7rem' }}
+            />
+          )}
+        </Box>
         {requiredMitigations.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No mandatory mitigations required for LOW risk.
+          <Typography variant="body2" color="success.main">
+            No mandatory mitigations required for LOW risk. You may proceed.
           </Typography>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {requiredMitigations.map(mitigation => (
-              <FormControlLabel
-                key={mitigation.id}
-                control={
-                  <Checkbox
-                    checked={selectedMitigations.includes(mitigation.id)}
-                    onChange={() => handleMitigationToggle(mitigation.id)}
-                    size="small"
-                    color="error"
-                  />
-                }
-                label={
-                  <Typography variant="body2">
-                    {mitigation.label}
-                    {mitigation.description && (
-                      <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                        ({mitigation.description})
-                      </Typography>
-                    )}
-                  </Typography>
-                }
-              />
-            ))}
-          </Box>
+          <>
+            {!allRequiredSelected && (
+              <Alert severity="warning" sx={{ mb: 1, py: 0 }}>
+                <Typography variant="caption">
+                  You must tick ALL required mitigations to proceed to Authorisation
+                </Typography>
+              </Alert>
+            )}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {requiredMitigations.map(mitigation => (
+                <FormControlLabel
+                  key={mitigation.id}
+                  control={
+                    <Checkbox
+                      checked={selectedMitigations.includes(mitigation.id)}
+                      onChange={() => handleMitigationToggle(mitigation.id)}
+                      size="small"
+                      color={selectedMitigations.includes(mitigation.id) ? 'success' : 'error'}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ color: selectedMitigations.includes(mitigation.id) ? 'text.primary' : 'error.main' }}>
+                      {mitigation.label}
+                      {mitigation.description && (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                          ({mitigation.description})
+                        </Typography>
+                      )}
+                    </Typography>
+                  }
+                />
+              ))}
+            </Box>
+          </>
         )}
       </Paper>
 
@@ -670,7 +717,8 @@ export function FatigueAssessmentModal({
         )}
       </Paper>
     </Box>
-  );
+    );
+  };
 
   const renderAuthorisationStep = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
