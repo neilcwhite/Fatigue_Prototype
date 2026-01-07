@@ -213,11 +213,14 @@ export function ScheduleCalendar({
                       key={date}
                       data-testid={`calendar-cell-${date}`}
                       sx={{
-                        minHeight: 80,
+                        height: 90,
+                        minHeight: 90,
+                        maxHeight: 90,
                         p: 0.75,
                         borderRadius: 1,
                         border: 2,
                         transition: 'all 0.2s',
+                        overflow: 'hidden',
                         ...(isHighlighted
                           ? {
                               bgcolor: 'primary.light',
@@ -338,7 +341,14 @@ export function ScheduleCalendar({
                                   variant="caption"
                                   fontWeight={500}
                                   noWrap
-                                  sx={{ pr: 4, display: 'block', fontSize: '0.6rem' }}
+                                  sx={{
+                                    pr: 4,
+                                    display: 'block',
+                                    fontSize: '0.6rem',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '100%'
+                                  }}
                                 >
                                   {project?.name || 'Unknown'}
                                 </Typography>
@@ -346,7 +356,14 @@ export function ScheduleCalendar({
                                   variant="caption"
                                   fontWeight={500}
                                   noWrap
-                                  sx={{ pr: 4, display: 'block', fontSize: '0.6rem' }}
+                                  sx={{
+                                    pr: 4,
+                                    display: 'block',
+                                    fontSize: '0.6rem',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '100%'
+                                  }}
                                 >
                                   {getAssignmentDisplayName(assignment, pattern)}
                                 </Typography>
