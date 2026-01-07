@@ -74,7 +74,7 @@ CREATE POLICY "Users can view assessments in their organisation"
   ON fatigue_assessments FOR SELECT
   USING (
     organisation_id IN (
-      SELECT organisation_id FROM user_profiles WHERE user_id = auth.uid()
+      SELECT organisation_id FROM user_profiles WHERE id = auth.uid()
     )
   );
 
@@ -82,7 +82,7 @@ CREATE POLICY "Users can insert assessments in their organisation"
   ON fatigue_assessments FOR INSERT
   WITH CHECK (
     organisation_id IN (
-      SELECT organisation_id FROM user_profiles WHERE user_id = auth.uid()
+      SELECT organisation_id FROM user_profiles WHERE id = auth.uid()
     )
   );
 
@@ -90,7 +90,7 @@ CREATE POLICY "Users can update assessments in their organisation"
   ON fatigue_assessments FOR UPDATE
   USING (
     organisation_id IN (
-      SELECT organisation_id FROM user_profiles WHERE user_id = auth.uid()
+      SELECT organisation_id FROM user_profiles WHERE id = auth.uid()
     )
   );
 
@@ -98,7 +98,7 @@ CREATE POLICY "Users can delete assessments in their organisation"
   ON fatigue_assessments FOR DELETE
   USING (
     organisation_id IN (
-      SELECT organisation_id FROM user_profiles WHERE user_id = auth.uid()
+      SELECT organisation_id FROM user_profiles WHERE id = auth.uid()
     )
   );
 
