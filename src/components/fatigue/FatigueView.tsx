@@ -1239,10 +1239,90 @@ export function FatigueView({
           </Paper>
         )}
 
-        {/* Two Column Layout - Shift Builder + Chart */}
+        {/* Top Row: Chart (right half) - full width on small screens */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            {/* Summary stats inline */}
+            <Paper elevation={2} sx={{ height: '100%' }}>
+              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                <Typography variant="subtitle2" fontWeight={600}>Summary</Typography>
+              </Box>
+              <Box sx={{ p: 2 }}>
+                {results ? (
+                  <Grid container spacing={1}>
+                    <Grid size={{ xs: 6 }}>
+                      <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Avg FRI</Typography>
+                        <Typography variant="h6" fontWeight={700}>{results.summary.avgRisk}</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Peak FRI</Typography>
+                        <Typography variant="h6" fontWeight={700}>{results.summary.maxRisk}</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Paper sx={{ p: 1, border: 1, ...getFatigueCardSx(getFatigueLevel(results.summary.avgFatigue).level) }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Avg FGI</Typography>
+                        <Typography variant="h6" fontWeight={700}>{results.summary.avgFatigue.toFixed(1)}</Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Paper sx={{ p: 1, border: 1, ...getFatigueCardSx(getFatigueLevel(results.summary.maxFatigue).level) }}>
+                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Peak FGI</Typography>
+                        <Typography variant="h6" fontWeight={700}>{results.summary.maxFatigue.toFixed(1)}</Typography>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>Add shifts to see summary</Typography>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            {/* Chart */}
+            <Paper elevation={2} sx={{ height: '100%' }}>
+              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2" fontWeight={600}>FRI / FGI Chart</Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={<Checkbox size="small" checked={showComponents} onChange={(e) => setShowComponents(e.target.checked)} />}
+                    label={<Typography variant="caption">Components</Typography>}
+                    sx={{ mr: 0 }}
+                  />
+                  <Button size="small" variant="text" onClick={handleExportCSV} sx={{ minWidth: 'auto', px: 1 }}>
+                    <Download className="w-3 h-3" />
+                  </Button>
+                </Box>
+              </Box>
+              <Box sx={{ p: 1 }}>
+                {results ? (
+                  <FatigueChart
+                    data={results.calculations}
+                    worstCaseData={worstCaseResults ? results.calculations.map(calc => {
+                      const worst = worstCaseResults.get(calc.day);
+                      return { ...calc, riskIndex: worst?.riskIndex ?? calc.riskIndex, riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel };
+                    }) : undefined}
+                    height={160}
+                    showThresholds={true}
+                    showComponents={showComponents}
+                    showWorstCase={true}
+                  />
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Full-Width Shift Builder */}
         <Grid container spacing={2}>
-          {/* Left Panel - Shift Builder */}
-          <Grid size={{ xs: 12, lg: 7 }}>
+          <Grid size={{ xs: 12 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* 7-Day Weekly View */}
               <Paper elevation={2} sx={{ overflow: 'hidden' }}>
@@ -1767,108 +1847,6 @@ export function FatigueView({
                   </Box>
                 </Paper>
               </Collapse>
-            </Box>
-          </Grid>
-
-          {/* Right Panel - Chart & Results */}
-          <Grid size={{ xs: 12, lg: 5 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* FRI Chart */}
-              <Paper elevation={2}>
-                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="subtitle2" fontWeight={600}>FRI Chart</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={showComponents}
-                          onChange={(e) => setShowComponents(e.target.checked)}
-                        />
-                      }
-                      label={<Typography variant="caption">Components</Typography>}
-                      sx={{ mr: 0 }}
-                    />
-                    <Button size="small" variant="text" onClick={handleExportCSV} sx={{ minWidth: 'auto', px: 1 }}>
-                      <Download className="w-3 h-3" />
-                    </Button>
-                    <Button size="small" variant="text" color="warning" onClick={handlePrint} sx={{ minWidth: 'auto', px: 1 }}>
-                      <FileText className="w-3 h-3" />
-                    </Button>
-                  </Box>
-                </Box>
-                <Box sx={{ p: 1 }}>
-                  {results ? (
-                    <FatigueChart
-                      data={results.calculations}
-                      worstCaseData={worstCaseResults ? results.calculations.map(calc => {
-                        const worst = worstCaseResults.get(calc.day);
-                        return {
-                          ...calc,
-                          riskIndex: worst?.riskIndex ?? calc.riskIndex,
-                          riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel,
-                        };
-                      }) : undefined}
-                      height={180}
-                      showThresholds={true}
-                      showComponents={showComponents}
-                      showWorstCase={true}
-                    />
-                  ) : (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-
-              {/* Results Summary */}
-              <Paper elevation={2} ref={resultsRef}>
-                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-                  <Typography variant="subtitle2" fontWeight={600}>Analysis</Typography>
-                </Box>
-
-                <Box sx={{ p: 1.5 }}>
-                  {!results ? (
-                    <Box sx={{ textAlign: 'center', py: 3 }}>
-                      <Typography variant="body2" color="text.secondary">No shifts to analyze</Typography>
-                    </Box>
-                  ) : (
-                    <>
-                      {/* Summary Cards - Compact */}
-                      <Grid container spacing={1} sx={{ mb: 2 }}>
-                        <Grid size={{ xs: 6 }}>
-                          <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
-                            <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Avg FRI</Typography>
-                            <Typography variant="h6" fontWeight={700}>{results.summary.avgRisk}</Typography>
-                          </Paper>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
-                            <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Peak FRI</Typography>
-                            <Typography variant="h6" fontWeight={700}>{results.summary.maxRisk}</Typography>
-                          </Paper>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Paper variant="outlined" sx={{ p: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Hours</Typography>
-                            <Typography variant="h6" fontWeight={700}>{results.summary.totalHours}h</Typography>
-                          </Paper>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                          <Paper variant="outlined" sx={{ p: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>High Risk</Typography>
-                            <Typography variant="h6" fontWeight={700} color={results.summary.highRiskCount > 0 ? 'error.main' : 'success.main'}>
-                              {results.summary.highRiskCount}
-                            </Typography>
-                          </Paper>
-                        </Grid>
-                      </Grid>
-
-                    </>
-                  )}
-                </Box>
-              </Paper>
             </Box>
           </Grid>
         </Grid>

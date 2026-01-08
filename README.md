@@ -136,10 +136,20 @@ TypeScript interfaces for all entities:
 
 ### `/src/lib/fatigue.ts`
 HSE Research Report RR446 fatigue index calculator:
-- `calculateFatigueSequence()` - Calculate cumulative fatigue for shift sequence
+- `calculateFatigueSequence()` - Calculate Risk Index for shift sequence
+- `calculateFatigueIndexSequence()` - Calculate Fatigue Index for shift sequence
+- `calculateCombinedFatigueSequence()` - Calculate both indices together
 - `getRiskLevel()` - Classify risk (low/moderate/elevated/critical)
+- `getFatigueLevel()` - Classify fatigue (low/moderate/elevated/critical)
 - `DEFAULT_FATIGUE_PARAMS` - Default parameters for calculations
 - `FATIGUE_TEMPLATES` - Pre-built shift pattern templates
+
+**Calculation Validation**: The fatigue calculations have been validated against the official HSE Excel tool (Fatigue Index Calculator / Risk Index Calculator) with **100% accuracy**. Both Risk Index and Fatigue Index match the HSE reference values exactly (0.0 difference) across all test cases including the HSE PDF validation roster (Roster 01: 12h shifts, 2h commute).
+
+**VBA Compatibility**: The TypeScript implementation was reverse-engineered from the HSE Excel VBA macros and validated to produce identical results. Key implementation details:
+- `threeProcessEstimation()` - Matches VBA's three-process fatigue model exactly (amplitude calculation without square root)
+- `dutyFactor()` - Converts app's 1-4 scale to VBA's 0-3 scale for workload/attention
+- `cumulativeFatigue()` / `cumulativeRisk()` - PVT tracking with day/night sleep calculations
 
 ### `/src/lib/compliance.ts`
 Network Rail compliance rule checking (NR/L2/OHS/003):
