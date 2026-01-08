@@ -30,8 +30,8 @@ import Tooltip from '@mui/material/Tooltip';
 import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X, Edit, Copy } from '@/components/ui/Icons';
 import Menu from '@mui/material/Menu';
 import {
+  calculateCombinedFatigueSequence,
   calculateFatigueSequence,
-  calculateFatigueIndexSequence,
   getRiskLevel,
   getFatigueLevel,
   DEFAULT_FATIGUE_PARAMS,
@@ -465,27 +465,30 @@ export function FatigueView({
       breakLen: s.breakLen,
     }));
 
-    // Calculate both Risk Index and Fatigue Index
-    const riskCalculations = calculateFatigueSequence(shiftDefinitions, params);
-    const fatigueCalculations = calculateFatigueIndexSequence(shiftDefinitions, params);
+    // Use the combined calculation function for consistency with debug page
+    const combinedResults = calculateCombinedFatigueSequence(shiftDefinitions, params);
 
-    const calculationsWithDuty = riskCalculations.map((calc, idx) => {
+    const calculationsWithDuty = combinedResults.map((calc, idx) => {
       const shift = sortedShifts[idx];
       const startHour = parseTimeToHours(shift.startTime);
       let endHour = parseTimeToHours(shift.endTime);
       if (endHour <= startHour) endHour += 24;
       const dutyLength = calculateDutyLength(startHour, endHour);
-      const fatigueCalc = fatigueCalculations[idx];
       const isNightShift = startHour >= 20 || startHour < 6;
 
       return {
-        ...calc,
-        // Add Fatigue Index fields
-        fatigueIndex: fatigueCalc.fatigueIndex,
-        fatigueCumulative: fatigueCalc.cumulative,
-        fatigueTimeOfDay: fatigueCalc.timeOfDay,
-        fatigueTask: fatigueCalc.task,
-        fatigueLevel: fatigueCalc.fatigueLevel,
+        day: calc.day,
+        cumulative: calc.riskCumulative,
+        timing: calc.riskTiming,
+        jobBreaks: calc.riskJobBreaks,
+        riskIndex: calc.riskIndex,
+        riskLevel: calc.riskLevel,
+        // Fatigue Index fields
+        fatigueIndex: calc.fatigueIndex,
+        fatigueCumulative: calc.fatigueCumulative,
+        fatigueTimeOfDay: calc.fatigueTimeOfDay,
+        fatigueTask: calc.fatigueTask,
+        fatigueLevel: calc.fatigueLevel,
         isNightShift,
         id: shift.id,
         startTime: shift.startTime,
