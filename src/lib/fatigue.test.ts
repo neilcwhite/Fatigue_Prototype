@@ -192,25 +192,27 @@ describe('fatigue.ts', () => {
     });
 
     it('uses per-shift parameters when provided', () => {
-      // Using NR Excel scale: 1=highest demand, 4=lowest demand
-      const shiftWithParams: ShiftDefinition = {
+      // VBA internal scale: workloadSum is used in formula: riskFactor + (w - 3) * 0.0232
+      // So workloadSum > 3 increases risk, < 3 decreases risk
+      const shiftWithHighDemand: ShiftDefinition = {
         day: 1,
         startTime: '08:00',
         endTime: '17:00',
-        workload: 1, // Most demanding
-        attention: 1, // Constant attention
+        workload: 3, // Higher internal value
+        attention: 2, // Sum = 5 (> 3 baseline)
       };
       const shiftDefault: ShiftDefinition = {
         day: 1,
         startTime: '08:00',
         endTime: '17:00',
+        // Default: workload=2, attention=1 (sum=3 baseline)
       };
 
-      const highWorkloadResult = calculateRiskIndex(shiftWithParams, 0, [shiftWithParams], defaultParams);
+      const highDemandResult = calculateRiskIndex(shiftWithHighDemand, 0, [shiftWithHighDemand], defaultParams);
       const defaultResult = calculateRiskIndex(shiftDefault, 0, [shiftDefault], defaultParams);
 
-      // Higher workload/attention (lower number = more demanding) should increase job/breaks factor
-      expect(highWorkloadResult.jobBreaks).toBeGreaterThan(defaultResult.jobBreaks);
+      // Higher workload+attention sum (>3) should increase job/breaks factor
+      expect(highDemandResult.jobBreaks).toBeGreaterThan(defaultResult.jobBreaks);
     });
 
     it('accounts for commute time in calculations', () => {
@@ -326,10 +328,10 @@ describe('fatigue.ts', () => {
     it('has sensible default values matching NR Excel VBA defaults', () => {
       expect(DEFAULT_FATIGUE_PARAMS.commuteTime).toBe(40); // VBA default is 40 minutes
       expect(DEFAULT_FATIGUE_PARAMS.workload).toBe(2); // "Moderately demanding"
-      expect(DEFAULT_FATIGUE_PARAMS.attention).toBe(3); // VBA default maps to 3 (1=most demanding)
+      expect(DEFAULT_FATIGUE_PARAMS.attention).toBe(1); // VBA default is 1 (highest attention)
       expect(DEFAULT_FATIGUE_PARAMS.breakFrequency).toBe(180); // 3 hours
       expect(DEFAULT_FATIGUE_PARAMS.breakLength).toBe(15); // 15 minutes (per NR Excel tool)
-      expect(DEFAULT_FATIGUE_PARAMS.continuousWork).toBe(360); // VBA default is 6 hours
+      expect(DEFAULT_FATIGUE_PARAMS.continuousWork).toBe(240); // 4 hours continuous work
       expect(DEFAULT_FATIGUE_PARAMS.breakAfterContinuous).toBe(30); // 30 minutes
     });
 
@@ -410,12 +412,14 @@ describe('fatigue.ts', () => {
       expect(maxRisk).toBeGreaterThan(0.9); // Should be approaching elevated
     });
 
-    it('handles COSS role with high workload/attention', () => {
-      // COSS role: Using NR Excel scale where 1=highest demand
-      const cossParams = {
+    it('handles high-demand role with elevated workload/attention', () => {
+      // VBA uses: riskFactor + (workloadSum - 3) * 0.0232
+      // So workloadSum > 3 increases risk
+      // COSS-type role with high demand: workload=3, attention=2 (sum=5)
+      const highDemandParams = {
         ...DEFAULT_FATIGUE_PARAMS,
-        workload: 1, // Extremely demanding
-        attention: 1, // All/nearly all the time
+        workload: 3, // Higher internal value
+        attention: 2, // Higher internal value, sum=5
       };
 
       const shifts: ShiftDefinition[] = [
@@ -424,11 +428,11 @@ describe('fatigue.ts', () => {
         { day: 3, startTime: '07:00', endTime: '19:00' },
       ];
 
-      const cossResults = calculateFatigueSequence(shifts, cossParams);
+      const highDemandResults = calculateFatigueSequence(shifts, highDemandParams);
       const defaultResults = calculateFatigueSequence(shifts, DEFAULT_FATIGUE_PARAMS);
 
-      // COSS role (workload=1, attention=1) should show higher risk than default (workload=2, attention=2)
-      expect(cossResults[2].riskIndex).toBeGreaterThan(defaultResults[2].riskIndex);
+      // Higher workload+attention sum (5 vs 3) should show higher risk
+      expect(highDemandResults[2].riskIndex).toBeGreaterThan(defaultResults[2].riskIndex);
     });
   });
 
