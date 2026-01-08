@@ -193,11 +193,12 @@ function threeProcessEstimation(
 
   let dutyHours = dutyStartHour;
 
-  // Combined amplitude using cosine rule
-  const eAmplitude = Math.sqrt(
+  // Combined amplitude - VBA does NOT take square root, uses raw value
+  // EAmplitude = StartAmplitude * StartAmplitude + CircadianAmplitude * CircadianAmplitude
+  //            - StartAmplitude * CircadianAmplitude * Cos((StartPhase - CircadianPhase) * 3.14159 / 12)
+  const eAmplitude =
     startAmplitude ** 2 + circadianAmplitude ** 2 -
-    startAmplitude * circadianAmplitude * Math.cos((startPhase - circadianPhase) * PI / 12)
-  );
+    startAmplitude * circadianAmplitude * Math.cos((startPhase - circadianPhase) * PI / 12);
 
   // Combined phase using atan2
   const xArg = startAmplitude * Math.cos(startPhase * PI / 12) - circadianAmplitude * Math.cos(circadianPhase * PI / 12);
