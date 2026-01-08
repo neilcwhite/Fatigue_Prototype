@@ -1663,39 +1663,41 @@ export function FatigueView({
                               {/* Break After Max */}
                               <TextField type="number" size="small" value={params.breakAfterContinuous} onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })} disabled={isRestDay || isReadOnly} slotProps={{ htmlInput: { min: 5, max: 60, style: { textAlign: 'center', padding: '4px' } } }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'warning.50' } }} />
 
-                              {/* FRI */}
-                              <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: isRestDay ? 'transparent' : getRiskColor(dayRiskLevel), color: dayRiskLevel === 'low' ? 'text.primary' : 'white', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayResult?.riskIndex !== undefined ? dayResult.riskIndex.toFixed(3) : '-'}
-                              </Typography>
+                              {/* FRI - use dayResult existence as source of truth, not isRestDay */}
+                              <Tooltip title={`dayNum=${hseDayNum}, hasResult=${!!dayResult}, ri=${dayResult?.riskIndex}`} arrow>
+                                <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: dayResult ? getRiskColor(dayRiskLevel) : 'transparent', color: dayRiskLevel === 'low' ? 'text.primary' : 'white', borderRadius: 0.5, py: 0.25 }}>
+                                  {dayResult?.riskIndex !== undefined ? dayResult.riskIndex.toFixed(3) : '-'}
+                                </Typography>
+                              </Tooltip>
 
                               {/* FGI */}
-                              <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: isRestDay ? 'transparent' : (dayFatigueLevel === 'low' ? '#e8f5e9' : dayFatigueLevel === 'moderate' ? '#fff3e0' : dayFatigueLevel === 'elevated' ? '#ffebee' : '#f3e5f5'), borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayFGI !== undefined ? dayFGI.toFixed(1) : '-'}
+                              <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: dayResult ? (dayFatigueLevel === 'low' ? '#e8f5e9' : dayFatigueLevel === 'moderate' ? '#fff3e0' : dayFatigueLevel === 'elevated' ? '#ffebee' : '#f3e5f5') : 'transparent', borderRadius: 0.5, py: 0.25 }}>
+                                {dayFGI !== undefined ? dayFGI.toFixed(1) : '-'}
                               </Typography>
 
                               {/* Cum(R) */}
-                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayResult?.cumulative !== undefined ? dayResult.cumulative.toFixed(3) : '-'}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: dayResult ? '#e8f5e9' : 'transparent', borderRadius: 0.5, py: 0.25 }}>
+                                {dayResult?.cumulative !== undefined ? dayResult.cumulative.toFixed(3) : '-'}
                               </Typography>
 
                               {/* Tim(R) */}
-                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayResult?.timing !== undefined ? dayResult.timing.toFixed(3) : '-'}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: dayResult ? '#e8f5e9' : 'transparent', borderRadius: 0.5, py: 0.25 }}>
+                                {dayResult?.timing !== undefined ? dayResult.timing.toFixed(3) : '-'}
                               </Typography>
 
                               {/* Job(R) */}
-                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayResult?.jobBreaks !== undefined ? dayResult.jobBreaks.toFixed(3) : '-'}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: dayResult ? '#e8f5e9' : 'transparent', borderRadius: 0.5, py: 0.25 }}>
+                                {dayResult?.jobBreaks !== undefined ? dayResult.jobBreaks.toFixed(3) : '-'}
                               </Typography>
 
                               {/* Cum(F) */}
-                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#fce4ec', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayResult?.fatigueCumulative !== undefined ? dayResult.fatigueCumulative.toFixed(1) : '-'}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: dayResult ? '#fce4ec' : 'transparent', borderRadius: 0.5, py: 0.25 }}>
+                                {dayResult?.fatigueCumulative !== undefined ? dayResult.fatigueCumulative.toFixed(1) : '-'}
                               </Typography>
 
                               {/* ToD(F) */}
-                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#fce4ec', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayResult?.fatigueTimeOfDay !== undefined ? dayResult.fatigueTimeOfDay.toFixed(1) : '-'}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: dayResult ? '#fce4ec' : 'transparent', borderRadius: 0.5, py: 0.25 }}>
+                                {dayResult?.fatigueTimeOfDay !== undefined ? dayResult.fatigueTimeOfDay.toFixed(1) : '-'}
                               </Typography>
 
                               {/* Copy button */}
@@ -1753,6 +1755,13 @@ export function FatigueView({
                             <Box sx={{ mt: 1 }}>
                               <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Shifts day values: </Typography>
                               <span>{shifts.map(s => `${s.day}(${s.isRestDay ? 'R' : 'W'})`).join(', ')}</span>
+                            </Box>
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>getShiftForDay check: </Typography>
+                              <span>{HSE_DAYS.map((_, idx) => {
+                                const s = getShiftForDay(idx);
+                                return `${idx}→${s ? (s.isRestDay ? 'R' : 'W') : 'NULL'}`;
+                              }).join(', ')}</span>
                             </Box>
                           </Box>
                         </Paper>
