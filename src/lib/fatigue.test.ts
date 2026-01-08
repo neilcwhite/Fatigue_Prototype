@@ -198,20 +198,21 @@ describe('fatigue.ts', () => {
         day: 1,
         startTime: '08:00',
         endTime: '17:00',
-        workload: 3, // Higher internal value
-        attention: 2, // Sum = 5 (> 3 baseline)
+        workload: 1, // Most demanding (1 = "Extremely demanding")
+        attention: 1, // Most attention (1 = "All/nearly all the time")
       };
       const shiftDefault: ShiftDefinition = {
         day: 1,
         startTime: '08:00',
         endTime: '17:00',
-        // Default: workload=2, attention=1 (sum=3 baseline)
+        workload: 3, // Moderately undemanding
+        attention: 4, // Rarely
       };
 
       const highDemandResult = calculateRiskIndex(shiftWithHighDemand, 0, [shiftWithHighDemand], defaultParams);
       const defaultResult = calculateRiskIndex(shiftDefault, 0, [shiftDefault], defaultParams);
 
-      // Higher workload+attention sum (>3) should increase job/breaks factor
+      // Higher demand (workload=1, attention=1) should have higher job/breaks factor than low demand
       expect(highDemandResult.jobBreaks).toBeGreaterThan(defaultResult.jobBreaks);
     });
 
@@ -414,12 +415,18 @@ describe('fatigue.ts', () => {
 
     it('handles high-demand role with elevated workload/attention', () => {
       // VBA uses: riskFactor + (workloadSum - 3) * 0.0232
-      // So workloadSum > 3 increases risk
-      // COSS-type role with high demand: workload=3, attention=2 (sum=5)
+      // Our scale: 1=most demanding, 4=least demanding
+      // VBA scale: 3=most demanding, 0=least demanding
+      // COSS-type role with high demand: workload=1, attention=1 (most demanding)
       const highDemandParams = {
         ...DEFAULT_FATIGUE_PARAMS,
-        workload: 3, // Higher internal value
-        attention: 2, // Higher internal value, sum=5
+        workload: 1, // Extremely demanding (maps to VBA 3)
+        attention: 1, // All the time (maps to VBA 3), sum=6 in VBA
+      };
+      const lowDemandParams = {
+        ...DEFAULT_FATIGUE_PARAMS,
+        workload: 4, // Extremely undemanding (maps to VBA 0)
+        attention: 4, // Rarely (maps to VBA 0), sum=0 in VBA
       };
 
       const shifts: ShiftDefinition[] = [
@@ -429,10 +436,10 @@ describe('fatigue.ts', () => {
       ];
 
       const highDemandResults = calculateFatigueSequence(shifts, highDemandParams);
-      const defaultResults = calculateFatigueSequence(shifts, DEFAULT_FATIGUE_PARAMS);
+      const lowDemandResults = calculateFatigueSequence(shifts, lowDemandParams);
 
-      // Higher workload+attention sum (5 vs 3) should show higher risk
-      expect(highDemandResults[2].riskIndex).toBeGreaterThan(defaultResults[2].riskIndex);
+      // Higher demand (workload=1, attention=1) should show higher risk than low demand
+      expect(highDemandResults[2].riskIndex).toBeGreaterThan(lowDemandResults[2].riskIndex);
     });
   });
 

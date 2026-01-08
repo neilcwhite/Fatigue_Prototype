@@ -21,7 +21,12 @@
       "Bash(dir \"K:\\\\Quality\\\\23 FATIGUE_Guidance & Calculator\\\\01 Assessed Rosters_Working Patterns\\\\Roster 01\\\\*Fatigue*\")",
       "Bash(npx ts-node:*)",
       "Bash(npx jest --testPathPattern=fatigue.test.ts)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(xxd:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(python -m oletools.olevba:*)"
     ]
   }
 }

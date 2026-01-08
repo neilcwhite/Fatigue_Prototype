@@ -94,7 +94,20 @@ function dutyFactor(
   contWorkLenMin: number,
   breakAfterContMin: number
 ): { fatigueFactor: number; riskFactor: number } {
-  const workloadSum = jobWorkload + jobAttention;
+  // VBA uses 0-3 scale where HIGHER = MORE demanding
+  // Our UI uses 1-4 scale where LOWER = MORE demanding
+  // Convert: VBA_value = 4 - our_value
+  // E.g., our workload=2 (Moderately demanding) → VBA=4-2=2 ✓
+  // E.g., our attention=2 (Some of the time) → VBA=4-2=2, but VBA "Some of the time"=1
+  // Actually attention mapping: our 1=all, 2=some, 3=most, 4=rarely
+  // VBA attention: 3=all, 2=most, 1=some, 0=rarely
+  // For attention: VBA = 4 - our_value for options 1,4; but options 2,3 are swapped
+  // After our label swap: our 2="Some of the time" should map to VBA 1
+  // Convert: workload: VBA = 4 - our_value (both use same order)
+  // Convert: attention: our 1→3, our 2→1, our 3→2, our 4→0
+  const vbaWorkload = 4 - jobWorkload;  // our 1→3, 2→2, 3→1, 4→0
+  const vbaAttention = jobAttention === 1 ? 3 : jobAttention === 2 ? 1 : jobAttention === 3 ? 2 : 0;
+  const workloadSum = vbaWorkload + vbaAttention;
   const w = workloadSum;
   const continuousWork = (breakFreqMin + contWorkLenMin) / 2;
   const durationOfBreak = (breakAvgLenMin + breakAfterContMin) / 2;
@@ -633,7 +646,7 @@ function calculateIndices(
 
     // Risk components
     const dtRisk = associatedRisk(start, end, commute);
-    const jbRisk = (riskFactor / 1.032) / 1.0286182;
+    const jbRisk = (riskFactor / 1.032) / 1.0286182;  // VBA: (d.RiskFactor / 1.032) / 1.0286182
     const cumR = cumRisk[i] * 0.98899;
     const ri = cumR * dtRisk * jbRisk;
 
