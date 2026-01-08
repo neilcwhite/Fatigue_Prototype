@@ -534,10 +534,11 @@ export function FatigueView({
       c.isNightShift ? c.fatigueIndex >= 45 : c.fatigueIndex >= 35
     ).length;
 
-    // Create a map for easy lookup by HSE day number
+    // Create a map for easy lookup by NR day number (shift.day before HSE conversion)
+    // This maps the original NR day (1-7 where Sat=1) to the calculation result
     const calculationsMap = new Map<number, typeof calculationsWithDuty[0]>();
-    calculationsWithDuty.forEach(calc => {
-      calculationsMap.set(calc.day, calc);
+    sortedShifts.forEach((shift, idx) => {
+      calculationsMap.set(shift.day, calculationsWithDuty[idx]);
     });
 
     return {
@@ -1530,9 +1531,9 @@ export function FatigueView({
                           if (endHour <= startHour) endHour += 24;
                           const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
 
-                          // Look up results using HSE day number (calculations use HSE format)
-                          const hseDayNum = nrDayToHseDay(nrDayIndexToShiftDay(index));
-                          const dayResult = results?.calculationsMap.get(hseDayNum);
+                          // Look up results using NR day number (map is keyed by original shift.day)
+                          const nrDayNum = nrDayIndexToShiftDay(index);
+                          const dayResult = results?.calculationsMap.get(nrDayNum);
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
                           // Fatigue Index data
