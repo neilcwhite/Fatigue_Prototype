@@ -28,8 +28,9 @@ import {
 } from '../../lib/fatigue';
 import { ShiftDefinition } from '../../lib/types';
 
-// Days of week
-const DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
+// Days of week - HSE format: Mon=1, Tue=2, ..., Fri=5, Sat=6, Sun=7
+// For two-week roster: Week1 Mon-Fri=1-5, Week2 Mon-Fri=8-12
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 interface ShiftRow {
   day: typeof DAYS[number];
@@ -71,7 +72,7 @@ export default function FatigueDebug() {
     breakAfterContinuous: 30,
   });
 
-  // Per-shift data
+  // Per-shift data - HSE day numbering: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
   const [shifts, setShifts] = useState<ShiftRow[]>(
     DAYS.map((day, i) => defaultShift(day, i + 1))
   );
