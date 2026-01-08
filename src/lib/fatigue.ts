@@ -722,8 +722,8 @@ export function calculateRiskIndex(
       attention: d.attention ?? params.attention,
       breakFreq: d.breakFreq ?? params.breakFrequency,
       breakLen: d.breakLen ?? params.breakLength,
-      contWork: d.breakFreq ?? params.continuousWork,
-      breakAfterCont: d.breakLen ?? params.breakAfterContinuous,
+      contWork: params.continuousWork,
+      breakAfterCont: params.breakAfterContinuous,
     };
   });
 
@@ -778,8 +778,8 @@ export function calculateFatigueIndexSingle(
       attention: d.attention ?? params.attention,
       breakFreq: d.breakFreq ?? params.breakFrequency,
       breakLen: d.breakLen ?? params.breakLength,
-      contWork: d.breakFreq ?? params.continuousWork,
-      breakAfterCont: d.breakLen ?? params.breakAfterContinuous,
+      contWork: params.continuousWork,
+      breakAfterCont: params.breakAfterContinuous,
     };
   });
 
@@ -836,8 +836,8 @@ export function calculateCombinedFatigueSequence(
       attention: d.attention ?? params.attention,
       breakFreq: d.breakFreq ?? params.breakFrequency,
       breakLen: d.breakLen ?? params.breakLength,
-      contWork: d.breakFreq ?? params.continuousWork,
-      breakAfterCont: d.breakLen ?? params.breakAfterContinuous,
+      contWork: params.continuousWork,
+      breakAfterCont: params.breakAfterContinuous,
     };
   });
 
