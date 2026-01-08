@@ -534,8 +534,15 @@ export function FatigueView({
       c.isNightShift ? c.fatigueIndex >= 45 : c.fatigueIndex >= 35
     ).length;
 
+    // Create a map for easy lookup by HSE day number
+    const calculationsMap = new Map<number, typeof calculationsWithDuty[0]>();
+    calculationsWithDuty.forEach(calc => {
+      calculationsMap.set(calc.day, calc);
+    });
+
     return {
       calculations: calculationsWithDuty,
+      calculationsMap,
       summary: {
         avgRisk: Math.round(avgRisk * 1000) / 1000,
         maxRisk: Math.round(maxRisk * 1000) / 1000,
@@ -1525,7 +1532,7 @@ export function FatigueView({
 
                           // Look up results using HSE day number (calculations use HSE format)
                           const hseDayNum = nrDayToHseDay(nrDayIndexToShiftDay(index));
-                          const dayResult = results?.calculations.find(c => c.day === hseDayNum);
+                          const dayResult = results?.calculationsMap.get(hseDayNum);
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
                           // Fatigue Index data
