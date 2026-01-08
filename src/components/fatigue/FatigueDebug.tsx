@@ -61,6 +61,9 @@ const defaultShift = (day: typeof DAYS[number], dayNum: number): ShiftRow => ({
 });
 
 export default function FatigueDebug() {
+  // Number of weeks to display
+  const [numWeeks, setNumWeeks] = useState(1);
+
   // Global parameters
   const [globalParams, setGlobalParams] = useState<FatigueParams>({
     commuteTime: 120,
@@ -72,10 +75,36 @@ export default function FatigueDebug() {
     breakAfterContinuous: 30,
   });
 
-  // Per-shift data - HSE day numbering: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+  // Generate shifts for all weeks - day numbers continue: Week1=1-7, Week2=8-14, Week3=15-21, etc.
+  const generateMultiWeekShifts = (weeks: number): ShiftRow[] => {
+    const allShifts: ShiftRow[] = [];
+    for (let week = 0; week < weeks; week++) {
+      DAYS.forEach((day, i) => {
+        const dayNum = week * 7 + i + 1;
+        allShifts.push(defaultShift(day, dayNum));
+      });
+    }
+    return allShifts;
+  };
+
+  // Per-shift data - HSE day numbering continues across weeks
   const [shifts, setShifts] = useState<ShiftRow[]>(
-    DAYS.map((day, i) => defaultShift(day, i + 1))
+    generateMultiWeekShifts(1)
   );
+
+  // Update shifts when numWeeks changes
+  const handleWeeksChange = (newWeeks: number) => {
+    setNumWeeks(newWeeks);
+    // Preserve existing shift settings where possible
+    const newShifts = generateMultiWeekShifts(newWeeks);
+    // Copy over existing settings for days that already exist
+    shifts.forEach((existingShift, idx) => {
+      if (idx < newShifts.length) {
+        newShifts[idx] = { ...newShifts[idx], ...existingShift, dayNum: newShifts[idx].dayNum };
+      }
+    });
+    setShifts(newShifts);
+  };
 
   // Convert to ShiftDefinition array for calculation
   const shiftDefinitions = useMemo((): ShiftDefinition[] => {
@@ -134,6 +163,38 @@ export default function FatigueDebug() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Compare values against HSE Excel tool. All parameters shown explicitly.
       </Typography>
+
+      {/* Week Selector */}
+      <Paper sx={{ p: 2, mb: 2, bgcolor: '#e3f2fd' }}>
+        <Typography variant="h6" gutterBottom>Multi-Week Analysis</Typography>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 6, sm: 3, md: 2 }}>
+            <TextField
+              select
+              label="Number of Weeks"
+              value={numWeeks}
+              onChange={(e) => handleWeeksChange(parseInt(e.target.value))}
+              size="small"
+              fullWidth
+            >
+              <MenuItem value={1}>1 Week</MenuItem>
+              <MenuItem value={2}>2 Weeks</MenuItem>
+              <MenuItem value={3}>3 Weeks</MenuItem>
+              <MenuItem value={4}>4 Weeks</MenuItem>
+              <MenuItem value={5}>5 Weeks</MenuItem>
+              <MenuItem value={6}>6 Weeks</MenuItem>
+              <MenuItem value={7}>7 Weeks</MenuItem>
+              <MenuItem value={8}>8 Weeks</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 9, md: 10 }}>
+            <Typography variant="body2" color="text.secondary">
+              Extend to multiple weeks to see cumulative fatigue build-up. Week 2+ continues day numbering (Day 8, 9, etc.)
+              to simulate repeating the same shift pattern.
+            </Typography>
+          </Grid>
+        </Grid>
+      </Paper>
 
       {/* Global Parameters */}
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -229,10 +290,11 @@ export default function FatigueDebug() {
 
       {/* Shift Table */}
       <TableContainer component={Paper}>
-        <Table size="small" sx={{ minWidth: 1400 }}>
+        <Table size="small" sx={{ minWidth: 1500 }}>
           <TableHead>
             <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-              <TableCell sx={{ fontWeight: 'bold', width: 60 }}>Day</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', width: 40 }}>#</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', width: 50 }}>Day</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 50 }}>On</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 60 }}>In</TableCell>
               <TableCell sx={{ fontWeight: 'bold', width: 80 }}>Start</TableCell>
@@ -257,16 +319,22 @@ export default function FatigueDebug() {
             {shifts.map((shift, index) => {
               const result = resultsMap.get(shift.dayNum);
               const hours = shift.enabled ? calculateHours(shift.startTime, shift.endTime) : '-';
+              const weekNum = Math.floor((shift.dayNum - 1) / 7) + 1;
+              const isWeekStart = (shift.dayNum - 1) % 7 === 0;
 
               return (
                 <TableRow
-                  key={shift.day}
+                  key={shift.dayNum}
                   sx={{
                     backgroundColor: shift.enabled ? 'inherit' : '#f9f9f9',
                     opacity: shift.enabled ? 1 : 0.6,
+                    borderTop: isWeekStart && weekNum > 1 ? '3px solid #1976d2' : undefined,
                   }}
                 >
-                  <TableCell sx={{ fontWeight: 'bold' }}>{shift.day}</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: '#1976d2' }}>{shift.dayNum}</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>
+                    {weekNum > 1 ? `W${weekNum} ` : ''}{shift.day}
+                  </TableCell>
                   <TableCell>
                     <Checkbox
                       checked={shift.enabled}
