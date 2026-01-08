@@ -6,6 +6,7 @@ import { getRiskLevel } from '@/lib/fatigue';
 interface FatigueDataPoint {
   day: number;
   riskIndex: number;
+  fatigueIndex?: number;
   startTime: string;
   endTime: string;
   dutyLength: number;
@@ -13,6 +14,7 @@ interface FatigueDataPoint {
   timing: number;
   jobBreaks: number;
   riskLevel: { level: string; label: string; color: string };
+  fatigueLevel?: { level: string; label: string; color: string };
 }
 
 interface FatigueChartProps {
@@ -22,6 +24,7 @@ interface FatigueChartProps {
   showThresholds?: boolean;
   showComponents?: boolean;
   showWorstCase?: boolean;
+  chartType?: 'FRI' | 'FGI';  // FRI = Risk Index, FGI = Fatigue Index
 }
 
 // Risk threshold constants (HSE RR446)
@@ -44,7 +47,28 @@ export function FatigueChart({
   showThresholds = true,
   showComponents = false,
   showWorstCase = false,
+  chartType = 'FRI',
 }: FatigueChartProps) {
+  // Helper to get the value based on chart type
+  const getValue = (d: FatigueDataPoint): number => {
+    if (chartType === 'FGI') {
+      return d.fatigueIndex ?? 0;
+    }
+    return d.riskIndex;
+  };
+
+  const getLevel = (d: FatigueDataPoint) => {
+    if (chartType === 'FGI') {
+      return d.fatigueLevel ?? { level: 'low', label: 'Low', color: '#22c55e' };
+    }
+    return d.riskLevel;
+  };
+
+  // FGI thresholds are different - based on % of 35 (day) or 30 (night)
+  // Using day threshold (35) as default: Low <17.5, Moderate 17.5-26.25, Elevated 26.25-35, Critical >35
+  const FGI_THRESHOLD_LOW = 17.5;
+  const FGI_THRESHOLD_MODERATE = 26.25;
+  const FGI_THRESHOLD_CRITICAL = 35;
   // Chart dimensions - compact technical look
   const padding = { top: 12, right: 30, bottom: 28, left: 36 };
   const width = 400;
@@ -54,11 +78,13 @@ export function FatigueChart({
   // Calculate scales
   const { xScale, yScale, maxY, minY } = useMemo(() => {
     if (data.length === 0) {
+      const defaultMax = chartType === 'FGI' ? 40 : 1.5;
+      const defaultMin = chartType === 'FGI' ? 0 : 0.5;
       return {
         xScale: (d: number) => 0,
         yScale: (v: number) => chartHeight,
-        maxY: 1.5,
-        minY: 0.5,
+        maxY: defaultMax,
+        minY: defaultMin,
       };
     }
 
@@ -69,14 +95,25 @@ export function FatigueChart({
 
     // Y-axis: include some padding above max value
     // Also consider worst case data for proper scaling
-    const values = data.map(d => d.riskIndex);
-    const worstCaseValues = worstCaseData?.map(d => d.riskIndex) || [];
+    const values = data.map(d => getValue(d));
+    const worstCaseValues = worstCaseData?.map(d => getValue(d)) || [];
     const allValues = [...values, ...worstCaseValues];
-    const dataMaxY = Math.max(...allValues, THRESHOLD_CRITICAL);
-    const dataMinY = Math.min(...allValues, THRESHOLD_LOW - 0.2);
-    const maxY = Math.ceil(dataMaxY * 10) / 10 + 0.1;
-    const minY = Math.floor(dataMinY * 10) / 10;
-    const yRange = maxY - minY || 0.5;
+
+    // Different thresholds for FRI vs FGI
+    const thresholdCritical = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
+    const thresholdLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
+
+    const dataMaxY = Math.max(...allValues, thresholdCritical);
+    const dataMinY = Math.min(...allValues, chartType === 'FGI' ? 0 : thresholdLow - 0.2);
+
+    // Round differently for FGI (whole numbers) vs FRI (tenths)
+    const maxY = chartType === 'FGI'
+      ? Math.ceil(dataMaxY / 5) * 5 + 5
+      : Math.ceil(dataMaxY * 10) / 10 + 0.1;
+    const minY = chartType === 'FGI'
+      ? Math.max(0, Math.floor(dataMinY / 5) * 5)
+      : Math.floor(dataMinY * 10) / 10;
+    const yRange = maxY - minY || (chartType === 'FGI' ? 10 : 0.5);
 
     const xScale = (day: number) => {
       return ((day - minDay) / dayRange) * chartWidth;
@@ -87,39 +124,40 @@ export function FatigueChart({
     };
 
     return { xScale, yScale, maxY, minY };
-  }, [data, worstCaseData, chartWidth, chartHeight]);
+  }, [data, worstCaseData, chartWidth, chartHeight, chartType, getValue, FGI_THRESHOLD_CRITICAL, FGI_THRESHOLD_LOW]);
 
   // Generate Y-axis ticks
   const yTicks = useMemo(() => {
     const ticks: number[] = [];
-    const step = 0.1;
-    for (let v = Math.ceil(minY * 10) / 10; v <= maxY; v += step) {
-      ticks.push(Math.round(v * 100) / 100);
+    const step = chartType === 'FGI' ? 5 : 0.1;
+    const start = chartType === 'FGI' ? Math.ceil(minY / 5) * 5 : Math.ceil(minY * 10) / 10;
+    for (let v = start; v <= maxY; v += step) {
+      ticks.push(chartType === 'FGI' ? Math.round(v) : Math.round(v * 100) / 100);
     }
     return ticks;
-  }, [minY, maxY]);
+  }, [minY, maxY, chartType]);
 
   // Generate path for line
   const linePath = useMemo(() => {
     if (data.length === 0) return '';
 
     const sortedData = [...data].sort((a, b) => a.day - b.day);
-    const points = sortedData.map(d => `${xScale(d.day)},${yScale(d.riskIndex)}`);
+    const points = sortedData.map(d => `${xScale(d.day)},${yScale(getValue(d))}`);
     return `M ${points.join(' L ')}`;
-  }, [data, xScale, yScale]);
+  }, [data, xScale, yScale, getValue]);
 
   // Generate area fill path (gradient under line)
   const areaPath = useMemo(() => {
     if (data.length === 0) return '';
 
     const sortedData = [...data].sort((a, b) => a.day - b.day);
-    const points = sortedData.map(d => `${xScale(d.day)},${yScale(d.riskIndex)}`);
+    const points = sortedData.map(d => `${xScale(d.day)},${yScale(getValue(d))}`);
     const firstX = xScale(sortedData[0].day);
     const lastX = xScale(sortedData[sortedData.length - 1].day);
     const bottomY = chartHeight;
 
     return `M ${firstX},${bottomY} L ${points.join(' L ')} L ${lastX},${bottomY} Z`;
-  }, [data, xScale, yScale, chartHeight]);
+  }, [data, xScale, yScale, chartHeight, getValue]);
 
   // Generate component lines if showing
   const componentPaths = useMemo(() => {
@@ -143,9 +181,9 @@ export function FatigueChart({
     if (!worstCaseData || worstCaseData.length === 0) return '';
 
     const sortedData = [...worstCaseData].sort((a, b) => a.day - b.day);
-    const points = sortedData.map(d => `${xScale(d.day)},${yScale(d.riskIndex)}`);
+    const points = sortedData.map(d => `${xScale(d.day)},${yScale(getValue(d))}`);
     return `M ${points.join(' L ')}`;
-  }, [worstCaseData, xScale, yScale]);
+  }, [worstCaseData, xScale, yScale, getValue]);
 
   if (data.length === 0) {
     return (
@@ -159,14 +197,15 @@ export function FatigueChart({
   }
 
   // Generate accessible description
+  const chartLabel = chartType === 'FGI' ? 'Fatigue Index' : 'Fatigue Risk Index';
   const accessibleDescription = data.length > 0
-    ? `Fatigue Risk Index chart showing ${data.length} data points. ` +
-      `Values range from ${Math.min(...data.map(d => d.riskIndex)).toFixed(2)} to ${Math.max(...data.map(d => d.riskIndex)).toFixed(2)}. ` +
-      `Risk levels: ${data.map(d => `Day ${d.day}: ${d.riskIndex.toFixed(2)} (${d.riskLevel.label})`).join(', ')}.`
+    ? `${chartLabel} chart showing ${data.length} data points. ` +
+      `Values range from ${Math.min(...data.map(d => getValue(d))).toFixed(chartType === 'FGI' ? 1 : 2)} to ${Math.max(...data.map(d => getValue(d))).toFixed(chartType === 'FGI' ? 1 : 2)}. ` +
+      `Levels: ${data.map(d => `Day ${d.day}: ${getValue(d).toFixed(chartType === 'FGI' ? 1 : 2)} (${getLevel(d).label})`).join(', ')}.`
     : 'No data to display';
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4" role="figure" aria-label="Fatigue Risk Index Chart">
+    <div className="bg-white rounded-lg border border-slate-200 p-4" role="figure" aria-label={`${chartLabel} Chart`}>
       <svg
         width="100%"
         viewBox={`0 0 ${width} ${height}`}
@@ -174,7 +213,7 @@ export function FatigueChart({
         role="img"
         aria-label={accessibleDescription}
       >
-        <title>Fatigue Risk Index (FRI) Over Time</title>
+        <title>{chartLabel} ({chartType}) Over Time</title>
         <desc>{accessibleDescription}</desc>
         <defs>
           {/* Gradient for area fill */}
@@ -199,122 +238,83 @@ export function FatigueChart({
         </defs>
 
         <g transform={`translate(${padding.left}, ${padding.top})`}>
-          {/* Risk zone backgrounds */}
-          {showThresholds && maxY > THRESHOLD_CRITICAL && (
-            <rect
-              x={0}
-              y={yScale(maxY)}
-              width={chartWidth}
-              height={yScale(THRESHOLD_CRITICAL) - yScale(maxY)}
-              fill="url(#criticalZone)"
-            />
-          )}
-          {showThresholds && maxY > THRESHOLD_ELEVATED && (
-            <rect
-              x={0}
-              y={yScale(THRESHOLD_CRITICAL)}
-              width={chartWidth}
-              height={yScale(THRESHOLD_ELEVATED) - yScale(THRESHOLD_CRITICAL)}
-              fill="url(#elevatedZone)"
-            />
-          )}
-          {showThresholds && maxY > THRESHOLD_LOW && (
-            <rect
-              x={0}
-              y={yScale(THRESHOLD_ELEVATED)}
-              width={chartWidth}
-              height={yScale(THRESHOLD_LOW) - yScale(THRESHOLD_ELEVATED)}
-              fill="url(#moderateZone)"
-            />
-          )}
+          {/* Risk zone backgrounds - use appropriate thresholds for FRI vs FGI */}
+          {(() => {
+            const tLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
+            const tMod = chartType === 'FGI' ? FGI_THRESHOLD_MODERATE : THRESHOLD_ELEVATED;
+            const tCrit = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
+            return (
+              <>
+                {showThresholds && maxY > tCrit && (
+                  <rect x={0} y={yScale(maxY)} width={chartWidth} height={yScale(tCrit) - yScale(maxY)} fill="url(#criticalZone)" />
+                )}
+                {showThresholds && maxY > tMod && (
+                  <rect x={0} y={yScale(tCrit)} width={chartWidth} height={yScale(tMod) - yScale(tCrit)} fill="url(#elevatedZone)" />
+                )}
+                {showThresholds && maxY > tLow && (
+                  <rect x={0} y={yScale(tMod)} width={chartWidth} height={yScale(tLow) - yScale(tMod)} fill="url(#moderateZone)" />
+                )}
+              </>
+            );
+          })()}
 
           {/* Grid lines */}
-          {yTicks.map(tick => (
-            <g key={tick}>
-              <line
-                x1={0}
-                y1={yScale(tick)}
-                x2={chartWidth}
-                y2={yScale(tick)}
-                stroke="#e2e8f0"
-                strokeWidth={0.5}
-                strokeDasharray={tick === 1.0 || tick === 1.1 || tick === 1.2 ? "0" : "2 2"}
-              />
-              <text
-                x={-4}
-                y={yScale(tick)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                className="text-[7px] fill-slate-400"
-              >
-                {tick.toFixed(1)}
-              </text>
-            </g>
-          ))}
+          {yTicks.map(tick => {
+            const tLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
+            const tMod = chartType === 'FGI' ? FGI_THRESHOLD_MODERATE : THRESHOLD_ELEVATED;
+            const tCrit = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
+            const isThreshold = tick === tLow || tick === tMod || tick === tCrit;
+            return (
+              <g key={tick}>
+                <line
+                  x1={0}
+                  y1={yScale(tick)}
+                  x2={chartWidth}
+                  y2={yScale(tick)}
+                  stroke="#e2e8f0"
+                  strokeWidth={0.5}
+                  strokeDasharray={isThreshold ? "0" : "2 2"}
+                />
+                <text
+                  x={-4}
+                  y={yScale(tick)}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  className="text-[7px] fill-slate-400"
+                >
+                  {chartType === 'FGI' ? tick.toFixed(0) : tick.toFixed(1)}
+                </text>
+              </g>
+            );
+          })}
 
           {/* Threshold lines with labels */}
           {showThresholds && (
             <>
-              {/* Low threshold (1.0) */}
-              <line
-                x1={0}
-                y1={yScale(THRESHOLD_LOW)}
-                x2={chartWidth}
-                y2={yScale(THRESHOLD_LOW)}
-                stroke="#eab308"
-                strokeWidth={1}
-                strokeDasharray="4 2"
-              />
-              <text
-                x={chartWidth + 2}
-                y={yScale(THRESHOLD_LOW)}
-                dominantBaseline="middle"
-                className="text-[6px] fill-yellow-600"
-              >
-                M
-              </text>
+              {(() => {
+                const tLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
+                const tMod = chartType === 'FGI' ? FGI_THRESHOLD_MODERATE : THRESHOLD_ELEVATED;
+                const tCrit = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
+                return (
+                  <>
+                    {/* Low threshold */}
+                    <line x1={0} y1={yScale(tLow)} x2={chartWidth} y2={yScale(tLow)} stroke="#eab308" strokeWidth={1} strokeDasharray="4 2" />
+                    <text x={chartWidth + 2} y={yScale(tLow)} dominantBaseline="middle" className="text-[6px] fill-yellow-600">M</text>
 
-              {/* Elevated threshold (1.1) */}
-              <line
-                x1={0}
-                y1={yScale(THRESHOLD_ELEVATED)}
-                x2={chartWidth}
-                y2={yScale(THRESHOLD_ELEVATED)}
-                stroke="#f97316"
-                strokeWidth={1}
-                strokeDasharray="4 2"
-              />
-              <text
-                x={chartWidth + 2}
-                y={yScale(THRESHOLD_ELEVATED)}
-                dominantBaseline="middle"
-                className="text-[6px] fill-orange-600"
-              >
-                E
-              </text>
+                    {/* Elevated threshold */}
+                    <line x1={0} y1={yScale(tMod)} x2={chartWidth} y2={yScale(tMod)} stroke="#f97316" strokeWidth={1} strokeDasharray="4 2" />
+                    <text x={chartWidth + 2} y={yScale(tMod)} dominantBaseline="middle" className="text-[6px] fill-orange-600">E</text>
 
-              {/* Critical threshold (1.2) */}
-              {maxY >= THRESHOLD_CRITICAL && (
-                <>
-                  <line
-                    x1={0}
-                    y1={yScale(THRESHOLD_CRITICAL)}
-                    x2={chartWidth}
-                    y2={yScale(THRESHOLD_CRITICAL)}
-                    stroke="#ef4444"
-                    strokeWidth={1}
-                    strokeDasharray="4 2"
-                  />
-                  <text
-                    x={chartWidth + 2}
-                    y={yScale(THRESHOLD_CRITICAL)}
-                    dominantBaseline="middle"
-                    className="text-[6px] fill-red-600"
-                  >
-                    C
-                  </text>
-                </>
-              )}
+                    {/* Critical threshold */}
+                    {maxY >= tCrit && (
+                      <>
+                        <line x1={0} y1={yScale(tCrit)} x2={chartWidth} y2={yScale(tCrit)} stroke="#ef4444" strokeWidth={1} strokeDasharray="4 2" />
+                        <text x={chartWidth + 2} y={yScale(tCrit)} dominantBaseline="middle" className="text-[6px] fill-red-600">C</text>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </>
           )}
 
@@ -377,9 +377,11 @@ export function FatigueChart({
 
           {/* Data points */}
           {[...data].sort((a, b) => a.day - b.day).map((d) => {
+            const value = getValue(d);
+            const level = getLevel(d);
             const cx = xScale(d.day);
-            const cy = yScale(d.riskIndex);
-            const color = RISK_COLORS[d.riskLevel.level as keyof typeof RISK_COLORS] || RISK_COLORS.low;
+            const cy = yScale(value);
+            const color = RISK_COLORS[level.level as keyof typeof RISK_COLORS] || RISK_COLORS.low;
 
             return (
               <g key={d.day}>
@@ -408,7 +410,7 @@ export function FatigueChart({
                   textAnchor="middle"
                   className="text-[7px] fill-slate-600 font-medium"
                 >
-                  {d.riskIndex.toFixed(2)}
+                  {value.toFixed(chartType === 'FGI' ? 1 : 2)}
                 </text>
               </g>
             );
@@ -450,29 +452,52 @@ export function FatigueChart({
             transform="rotate(-90)"
             className="text-[8px] fill-slate-400"
           >
-            FRI
+            {chartType}
           </text>
         </g>
       </svg>
 
-      {/* Compact Legend */}
+      {/* Compact Legend - different for FRI vs FGI */}
       <div className="flex items-center justify-center gap-2 mt-1 pt-1 border-t border-slate-100">
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-[8px] text-slate-500">{'<1.0'}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-yellow-500" />
-          <span className="text-[8px] text-slate-500">1.0-1.1</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-orange-500" />
-          <span className="text-[8px] text-slate-500">1.1-1.2</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-red-500" />
-          <span className="text-[8px] text-slate-500">{'>1.2'}</span>
-        </div>
+        {chartType === 'FRI' ? (
+          <>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-[8px] text-slate-500">{'<1.0'}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+              <span className="text-[8px] text-slate-500">1.0-1.1</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-[8px] text-slate-500">1.1-1.2</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-[8px] text-slate-500">{'>1.2'}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-[8px] text-slate-500">{'<17.5'}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-yellow-500" />
+              <span className="text-[8px] text-slate-500">17.5-26</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-[8px] text-slate-500">26-35</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-[8px] text-slate-500">{'>35'}</span>
+            </div>
+          </>
+        )}
         {showWorstCase && (
           <>
             <span className="text-slate-300">|</span>

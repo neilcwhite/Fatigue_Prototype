@@ -1308,7 +1308,7 @@ export function FatigueView({
           <Grid size={{ xs: 12, md: 4, lg: 3 }}>
             <Paper elevation={2} sx={{ height: '100%' }}>
               <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-                <Typography variant="subtitle2" fontWeight={600}>Global Parameters (HSE RR446 Defaults)</Typography>
+                <Typography variant="subtitle2" fontWeight={600}>Global Parameters</Typography>
               </Box>
               <Box sx={{ p: 1.5 }}>
                 <Grid container spacing={1}>
@@ -1356,21 +1356,15 @@ export function FatigueView({
           {/* Charts Panel - Two side by side */}
           <Grid size={{ xs: 12, md: 8, lg: 9 }}>
             <Grid container spacing={2}>
-              {/* Fatigue Chart */}
+              {/* Fatigue Index Chart (FGI) */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Paper elevation={2} sx={{ height: '100%' }}>
-                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle2" fontWeight={600}>Fatigue</Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', fontSize: '0.65rem' }}>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /><span>&lt;1.0</span>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#ff9800', borderRadius: '50%' }} /><span>1.0-1.1</span>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#f44336', borderRadius: '50%' }} /><span>1.1-1.2</span>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#9c27b0', borderRadius: '50%' }} /><span>&gt;1.2</span>
-                    </Box>
+                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" fontWeight={600}>Fatigue Index (FGI)</Typography>
                   </Box>
-                  <Box sx={{ p: 1, height: 150 }}>
+                  <Box sx={{ p: 1, height: 180 }}>
                     {results ? (
-                      <FatigueChart data={results.calculations} height={140} showThresholds={true} showComponents={false} showWorstCase={false} />
+                      <FatigueChart data={results.calculations} height={170} showThresholds={true} showComponents={false} showWorstCase={false} chartType="FGI" />
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                         <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
@@ -1379,20 +1373,13 @@ export function FatigueView({
                   </Box>
                 </Paper>
               </Grid>
-              {/* Risk Chart */}
+              {/* Risk Index Chart (FRI) */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Paper elevation={2} sx={{ height: '100%' }}>
-                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle2" fontWeight={600}>Risk</Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', fontSize: '0.65rem' }}>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /><span>&lt;1.0</span>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#ff9800', borderRadius: '50%' }} /><span>1.0-1.1</span>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#f44336', borderRadius: '50%' }} /><span>1.1-1.2</span>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#9c27b0', borderRadius: '50%' }} /><span>&gt;1.2</span>
-                      <span style={{ marginLeft: 4 }}>--- Worst</span>
-                    </Box>
+                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" fontWeight={600}>Risk Index (FRI)</Typography>
                   </Box>
-                  <Box sx={{ p: 1, height: 150 }}>
+                  <Box sx={{ p: 1, height: 180 }}>
                     {results ? (
                       <FatigueChart
                         data={results.calculations}
@@ -1400,10 +1387,11 @@ export function FatigueView({
                           const worst = worstCaseResults.get(calc.day);
                           return { ...calc, riskIndex: worst?.riskIndex ?? calc.riskIndex, riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel };
                         }) : undefined}
-                        height={140}
+                        height={170}
                         showThresholds={true}
                         showComponents={false}
                         showWorstCase={true}
+                        chartType="FRI"
                       />
                     ) : (
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -1425,22 +1413,11 @@ export function FatigueView({
               <Paper elevation={2} sx={{ overflow: 'hidden' }}>
                   <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                     <Typography variant="subtitle1" fontWeight={600}>Network Rail Week (Sat-Fri)</Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {!isReadOnly && (
-                        <Button size="small" variant="outlined" color="primary" onClick={initializeWeeklyShifts}>
-                          Reset Week
-                        </Button>
-                      )}
-                      <Button
-                        size="small"
-                        variant={showSettings ? 'contained' : 'outlined'}
-                        color={showSettings ? 'warning' : 'inherit'}
-                        startIcon={<Settings className="w-4 h-4" />}
-                        onClick={() => setShowSettings(!showSettings)}
-                      >
-                        Parameters
+                    {!isReadOnly && (
+                      <Button size="small" variant="outlined" color="primary" onClick={initializeWeeklyShifts}>
+                        Reset Week
                       </Button>
-                    </Box>
+                    )}
                   </Box>
 
                   <Box sx={{ p: 2 }}>
@@ -1490,7 +1467,7 @@ export function FatigueView({
                         </Alert>
 
                         {/* Header - Full width with all component columns */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '36px 32px 40px 58px 58px 40px 32px 40px 40px 40px 40px 40px 40px 48px 48px 48px 48px 48px 48px 48px 32px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '36px 32px 40px 60px 60px 40px 36px 56px 56px 44px 44px 44px 44px 50px 50px 50px 50px 50px 50px 50px 32px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 1000 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>On</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1539,7 +1516,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '36px 32px 40px 58px 58px 40px 32px 40px 40px 40px 40px 40px 40px 48px 48px 48px 48px 48px 48px 48px 32px',
+                                gridTemplateColumns: '36px 32px 40px 60px 60px 40px 36px 56px 56px 44px 44px 44px 44px 50px 50px 50px 50px 50px 50px 50px 32px',
                                 gap: 0.5,
                                 p: 0.5,
                                 borderRadius: 1,
@@ -1826,141 +1803,6 @@ export function FatigueView({
                     )}
                   </Box>
                 </Paper>
-
-              {/* Parameters Panel */}
-              <Collapse in={showSettings}>
-                <Paper elevation={2}>
-                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle1" fontWeight={600}>HSE RR446 Default Parameters</Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {shifts.length > 0 && (
-                        <Button size="small" variant="outlined" color="warning" onClick={handleApplyGlobalToAll}>
-                          Apply to All Days
-                        </Button>
-                      )}
-                      <Button size="small" onClick={handleResetParams}>Reset Defaults</Button>
-                    </Box>
-                  </Box>
-                  <Box sx={{ p: 2 }}>
-                    <Alert severity="info" sx={{ mb: 2 }}>
-                      <Typography variant="caption">
-                        These are default values for new shifts. Click the settings icon on each shift to customize per-day parameters.
-                      </Typography>
-                    </Alert>
-
-                    <TextField
-                      type="number"
-                      label="Default Commute Time (minutes)"
-                      value={params.commuteTime}
-                      onChange={(e) => setParams({ ...params, commuteTime: parseInt(e.target.value) || 0 })}
-                      fullWidth
-                      size="small"
-                      sx={{ mb: 2 }}
-                      slotProps={{ htmlInput: { min: 0, max: 180 } }}
-                      helperText="Total daily commute (split 50/50 for in/out)"
-                    />
-
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid size={{ xs: 6 }}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel>Workload (1-4)</InputLabel>
-                          <Select
-                            value={params.workload}
-                            label="Workload (1-4)"
-                            onChange={(e) => setParams({ ...params, workload: parseInt(String(e.target.value)) })}
-                          >
-                            <MenuItem value={1}>1 - Extremely demanding</MenuItem>
-                            <MenuItem value={2}>2 - Moderately demanding</MenuItem>
-                            <MenuItem value={3}>3 - Moderately undemanding</MenuItem>
-                            <MenuItem value={4}>4 - Extremely undemanding</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel>Attention (1-4)</InputLabel>
-                          <Select
-                            value={params.attention}
-                            label="Attention (1-4)"
-                            onChange={(e) => setParams({ ...params, attention: parseInt(String(e.target.value)) })}
-                          >
-                            <MenuItem value={1}>1 - All/nearly all the time</MenuItem>
-                            <MenuItem value={2}>2 - Some of the time</MenuItem>
-                            <MenuItem value={3}>3 - Most of the time</MenuItem>
-                            <MenuItem value={4}>4 - Rarely or never</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    </Grid>
-
-                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                      Break parameters (matching NR Excel tool):
-                    </Typography>
-
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid size={{ xs: 6 }}>
-                        <Tooltip title="How frequently (to the nearest 15 mins) are rest breaks typically provided OR taken?" arrow>
-                          <TextField
-                            type="number"
-                            label="Break Frequency (mins)"
-                            value={params.breakFrequency}
-                            onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })}
-                            fullWidth
-                            size="small"
-                            slotProps={{ htmlInput: { min: 15, max: 480, step: 15 } }}
-                            helperText="Interval between breaks"
-                          />
-                        </Tooltip>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Tooltip title="What is the typical average length of these breaks (to the nearest 5 minutes) that are provided or taken?" arrow>
-                          <TextField
-                            type="number"
-                            label="Avg Break Length (mins)"
-                            value={params.breakLength}
-                            onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 15 })}
-                            fullWidth
-                            size="small"
-                            slotProps={{ htmlInput: { min: 5, max: 60, step: 5 } }}
-                            helperText="Average break duration"
-                          />
-                        </Tooltip>
-                      </Grid>
-                    </Grid>
-
-                    <Grid container spacing={2}>
-                      <Grid size={{ xs: 6 }}>
-                        <Tooltip title="What is typically the longest (to the nearest 15mins) period of continuous work before a break?" arrow>
-                          <TextField
-                            type="number"
-                            label="Longest Continuous Work"
-                            value={params.continuousWork}
-                            onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 240 })}
-                            fullWidth
-                            size="small"
-                            slotProps={{ htmlInput: { min: 15, max: 480, step: 15 } }}
-                            helperText="Max work before break"
-                          />
-                        </Tooltip>
-                      </Grid>
-                      <Grid size={{ xs: 6 }}>
-                        <Tooltip title="What is typically the length of the break taken after this longest period of continuous work (to the nearest 5 mins)?" arrow>
-                          <TextField
-                            type="number"
-                            label="Break After Longest"
-                            value={params.breakAfterContinuous}
-                            onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })}
-                            fullWidth
-                            size="small"
-                            slotProps={{ htmlInput: { min: 5, max: 60, step: 5 } }}
-                            helperText="Break after max work"
-                          />
-                        </Tooltip>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                </Paper>
-              </Collapse>
             </Box>
           </Grid>
         </Grid>
