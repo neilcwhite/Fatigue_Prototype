@@ -1,11 +1,18 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
-import { Calendar, Edit2, Trash2 } from '@/components/ui/Icons';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
+import { Calendar, Edit2, Trash2, X } from '@/components/ui/Icons';
 import type { AssignmentCamel, ShiftPatternCamel, ProjectCamel, NetworkRailPeriod } from '@/lib/types';
 
 // Helper to get FRI chip colors for MUI
@@ -53,6 +60,7 @@ interface ScheduleCalendarProps {
   showFRI: boolean;
   onEditAssignment?: (assignment: AssignmentCamel) => void;
   onDeleteAssignment: (assignment: AssignmentCamel) => void;
+  onBulkDeleteAssignments?: (assignments: AssignmentCamel[]) => Promise<void>;
   onAddShift?: (date: string) => void;
 }
 
@@ -94,13 +102,73 @@ export function ScheduleCalendar({
   showFRI,
   onEditAssignment,
   onDeleteAssignment,
+  onBulkDeleteAssignments,
   onAddShift,
 }: ScheduleCalendarProps) {
+  // Multi-select state
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<Set<number>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   const getAssignmentInfo = (assignment: AssignmentCamel) => {
     const pattern = shiftPatterns.find((p) => p.id === assignment.shiftPatternId);
     const project = projects.find((p) => p.id === assignment.projectId);
     return { pattern, project };
   };
+
+  // Handle assignment click with Ctrl support for multi-select
+  const handleAssignmentClick = useCallback((assignment: AssignmentCamel, event: React.MouseEvent) => {
+    if (event.ctrlKey || event.metaKey) {
+      // Multi-select mode
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedAssignmentIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(assignment.id)) {
+          newSet.delete(assignment.id);
+        } else {
+          newSet.add(assignment.id);
+        }
+        return newSet;
+      });
+    }
+  }, []);
+
+  // Handle delete click - if item is selected and there are multiple selections, trigger bulk delete
+  const handleDeleteClick = useCallback((assignment: AssignmentCamel, event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    // If this assignment is selected and there are multiple selections, do bulk delete
+    if (selectedAssignmentIds.has(assignment.id) && selectedAssignmentIds.size > 1) {
+      setShowBulkDeleteConfirm(true);
+    } else {
+      // Single delete
+      onDeleteAssignment(assignment);
+    }
+  }, [selectedAssignmentIds, onDeleteAssignment]);
+
+  // Perform bulk delete
+  const handleBulkDelete = useCallback(async () => {
+    if (!onBulkDeleteAssignments) return;
+
+    setBulkDeleting(true);
+    try {
+      const assignmentsToDelete = periodAssignments.filter(a => selectedAssignmentIds.has(a.id));
+      await onBulkDeleteAssignments(assignmentsToDelete);
+      setSelectedAssignmentIds(new Set());
+      setShowBulkDeleteConfirm(false);
+    } finally {
+      setBulkDeleting(false);
+    }
+  }, [onBulkDeleteAssignments, periodAssignments, selectedAssignmentIds]);
+
+  // Clear selection
+  const clearSelection = useCallback(() => {
+    setSelectedAssignmentIds(new Set());
+  }, []);
+
+  // Get selected assignments for display
+  const selectedAssignments = periodAssignments.filter(a => selectedAssignmentIds.has(a.id));
 
   return (
     <Paper id="schedule-calendar" sx={{ mb: 2, scrollMarginTop: 16 }} data-testid="schedule-calendar">
@@ -159,6 +227,54 @@ export function ScheduleCalendar({
           )}
         </Box>
       </Box>
+
+      {/* Multi-select action bar */}
+      {selectedAssignmentIds.size > 0 && (
+        <Box
+          sx={{
+            p: 1,
+            bgcolor: 'primary.50',
+            borderBottom: 1,
+            borderColor: 'primary.light',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" fontWeight={500} color="primary.main">
+              {selectedAssignmentIds.size} shift{selectedAssignmentIds.size !== 1 ? 's' : ''} selected
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              (Ctrl+Click to select more)
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={clearSelection}
+              startIcon={<X className="w-3 h-3" />}
+              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+            >
+              Clear
+            </Button>
+            {onBulkDeleteAssignments && (
+              <Button
+                size="small"
+                variant="contained"
+                color="error"
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                startIcon={<Trash2 className="w-3 h-3" />}
+                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              >
+                Delete Selected
+              </Button>
+            )}
+          </Box>
+        </Box>
+      )}
+
       <Box sx={{ p: 1.5, overflow: 'auto' }}>
         {/* Day Headers */}
         <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
@@ -326,22 +442,39 @@ export function ScheduleCalendar({
                           {dateAssignments.map((assignment) => {
                             const { pattern, project } = getAssignmentInfo(assignment);
                             const assignmentViolation = violationAssignmentSeverity.get(assignment.id) || null;
+                            const isSelected = selectedAssignmentIds.has(assignment.id);
                             return (
                               <Box
                                 key={assignment.id}
                                 data-testid={`assignment-${assignment.id}`}
+                                onClick={(e) => handleAssignmentClick(assignment, e)}
                                 sx={{
                                   position: 'relative',
                                   borderRadius: 0.5,
                                   p: 0.5,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s',
                                   ...getNRComplianceChipSx(assignmentViolation),
+                                  // Selection styling
+                                  ...(isSelected && {
+                                    outline: '3px solid',
+                                    outlineColor: 'primary.main',
+                                    outlineOffset: 1,
+                                    boxShadow: '0 0 8px rgba(25, 118, 210, 0.5)',
+                                  }),
+                                  '&:hover': {
+                                    opacity: 0.9,
+                                  },
                                 }}
                               >
                                 <Box sx={{ position: 'absolute', top: 0, right: 0, display: 'flex', gap: 0.25 }}>
                                   {onEditAssignment && (
                                     <IconButton
                                       size="small"
-                                      onClick={() => onEditAssignment(assignment)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditAssignment(assignment);
+                                      }}
                                       sx={{ p: 0.25, color: 'inherit', opacity: 0.8, '&:hover': { opacity: 1 } }}
                                       aria-label="Edit assignment"
                                     >
@@ -350,9 +483,9 @@ export function ScheduleCalendar({
                                   )}
                                   <IconButton
                                     size="small"
-                                    onClick={() => onDeleteAssignment(assignment)}
+                                    onClick={(e) => handleDeleteClick(assignment, e)}
                                     sx={{ p: 0.25, color: 'inherit', opacity: 0.8, '&:hover': { opacity: 1 } }}
-                                    aria-label="Delete assignment"
+                                    aria-label={isSelected && selectedAssignmentIds.size > 1 ? 'Delete selected assignments' : 'Delete assignment'}
                                   >
                                     <Trash2 className="w-2.5 h-2.5" />
                                   </IconButton>
@@ -404,6 +537,50 @@ export function ScheduleCalendar({
           );
         })}
       </Box>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog
+        open={showBulkDeleteConfirm}
+        onClose={() => !bulkDeleting && setShowBulkDeleteConfirm(false)}
+      >
+        <DialogTitle>Delete {selectedAssignmentIds.size} Shifts?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the following {selectedAssignmentIds.size} shift{selectedAssignmentIds.size !== 1 ? 's' : ''}?
+          </DialogContentText>
+          <Box sx={{ mt: 2, maxHeight: 200, overflow: 'auto' }}>
+            {selectedAssignments.map(assignment => {
+              const { pattern, project } = getAssignmentInfo(assignment);
+              return (
+                <Box key={assignment.id} sx={{ py: 0.5, borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography variant="body2" fontWeight={500}>
+                    {new Date(assignment.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {project?.name} - {pattern?.name || 'Custom'} ({assignment.customStartTime || pattern?.startTime}-{assignment.customEndTime || pattern?.endTime})
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowBulkDeleteConfirm(false)}
+            disabled={bulkDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleBulkDelete}
+            color="error"
+            variant="contained"
+            disabled={bulkDeleting}
+          >
+            {bulkDeleting ? 'Deleting...' : `Delete ${selectedAssignmentIds.size} Shift${selectedAssignmentIds.size !== 1 ? 's' : ''}`}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }

@@ -51,6 +51,7 @@ interface PersonViewProps {
     customEndTime?: string;
   }) => Promise<void>;
   onCreateFatigueAssessment?: (assessment: FatigueAssessment) => Promise<void>;
+  onUpdateFatigueAssessment?: (id: string, data: Partial<FatigueAssessment>) => Promise<void>;
   onViewAssessment?: (assessmentId: string) => void;
 }
 
@@ -71,6 +72,7 @@ export function PersonView({
   onUpdateShiftPattern,
   onCreateAssignment,
   onCreateFatigueAssessment,
+  onUpdateFatigueAssessment,
   onViewAssessment,
 }: PersonViewProps) {
   const { showSuccess, showError } = useNotification();
@@ -302,12 +304,52 @@ export function PersonView({
     const { pattern } = getAssignmentInfo(assignment);
     if (confirm(`Remove ${employee.name} from ${pattern?.name || 'shift'} on ${assignment.date}?`)) {
       try {
+        // Check if there's a FAMP attached to this assignment and void it
+        const linkedFamp = fatigueAssessments.find(
+          a => a.assignmentId === assignment.id ||
+               (a.employeeId === employee.id && a.violationDate === assignment.date)
+        );
+        if (linkedFamp && onUpdateFatigueAssessment) {
+          await onUpdateFatigueAssessment(linkedFamp.id, { status: 'cancelled' });
+        }
+
         await onDeleteAssignment(assignment.id);
-        showSuccess('Assignment deleted');
+        showSuccess(linkedFamp ? 'Assignment deleted (linked FAMP marked as void)' : 'Assignment deleted');
       } catch (err) {
         console.error('Error deleting assignment:', err);
         showError('Failed to delete assignment');
       }
+    }
+  };
+
+  // Bulk delete handler for multi-select
+  const handleBulkDelete = async (assignmentsToDelete: AssignmentCamel[]) => {
+    try {
+      // Find all FAMPs linked to these assignments and void them
+      const linkedFamps = fatigueAssessments.filter(
+        famp => assignmentsToDelete.some(
+          a => famp.assignmentId === a.id ||
+               (famp.employeeId === employee.id && famp.violationDate === a.date)
+        )
+      );
+
+      // Void all linked FAMPs first
+      if (linkedFamps.length > 0 && onUpdateFatigueAssessment) {
+        await Promise.all(
+          linkedFamps.map(famp => onUpdateFatigueAssessment(famp.id, { status: 'cancelled' }))
+        );
+      }
+
+      // Delete all assignments
+      await Promise.all(assignmentsToDelete.map(a => onDeleteAssignment(a.id)));
+
+      const fampMessage = linkedFamps.length > 0
+        ? ` (${linkedFamps.length} linked FAMP${linkedFamps.length !== 1 ? 's' : ''} marked as void)`
+        : '';
+      showSuccess(`${assignmentsToDelete.length} assignment${assignmentsToDelete.length !== 1 ? 's' : ''} deleted${fampMessage}`);
+    } catch (err) {
+      console.error('Error bulk deleting assignments:', err);
+      showError('Failed to delete some assignments');
     }
   };
 
@@ -566,6 +608,7 @@ export function PersonView({
           showFRI={showFRI}
           onEditAssignment={onUpdateAssignment ? (assignment) => setEditingAssignment(assignment) : undefined}
           onDeleteAssignment={handleDelete}
+          onBulkDeleteAssignments={handleBulkDelete}
           onAddShift={onCreateAssignment ? (date) => setAddShiftDate(date) : undefined}
         />
       </Box>

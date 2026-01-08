@@ -403,6 +403,7 @@ export default function Home() {
             onUpdateShiftPattern={updateShiftPattern}
             onCreateAssignment={createAssignment}
             onCreateFatigueAssessment={createFatigueAssessment}
+            onUpdateFatigueAssessment={updateFatigueAssessment}
             onViewAssessment={(assessmentId) => {
               // Navigate to assessments view - for now, just go to assessments page
               setCurrentView('assessments');
