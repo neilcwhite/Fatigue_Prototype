@@ -158,6 +158,23 @@ type NRDayKey = typeof NR_DAYS[number];
 
 const nrDayIndexToShiftDay = (nrIndex: number): number => nrIndex + 1;
 
+// Convert NR day number (Sat=1, Sun=2, Mon=3, ...) to HSE day number (Mon=1, Tue=2, ..., Sun=7)
+// This is required because the fatigue calculation algorithm uses HSE day numbering
+const nrDayToHseDay = (nrDay: number): number => {
+  // NR: Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6, Fri=7
+  // HSE: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+  const mapping: Record<number, number> = {
+    1: 6,  // Sat -> 6
+    2: 7,  // Sun -> 7
+    3: 1,  // Mon -> 1
+    4: 2,  // Tue -> 2
+    5: 3,  // Wed -> 3
+    6: 4,  // Thu -> 4
+    7: 5,  // Fri -> 5
+  };
+  return mapping[nrDay] ?? nrDay;
+};
+
 const shiftsToWeeklySchedule = (shifts: Shift[], defaultParams: { commuteTime: number; workload: number; attention: number; breakFrequency: number; breakLength: number }) => {
   const schedule: Record<string, { startTime: string; endTime: string; commuteIn?: number; commuteOut?: number; workload?: number; attention?: number; breakFreq?: number; breakLen?: number } | null> = {
     Sat: null, Sun: null, Mon: null, Tue: null, Wed: null, Thu: null, Fri: null,
@@ -452,9 +469,10 @@ export function FatigueView({
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) return null;
 
-    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
+    // Sort by HSE day number (Mon=1) for correct cumulative calculation order
+    const sortedShifts = [...workingShifts].sort((a, b) => nrDayToHseDay(a.day) - nrDayToHseDay(b.day));
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
-      day: s.day,
+      day: nrDayToHseDay(s.day),  // Convert NR day to HSE day for calculation
       startTime: s.startTime,
       endTime: s.endTime,
       commuteIn: s.commuteIn,
@@ -539,10 +557,11 @@ export function FatigueView({
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) return null;
 
-    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
+    // Sort by HSE day number (Mon=1) for correct cumulative calculation order
+    const sortedShifts = [...workingShifts].sort((a, b) => nrDayToHseDay(a.day) - nrDayToHseDay(b.day));
     // Worst-case uses 1 (most demanding/most attention) since scale is 1=highest, 4=lowest
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
-      day: s.day,
+      day: nrDayToHseDay(s.day),  // Convert NR day to HSE day for calculation
       startTime: s.startTime,
       endTime: s.endTime,
       commuteIn: s.commuteIn,
@@ -571,13 +590,14 @@ export function FatigueView({
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (!compareRoles || workingShifts.length === 0) return null;
 
-    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
+    // Sort by HSE day number (Mon=1) for correct cumulative calculation order
+    const sortedShifts = [...workingShifts].sort((a, b) => nrDayToHseDay(a.day) - nrDayToHseDay(b.day));
 
     const roleResults = selectedRolesForCompare.map(roleKey => {
       const role = ROLE_PRESETS[roleKey];
 
       const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
-        day: s.day,
+        day: nrDayToHseDay(s.day),  // Convert NR day to HSE day for calculation
         startTime: s.startTime,
         endTime: s.endTime,
         commuteIn: s.commuteIn,
