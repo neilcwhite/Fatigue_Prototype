@@ -153,39 +153,25 @@ const getDayOfWeek = (dayNum: number, startDay: number = 1): string => {
   return days[index];
 };
 
-const NR_DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
-type NRDayKey = typeof NR_DAYS[number];
+// HSE day order: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+// This matches the debug page and HSE Excel tool exactly
+const HSE_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+type HSEDayKey = typeof HSE_DAYS[number];
 
-const nrDayIndexToShiftDay = (nrIndex: number): number => nrIndex + 1;
-
-// Convert NR day number (Sat=1, Sun=2, Mon=3, ...) to HSE day number (Mon=1, Tue=2, ..., Sun=7)
-// This is required because the fatigue calculation algorithm uses HSE day numbering
-const nrDayToHseDay = (nrDay: number): number => {
-  // NR: Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6, Fri=7
-  // HSE: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
-  const mapping: Record<number, number> = {
-    1: 6,  // Sat -> 6
-    2: 7,  // Sun -> 7
-    3: 1,  // Mon -> 1
-    4: 2,  // Tue -> 2
-    5: 3,  // Wed -> 3
-    6: 4,  // Thu -> 4
-    7: 5,  // Fri -> 5
-  };
-  return mapping[nrDay] ?? nrDay;
-};
+// Simple: array index + 1 = day number (Mon at index 0 = day 1)
+const hseDayIndexToShiftDay = (index: number): number => index + 1;
 
 const shiftsToWeeklySchedule = (shifts: Shift[], defaultParams: { commuteTime: number; workload: number; attention: number; breakFrequency: number; breakLength: number }) => {
   const schedule: Record<string, { startTime: string; endTime: string; commuteIn?: number; commuteOut?: number; workload?: number; attention?: number; breakFreq?: number; breakLen?: number } | null> = {
-    Sat: null, Sun: null, Mon: null, Tue: null, Wed: null, Thu: null, Fri: null,
+    Mon: null, Tue: null, Wed: null, Thu: null, Fri: null, Sat: null, Sun: null,
   };
 
-  const dayNumToNRDay: Record<number, NRDayKey> = {
-    1: 'Sat', 2: 'Sun', 3: 'Mon', 4: 'Tue', 5: 'Wed', 6: 'Thu', 7: 'Fri',
+  const dayNumToHSEDay: Record<number, HSEDayKey> = {
+    1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun',
   };
 
   shifts.forEach(shift => {
-    const dayName = dayNumToNRDay[shift.day];
+    const dayName = dayNumToHSEDay[shift.day];
     if (dayName && !shift.isRestDay) {
       schedule[dayName] = {
         startTime: shift.startTime,
@@ -333,13 +319,14 @@ export function FatigueView({
         setSelectedPatternId(null);
         enterCreateMode(project);
         // Initialize weekly shifts inline
-        const weekShifts: Shift[] = NR_DAYS.map((dayName, index) => {
-          const isRestDay = index === 0 || index === 1;
-          const isMonday = index === 2;
-          const isFriday = index === 6;
+        const weekShifts: Shift[] = HSE_DAYS.map((dayName, index) => {
+          // HSE order: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+          const isRestDay = index === 5 || index === 6; // Sat and Sun are rest days
+          const isMonday = index === 0;
+          const isFriday = index === 4;
           return {
             id: Date.now() + index,
-            day: nrDayIndexToShiftDay(index),
+            day: hseDayIndexToShiftDay(index), // Mon=1, Tue=2, etc.
             startTime: '08:00',
             endTime: '17:00',
             isRestDay,
@@ -352,7 +339,7 @@ export function FatigueView({
           };
         });
         setShifts(weekShifts);
-        setStartDayOfWeek(6);
+        setStartDayOfWeek(1); // Start week on Monday (HSE format)
       }
     }
   }, [startInCreateMode, initialProjectId, projects, enterCreateMode]);
@@ -469,10 +456,10 @@ export function FatigueView({
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) return null;
 
-    // Sort by HSE day number (Mon=1) for correct cumulative calculation order
-    const sortedShifts = [...workingShifts].sort((a, b) => nrDayToHseDay(a.day) - nrDayToHseDay(b.day));
+    // Sort by day number (already in HSE format: Mon=1)
+    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
-      day: nrDayToHseDay(s.day),  // Convert NR day to HSE day for calculation
+      day: s.day,  // Already HSE format
       startTime: s.startTime,
       endTime: s.endTime,
       commuteIn: s.commuteIn,
@@ -534,11 +521,10 @@ export function FatigueView({
       c.isNightShift ? c.fatigueIndex >= 45 : c.fatigueIndex >= 35
     ).length;
 
-    // Create a map for easy lookup by NR day number (shift.day before HSE conversion)
-    // This maps the original NR day (1-7 where Sat=1) to the calculation result
+    // Create a map for easy lookup by HSE day number (Mon=1, Tue=2, etc.)
     const calculationsMap = new Map<number, typeof calculationsWithDuty[0]>();
-    sortedShifts.forEach((shift, idx) => {
-      calculationsMap.set(shift.day, calculationsWithDuty[idx]);
+    calculationsWithDuty.forEach(calc => {
+      calculationsMap.set(calc.day, calc);
     });
 
     return {
@@ -565,11 +551,11 @@ export function FatigueView({
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (workingShifts.length === 0) return null;
 
-    // Sort by HSE day number (Mon=1) for correct cumulative calculation order
-    const sortedShifts = [...workingShifts].sort((a, b) => nrDayToHseDay(a.day) - nrDayToHseDay(b.day));
+    // Sort by day number (already HSE format)
+    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
     // Worst-case uses 1 (most demanding/most attention) since scale is 1=highest, 4=lowest
     const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
-      day: nrDayToHseDay(s.day),  // Convert NR day to HSE day for calculation
+      day: s.day,  // Already HSE format
       startTime: s.startTime,
       endTime: s.endTime,
       commuteIn: s.commuteIn,
@@ -584,10 +570,10 @@ export function FatigueView({
     const calculations = calculateFatigueSequence(shiftDefinitions, worstParams);
 
     const calcByDay = new Map<number, { riskIndex: number; riskLevel: { level: string } }>();
-    sortedShifts.forEach((shift, idx) => {
-      calcByDay.set(shift.day, {
-        riskIndex: Math.round(calculations[idx].riskIndex * 1000) / 1000,
-        riskLevel: getRiskLevel(calculations[idx].riskIndex),
+    calculations.forEach((calc, idx) => {
+      calcByDay.set(shiftDefinitions[idx].day, {
+        riskIndex: Math.round(calc.riskIndex * 1000) / 1000,
+        riskLevel: getRiskLevel(calc.riskIndex),
       });
     });
 
@@ -598,14 +584,14 @@ export function FatigueView({
     const workingShifts = shifts.filter(s => !s.isRestDay);
     if (!compareRoles || workingShifts.length === 0) return null;
 
-    // Sort by HSE day number (Mon=1) for correct cumulative calculation order
-    const sortedShifts = [...workingShifts].sort((a, b) => nrDayToHseDay(a.day) - nrDayToHseDay(b.day));
+    // Sort by day number (already in HSE format: Mon=1)
+    const sortedShifts = [...workingShifts].sort((a, b) => a.day - b.day);
 
     const roleResults = selectedRolesForCompare.map(roleKey => {
       const role = ROLE_PRESETS[roleKey];
 
       const shiftDefinitions: ShiftDefinition[] = sortedShifts.map(s => ({
-        day: nrDayToHseDay(s.day),  // Convert NR day to HSE day for calculation
+        day: s.day,  // Already in HSE format (Mon=1)
         startTime: s.startTime,
         endTime: s.endTime,
         commuteIn: s.commuteIn,
@@ -714,14 +700,15 @@ export function FatigueView({
     // Default pattern: Mon-Fri 08:00-17:00, Sat/Sun rest days
     // Commute in: 90 min Monday, 30 min other days
     // Commute out: 30 min all days except Friday (90 min)
-    const weekShifts: Shift[] = NR_DAYS.map((dayName, index) => {
-      const isRestDay = index === 0 || index === 1; // Sat (0) and Sun (1) are rest days
-      const isMonday = index === 2;
-      const isFriday = index === 6;
+    // HSE order: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+    const weekShifts: Shift[] = HSE_DAYS.map((dayName, index) => {
+      const isRestDay = index === 5 || index === 6; // Sat and Sun are rest days
+      const isMonday = index === 0;
+      const isFriday = index === 4;
 
       return {
         id: Date.now() + index,
-        day: nrDayIndexToShiftDay(index),
+        day: hseDayIndexToShiftDay(index), // Mon=1, Tue=2, etc.
         startTime: '08:00',
         endTime: '17:00',
         isRestDay,
@@ -734,32 +721,32 @@ export function FatigueView({
       };
     });
     setShifts(weekShifts);
-    setStartDayOfWeek(6);
+    setStartDayOfWeek(1); // Start week on Monday (HSE format)
   };
 
   const toggleRestDay = (dayIndex: number) => {
-    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    const dayNum = hseDayIndexToShiftDay(dayIndex);
     setShifts(prev => prev.map(s =>
       s.day === dayNum ? { ...s, isRestDay: !s.isRestDay } : s
     ));
   };
 
   const updateWeeklyShiftTime = (dayIndex: number, field: 'startTime' | 'endTime', value: string) => {
-    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    const dayNum = hseDayIndexToShiftDay(dayIndex);
     setShifts(prev => prev.map(s =>
       s.day === dayNum ? { ...s, [field]: value } : s
     ));
   };
 
   const updateWeeklyShiftParam = (dayIndex: number, field: keyof Shift, value: number) => {
-    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    const dayNum = hseDayIndexToShiftDay(dayIndex);
     setShifts(prev => prev.map(s =>
       s.day === dayNum ? { ...s, [field]: value } : s
     ));
   };
 
   const getShiftForDay = (dayIndex: number): Shift | undefined => {
-    const dayNum = nrDayIndexToShiftDay(dayIndex);
+    const dayNum = hseDayIndexToShiftDay(dayIndex);
     return shifts.find(s => s.day === dayNum);
   };
 
@@ -779,7 +766,7 @@ export function FatigueView({
     const sourceShift = getShiftForDay(copySourceDay);
     if (!sourceShift) return;
 
-    const targetDayNum = nrDayIndexToShiftDay(targetDayIndex);
+    const targetDayNum = hseDayIndexToShiftDay(targetDayIndex);
 
     setShifts(prev => prev.map(s => {
       if (s.day === targetDayNum) {
@@ -1523,7 +1510,7 @@ export function FatigueView({
                         </Box>
 
                         {/* Day Rows */}
-                        {NR_DAYS.map((dayName, index) => {
+                        {HSE_DAYS.map((dayName, index) => {
                           const shift = getShiftForDay(index);
                           const isRestDay = shift?.isRestDay ?? true;
                           const startHour = shift ? parseTimeToHours(shift.startTime) : 0;
@@ -1531,16 +1518,16 @@ export function FatigueView({
                           if (endHour <= startHour) endHour += 24;
                           const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
 
-                          // Look up results - find by matching the shift id
-                          const nrDayNum = nrDayIndexToShiftDay(index);
-                          const dayResult = results?.calculations.find(c => c.id === shift?.id);
+                          // Look up results by HSE day number (Mon=1, Tue=2, etc.)
+                          const hseDayNum = hseDayIndexToShiftDay(index);
+                          const dayResult = results?.calculations.find(c => c.day === hseDayNum);
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
                           // Fatigue Index data
                           const dayFGI = dayResult?.fatigueIndex;
                           const dayFatigueLevel = dayResult?.fatigueLevel?.level || 'low';
 
-                          const worstResult = worstCaseResults?.get(nrDayIndexToShiftDay(index));
+                          const worstResult = worstCaseResults?.get(hseDayIndexToShiftDay(index));
                           const worstCaseFRI = worstResult?.riskIndex;
                           const worstCaseLevel = worstResult?.riskLevel?.level || 'low';
 
@@ -1933,9 +1920,9 @@ export function FatigueView({
         onClose={handleCopyMenuClose}
       >
         <MenuItem disabled sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
-          Copy {copySourceDay !== null ? NR_DAYS[copySourceDay] : ''} to:
+          Copy {copySourceDay !== null ? HSE_DAYS[copySourceDay] : ''} to:
         </MenuItem>
-        {NR_DAYS.map((dayName, index) => (
+        {HSE_DAYS.map((dayName, index) => (
           copySourceDay !== index && (
             <MenuItem key={dayName} onClick={() => handleCopyToDay(index)} sx={{ fontSize: '0.875rem' }}>
               {dayName}
