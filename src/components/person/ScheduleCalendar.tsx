@@ -275,7 +275,7 @@ export function ScheduleCalendar({
                             />
                             {dateFGI !== null && (
                               <Chip
-                                label={`F:${dateFGI.toFixed(0)}`}
+                                label={`F:${dateFGI.toFixed(1)}`}
                                 size="small"
                                 sx={{
                                   fontSize: '0.5rem',
