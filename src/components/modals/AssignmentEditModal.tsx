@@ -14,8 +14,11 @@ import Typography from '@mui/material/Typography';
 import MenuItem from '@mui/material/MenuItem';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
-import { X, Clock, User, Calendar, FileText } from '@/components/ui/Icons';
+import Collapse from '@mui/material/Collapse';
+import Tooltip from '@mui/material/Tooltip';
+import { X, Clock, User, Calendar, FileText, ChevronDown, ChevronUp, Settings } from '@/components/ui/Icons';
 import type { AssignmentCamel, ShiftPatternCamel, EmployeeCamel } from '@/lib/types';
+import { DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 
 interface AssignmentEditModalProps {
   assignment: AssignmentCamel;
@@ -42,8 +45,32 @@ export function AssignmentEditModal({
   const [selectedPatternId, setSelectedPatternId] = useState(assignment.shiftPatternId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showFatigueParams, setShowFatigueParams] = useState(false);
 
   const selectedPattern = allShiftPatterns.find(p => p.id === selectedPatternId) || shiftPattern;
+
+  // Fatigue parameters - initialize from pattern or defaults
+  const [commuteIn, setCommuteIn] = useState<number>(
+    selectedPattern.commuteTime ? Math.floor(selectedPattern.commuteTime / 2) : Math.floor(DEFAULT_FATIGUE_PARAMS.commuteTime / 2)
+  );
+  const [commuteOut, setCommuteOut] = useState<number>(
+    selectedPattern.commuteTime ? Math.ceil(selectedPattern.commuteTime / 2) : Math.ceil(DEFAULT_FATIGUE_PARAMS.commuteTime / 2)
+  );
+  const [workload, setWorkload] = useState<number>(selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload);
+  const [attention, setAttention] = useState<number>(selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention);
+  const [breakFrequency, setBreakFrequency] = useState<number>(selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency);
+  const [breakLength, setBreakLength] = useState<number>(selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
+
+  // Check if params differ from pattern defaults
+  const patternCommuteIn = selectedPattern.commuteTime ? Math.floor(selectedPattern.commuteTime / 2) : Math.floor(DEFAULT_FATIGUE_PARAMS.commuteTime / 2);
+  const patternCommuteOut = selectedPattern.commuteTime ? Math.ceil(selectedPattern.commuteTime / 2) : Math.ceil(DEFAULT_FATIGUE_PARAMS.commuteTime / 2);
+  const hasCustomParams =
+    commuteIn !== patternCommuteIn ||
+    commuteOut !== patternCommuteOut ||
+    workload !== (selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload) ||
+    attention !== (selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention) ||
+    breakFrequency !== (selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency) ||
+    breakLength !== (selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
 
   // Format date for display
   const formatDate = (dateStr: string) => {
@@ -251,6 +278,164 @@ export function AssignmentEditModal({
                 </Typography>
               </Alert>
             )}
+          </Box>
+
+          {/* Fatigue Parameters Section */}
+          <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+            <Box
+              onClick={() => setShowFatigueParams(!showFatigueParams)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 1.5,
+                bgcolor: hasCustomParams ? 'warning.50' : 'action.hover',
+                cursor: 'pointer',
+                '&:hover': { bgcolor: hasCustomParams ? 'warning.100' : 'action.selected' },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Settings className="w-4 h-4" />
+                <Typography variant="subtitle2">
+                  Fatigue Parameters
+                  {hasCustomParams && (
+                    <Typography component="span" variant="caption" sx={{ ml: 1, color: 'warning.main' }}>
+                      (modified)
+                    </Typography>
+                  )}
+                </Typography>
+              </Box>
+              {showFatigueParams ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Box>
+
+            <Collapse in={showFatigueParams}>
+              <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
+                {/* Commute Times */}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Journey Time (minutes)
+                </Typography>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={{ xs: 6 }}>
+                    <Tooltip title="Commute time TO work (minutes)" arrow>
+                      <TextField
+                        type="number"
+                        label="To Work"
+                        value={commuteIn}
+                        onChange={(e) => setCommuteIn(parseInt(e.target.value) || 0)}
+                        fullWidth
+                        size="small"
+                        slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                      />
+                    </Tooltip>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Tooltip title="Commute time FROM work (minutes)" arrow>
+                      <TextField
+                        type="number"
+                        label="From Work"
+                        value={commuteOut}
+                        onChange={(e) => setCommuteOut(parseInt(e.target.value) || 0)}
+                        fullWidth
+                        size="small"
+                        slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                      />
+                    </Tooltip>
+                  </Grid>
+                </Grid>
+
+                {/* Workload & Attention */}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Job Characteristics
+                </Typography>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={{ xs: 6 }}>
+                    <Tooltip title="1=Extremely demanding, 4=Extremely undemanding" arrow>
+                      <TextField
+                        select
+                        label="Workload"
+                        value={workload}
+                        onChange={(e) => setWorkload(parseInt(e.target.value))}
+                        fullWidth
+                        size="small"
+                      >
+                        <MenuItem value={1}>1 - Extreme</MenuItem>
+                        <MenuItem value={2}>2 - Moderate</MenuItem>
+                        <MenuItem value={3}>3 - Light</MenuItem>
+                        <MenuItem value={4}>4 - Minimal</MenuItem>
+                      </TextField>
+                    </Tooltip>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Tooltip title="1=All the time, 4=Rarely/never" arrow>
+                      <TextField
+                        select
+                        label="Attention"
+                        value={attention}
+                        onChange={(e) => setAttention(parseInt(e.target.value))}
+                        fullWidth
+                        size="small"
+                      >
+                        <MenuItem value={1}>1 - Constant</MenuItem>
+                        <MenuItem value={2}>2 - Frequent</MenuItem>
+                        <MenuItem value={3}>3 - Occasional</MenuItem>
+                        <MenuItem value={4}>4 - Rare</MenuItem>
+                      </TextField>
+                    </Tooltip>
+                  </Grid>
+                </Grid>
+
+                {/* Break Settings */}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Break Settings (minutes)
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 6 }}>
+                    <Tooltip title="Time between breaks (minutes)" arrow>
+                      <TextField
+                        type="number"
+                        label="Break Frequency"
+                        value={breakFrequency}
+                        onChange={(e) => setBreakFrequency(parseInt(e.target.value) || 180)}
+                        fullWidth
+                        size="small"
+                        slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                      />
+                    </Tooltip>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Tooltip title="Average break duration (minutes)" arrow>
+                      <TextField
+                        type="number"
+                        label="Break Length"
+                        value={breakLength}
+                        onChange={(e) => setBreakLength(parseInt(e.target.value) || 15)}
+                        fullWidth
+                        size="small"
+                        slotProps={{ htmlInput: { min: 5, max: 60 } }}
+                      />
+                    </Tooltip>
+                  </Grid>
+                </Grid>
+
+                {/* Reset to pattern defaults button */}
+                {hasCustomParams && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setCommuteIn(patternCommuteIn);
+                      setCommuteOut(patternCommuteOut);
+                      setWorkload(selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload);
+                      setAttention(selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention);
+                      setBreakFrequency(selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency);
+                      setBreakLength(selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
+                    }}
+                    sx={{ mt: 2, textTransform: 'none' }}
+                  >
+                    Reset to pattern defaults
+                  </Button>
+                )}
+              </Box>
+            </Collapse>
           </Box>
 
           {/* Notes */}

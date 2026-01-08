@@ -123,15 +123,17 @@ export function PersonView({
 
   const fatigueAnalysis = useMemo(() => {
     if (periodAssignments.length === 0) return null;
-    const shifts: ShiftDefinition[] = periodAssignments.map((a) => {
+
+    // First, build shifts with period-relative day numbers to track gaps correctly
+    const periodStart = new Date(currentPeriod!.startDate);
+    const shiftsWithPeriodDays = periodAssignments.map((a) => {
       const pattern = shiftPatterns.find(p => p.id === a.shiftPatternId);
       const startTime = a.customStartTime || pattern?.startTime || '08:00';
       const endTime = a.customEndTime || pattern?.endTime || '18:00';
-      const periodStart = new Date(currentPeriod!.startDate);
       const assignmentDate = new Date(a.date);
-      const dayNumber = Math.floor((assignmentDate.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+      const periodDayNumber = Math.floor((assignmentDate.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
       return {
-        day: dayNumber,
+        periodDay: periodDayNumber,
         startTime,
         endTime,
         workload: pattern?.workload,
@@ -142,6 +144,22 @@ export function PersonView({
         breakLen: pattern?.breakLength,
       };
     });
+
+    // Now renumber starting from day 1, but preserve relative gaps between shifts
+    // E.g., if shifts are on period days 3, 4, 5, 8, 9 -> renumber to 1, 2, 3, 6, 7
+    const firstPeriodDay = shiftsWithPeriodDays[0]?.periodDay || 1;
+    const shifts: ShiftDefinition[] = shiftsWithPeriodDays.map((s) => ({
+      day: s.periodDay - firstPeriodDay + 1,  // Renumber so first shift is day 1
+      startTime: s.startTime,
+      endTime: s.endTime,
+      workload: s.workload,
+      attention: s.attention,
+      commuteIn: s.commuteIn,
+      commuteOut: s.commuteOut,
+      breakFreq: s.breakFreq,
+      breakLen: s.breakLen,
+    }));
+
     // Use combined function to get both Risk Index (FRI) and Fatigue Index (FGI)
     const results = calculateCombinedFatigueSequence(shifts);
     const maxFRI = Math.max(...results.map(r => r.riskIndex));
