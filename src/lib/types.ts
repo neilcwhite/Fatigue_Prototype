@@ -97,6 +97,8 @@ export interface Assignment {
   attention?: number;        // 1-4 scale
   break_frequency?: number;  // minutes between breaks
   break_length?: number;     // minutes per break
+  continuous_work?: number;  // max continuous work time (minutes)
+  break_after_continuous?: number; // rest after continuous work (minutes)
 }
 
 export interface UserProfile {
@@ -299,6 +301,8 @@ export interface AssignmentCamel {
   attention?: number;       // 1-4 scale
   breakFrequency?: number;  // minutes between breaks
   breakLength?: number;     // minutes per break
+  continuousWork?: number;  // max continuous work time (minutes)
+  breakAfterContinuous?: number; // rest after continuous work (minutes)
 }
 
 export interface TeamCamel {

@@ -74,6 +74,12 @@ export function AssignmentEditModal({
   const [breakLength, setBreakLength] = useState<number>(
     assignment.breakLength ?? selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength
   );
+  const [continuousWork, setContinuousWork] = useState<number>(
+    assignment.continuousWork ?? DEFAULT_FATIGUE_PARAMS.continuousWork
+  );
+  const [breakAfterContinuous, setBreakAfterContinuous] = useState<number>(
+    assignment.breakAfterContinuous ?? DEFAULT_FATIGUE_PARAMS.breakAfterContinuous
+  );
 
   // Check if params differ from pattern defaults
   const patternCommuteIn = selectedPattern.commuteTime ? Math.floor(selectedPattern.commuteTime / 2) : Math.floor(DEFAULT_FATIGUE_PARAMS.commuteTime / 2);
@@ -84,7 +90,9 @@ export function AssignmentEditModal({
     workload !== (selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload) ||
     attention !== (selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention) ||
     breakFrequency !== (selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency) ||
-    breakLength !== (selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
+    breakLength !== (selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength) ||
+    continuousWork !== DEFAULT_FATIGUE_PARAMS.continuousWork ||
+    breakAfterContinuous !== DEFAULT_FATIGUE_PARAMS.breakAfterContinuous;
 
   // Format date for display
   const formatDate = (dateStr: string) => {
@@ -138,6 +146,8 @@ export function AssignmentEditModal({
       const saveAttention = attention !== (selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention) ? attention : undefined;
       const saveBreakFrequency = breakFrequency !== (selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency) ? breakFrequency : undefined;
       const saveBreakLength = breakLength !== (selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength) ? breakLength : undefined;
+      const saveContinuousWork = continuousWork !== DEFAULT_FATIGUE_PARAMS.continuousWork ? continuousWork : undefined;
+      const saveBreakAfterContinuous = breakAfterContinuous !== DEFAULT_FATIGUE_PARAMS.breakAfterContinuous ? breakAfterContinuous : undefined;
 
       await onSave(assignment.id, {
         shiftPatternId: targetPatternId,
@@ -151,6 +161,8 @@ export function AssignmentEditModal({
         attention: saveAttention,
         breakFrequency: saveBreakFrequency,
         breakLength: saveBreakLength,
+        continuousWork: saveContinuousWork,
+        breakAfterContinuous: saveBreakAfterContinuous,
       });
       onClose();
     } catch (err) {
@@ -348,23 +360,29 @@ export function AssignmentEditModal({
                   <Grid size={{ xs: 6 }}>
                     <TextField
                       type="number"
-                      label="Commute to work"
+                      label="To work"
                       value={commuteIn}
                       onChange={(e) => setCommuteIn(parseInt(e.target.value) || 0)}
                       fullWidth
                       size="small"
-                      slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                      slotProps={{
+                        htmlInput: { min: 0, max: 180 },
+                        inputLabel: { shrink: true }
+                      }}
                     />
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <TextField
                       type="number"
-                      label="Commute from work"
+                      label="From work"
                       value={commuteOut}
                       onChange={(e) => setCommuteOut(parseInt(e.target.value) || 0)}
                       fullWidth
                       size="small"
-                      slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                      slotProps={{
+                        htmlInput: { min: 0, max: 180 },
+                        inputLabel: { shrink: true }
+                      }}
                     />
                   </Grid>
                 </Grid>
@@ -410,7 +428,7 @@ export function AssignmentEditModal({
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
                   Break Settings
                 </Typography>
-                <Grid container spacing={2}>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid size={{ xs: 6 }}>
                     <TextField
                       type="number"
@@ -419,7 +437,10 @@ export function AssignmentEditModal({
                       onChange={(e) => setBreakFrequency(parseInt(e.target.value) || 180)}
                       fullWidth
                       size="small"
-                      slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                      slotProps={{
+                        htmlInput: { min: 30, max: 480 },
+                        inputLabel: { shrink: true }
+                      }}
                     />
                   </Grid>
                   <Grid size={{ xs: 6 }}>
@@ -430,7 +451,45 @@ export function AssignmentEditModal({
                       onChange={(e) => setBreakLength(parseInt(e.target.value) || 15)}
                       fullWidth
                       size="small"
-                      slotProps={{ htmlInput: { min: 5, max: 60 } }}
+                      slotProps={{
+                        htmlInput: { min: 5, max: 60 },
+                        inputLabel: { shrink: true }
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Continuous Work Settings */}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Continuous Work Limits
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField
+                      type="number"
+                      label="Max continuous (mins)"
+                      value={continuousWork}
+                      onChange={(e) => setContinuousWork(parseInt(e.target.value) || 240)}
+                      fullWidth
+                      size="small"
+                      slotProps={{
+                        htmlInput: { min: 60, max: 480 },
+                        inputLabel: { shrink: true }
+                      }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField
+                      type="number"
+                      label="Rest after (mins)"
+                      value={breakAfterContinuous}
+                      onChange={(e) => setBreakAfterContinuous(parseInt(e.target.value) || 30)}
+                      fullWidth
+                      size="small"
+                      slotProps={{
+                        htmlInput: { min: 10, max: 120 },
+                        inputLabel: { shrink: true }
+                      }}
                     />
                   </Grid>
                 </Grid>
@@ -446,6 +505,8 @@ export function AssignmentEditModal({
                       setAttention(selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention);
                       setBreakFrequency(selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency);
                       setBreakLength(selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
+                      setContinuousWork(DEFAULT_FATIGUE_PARAMS.continuousWork);
+                      setBreakAfterContinuous(DEFAULT_FATIGUE_PARAMS.breakAfterContinuous);
                     }}
                     sx={{ mt: 2, textTransform: 'none' }}
                   >

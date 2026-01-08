@@ -342,6 +342,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         attention: a.attention,
         breakFrequency: a.break_frequency,
         breakLength: a.break_length,
+        continuousWork: a.continuous_work,
+        breakAfterContinuous: a.break_after_continuous,
       }));
 
       // Map fatigue assessments from snake_case to camelCase
@@ -733,6 +735,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     const attention = assignmentData.attention ?? pattern?.attention;
     const breakFrequency = assignmentData.breakFrequency ?? pattern?.breakFrequency;
     const breakLength = assignmentData.breakLength ?? pattern?.breakLength;
+    const continuousWork = assignmentData.continuousWork;
+    const breakAfterContinuous = assignmentData.breakAfterContinuous;
 
     // Validate fatigue parameters if provided
     const fatigueValidation = validateFatigueParams({
@@ -762,6 +766,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       attention: attention,
       break_frequency: breakFrequency,
       break_length: breakLength,
+      continuous_work: continuousWork,
+      break_after_continuous: breakAfterContinuous,
     });
 
     if (error) throw error;
@@ -812,6 +818,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       attention: updateData.attention,
       break_frequency: updateData.breakFrequency,
       break_length: updateData.breakLength,
+      continuous_work: updateData.continuousWork,
+      break_after_continuous: updateData.breakAfterContinuous,
     }).eq('id', id).eq('organisation_id', organisationId);
 
     if (error) throw error;
