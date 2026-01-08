@@ -722,13 +722,25 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       throw new Error('Invalid custom end time format. Use HH:MM format.');
     }
 
+    // Look up the shift pattern to get default fatigue parameters
+    // If no fatigue params are provided, copy them from the pattern
+    const pattern = data.shiftPatterns.find(p => p.id === assignmentData.shiftPatternId);
+
+    // Use provided params, or copy from pattern if pattern has them
+    const commuteIn = assignmentData.commuteIn ?? (pattern?.commuteTime ? Math.floor(pattern.commuteTime / 2) : undefined);
+    const commuteOut = assignmentData.commuteOut ?? (pattern?.commuteTime ? Math.ceil(pattern.commuteTime / 2) : undefined);
+    const workload = assignmentData.workload ?? pattern?.workload;
+    const attention = assignmentData.attention ?? pattern?.attention;
+    const breakFrequency = assignmentData.breakFrequency ?? pattern?.breakFrequency;
+    const breakLength = assignmentData.breakLength ?? pattern?.breakLength;
+
     // Validate fatigue parameters if provided
     const fatigueValidation = validateFatigueParams({
-      workload: assignmentData.workload,
-      attention: assignmentData.attention,
-      commuteTime: (assignmentData.commuteIn ?? 0) + (assignmentData.commuteOut ?? 0),
-      breakFrequency: assignmentData.breakFrequency,
-      breakLength: assignmentData.breakLength,
+      workload,
+      attention,
+      commuteTime: (commuteIn ?? 0) + (commuteOut ?? 0),
+      breakFrequency,
+      breakLength,
     });
     if (!fatigueValidation.valid) {
       throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
@@ -743,13 +755,13 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       custom_end_time: assignmentData.customEndTime,
       notes: assignmentData.notes,
       organisation_id: organisationId,
-      // Fatigue parameters
-      commute_in: assignmentData.commuteIn,
-      commute_out: assignmentData.commuteOut,
-      workload: assignmentData.workload,
-      attention: assignmentData.attention,
-      break_frequency: assignmentData.breakFrequency,
-      break_length: assignmentData.breakLength,
+      // Fatigue parameters (copied from pattern if not explicitly provided)
+      commute_in: commuteIn,
+      commute_out: commuteOut,
+      workload: workload,
+      attention: attention,
+      break_frequency: breakFrequency,
+      break_length: breakLength,
     });
 
     if (error) throw error;

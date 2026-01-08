@@ -15,7 +15,6 @@ import MenuItem from '@mui/material/MenuItem';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
-import Tooltip from '@mui/material/Tooltip';
 import { X, Clock, User, Calendar, FileText, ChevronDown, ChevronUp, Settings } from '@/components/ui/Icons';
 import type { AssignmentCamel, ShiftPatternCamel, EmployeeCamel } from '@/lib/types';
 import { DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
@@ -347,104 +346,92 @@ export function AssignmentEditModal({
                 </Typography>
                 <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid size={{ xs: 6 }}>
-                    <Tooltip title="Commute time TO work (minutes)" arrow>
-                      <TextField
-                        type="number"
-                        label="To Work"
-                        value={commuteIn}
-                        onChange={(e) => setCommuteIn(parseInt(e.target.value) || 0)}
-                        fullWidth
-                        size="small"
-                        slotProps={{ htmlInput: { min: 0, max: 180 } }}
-                      />
-                    </Tooltip>
+                    <TextField
+                      type="number"
+                      label="Commute to work"
+                      value={commuteIn}
+                      onChange={(e) => setCommuteIn(parseInt(e.target.value) || 0)}
+                      fullWidth
+                      size="small"
+                      slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                    />
                   </Grid>
                   <Grid size={{ xs: 6 }}>
-                    <Tooltip title="Commute time FROM work (minutes)" arrow>
-                      <TextField
-                        type="number"
-                        label="From Work"
-                        value={commuteOut}
-                        onChange={(e) => setCommuteOut(parseInt(e.target.value) || 0)}
-                        fullWidth
-                        size="small"
-                        slotProps={{ htmlInput: { min: 0, max: 180 } }}
-                      />
-                    </Tooltip>
+                    <TextField
+                      type="number"
+                      label="Commute from work"
+                      value={commuteOut}
+                      onChange={(e) => setCommuteOut(parseInt(e.target.value) || 0)}
+                      fullWidth
+                      size="small"
+                      slotProps={{ htmlInput: { min: 0, max: 180 } }}
+                    />
                   </Grid>
                 </Grid>
 
                 {/* Workload & Attention */}
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Job Characteristics
+                  Job Characteristics (1=most demanding, 4=least demanding)
                 </Typography>
                 <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid size={{ xs: 6 }}>
-                    <Tooltip title="1=Extremely demanding, 4=Extremely undemanding" arrow>
-                      <TextField
-                        select
-                        label="Workload"
-                        value={workload}
-                        onChange={(e) => setWorkload(parseInt(e.target.value))}
-                        fullWidth
-                        size="small"
-                      >
-                        <MenuItem value={1}>1 - Extreme</MenuItem>
-                        <MenuItem value={2}>2 - Moderate</MenuItem>
-                        <MenuItem value={3}>3 - Light</MenuItem>
-                        <MenuItem value={4}>4 - Minimal</MenuItem>
-                      </TextField>
-                    </Tooltip>
+                    <TextField
+                      select
+                      label="Workload"
+                      value={workload}
+                      onChange={(e) => setWorkload(parseInt(e.target.value))}
+                      fullWidth
+                      size="small"
+                    >
+                      <MenuItem value={1}>1 - Extremely demanding</MenuItem>
+                      <MenuItem value={2}>2 - Moderately demanding</MenuItem>
+                      <MenuItem value={3}>3 - Moderately undemanding</MenuItem>
+                      <MenuItem value={4}>4 - Extremely undemanding</MenuItem>
+                    </TextField>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
-                    <Tooltip title="1=All the time, 4=Rarely/never" arrow>
-                      <TextField
-                        select
-                        label="Attention"
-                        value={attention}
-                        onChange={(e) => setAttention(parseInt(e.target.value))}
-                        fullWidth
-                        size="small"
-                      >
-                        <MenuItem value={1}>1 - Constant</MenuItem>
-                        <MenuItem value={2}>2 - Frequent</MenuItem>
-                        <MenuItem value={3}>3 - Occasional</MenuItem>
-                        <MenuItem value={4}>4 - Rare</MenuItem>
-                      </TextField>
-                    </Tooltip>
+                    <TextField
+                      select
+                      label="Attention Required"
+                      value={attention}
+                      onChange={(e) => setAttention(parseInt(e.target.value))}
+                      fullWidth
+                      size="small"
+                    >
+                      <MenuItem value={1}>1 - All/most of the time</MenuItem>
+                      <MenuItem value={2}>2 - Some of the time</MenuItem>
+                      <MenuItem value={3}>3 - Occasionally</MenuItem>
+                      <MenuItem value={4}>4 - Rarely/never</MenuItem>
+                    </TextField>
                   </Grid>
                 </Grid>
 
                 {/* Break Settings */}
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Break Settings (minutes)
+                  Break Settings
                 </Typography>
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6 }}>
-                    <Tooltip title="Time between breaks (minutes)" arrow>
-                      <TextField
-                        type="number"
-                        label="Break Frequency"
-                        value={breakFrequency}
-                        onChange={(e) => setBreakFrequency(parseInt(e.target.value) || 180)}
-                        fullWidth
-                        size="small"
-                        slotProps={{ htmlInput: { min: 30, max: 480 } }}
-                      />
-                    </Tooltip>
+                    <TextField
+                      type="number"
+                      label="Mins between breaks"
+                      value={breakFrequency}
+                      onChange={(e) => setBreakFrequency(parseInt(e.target.value) || 180)}
+                      fullWidth
+                      size="small"
+                      slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                    />
                   </Grid>
                   <Grid size={{ xs: 6 }}>
-                    <Tooltip title="Average break duration (minutes)" arrow>
-                      <TextField
-                        type="number"
-                        label="Break Length"
-                        value={breakLength}
-                        onChange={(e) => setBreakLength(parseInt(e.target.value) || 15)}
-                        fullWidth
-                        size="small"
-                        slotProps={{ htmlInput: { min: 5, max: 60 } }}
-                      />
-                    </Tooltip>
+                    <TextField
+                      type="number"
+                      label="Break duration (mins)"
+                      value={breakLength}
+                      onChange={(e) => setBreakLength(parseInt(e.target.value) || 15)}
+                      fullWidth
+                      size="small"
+                      slotProps={{ htmlInput: { min: 5, max: 60 } }}
+                    />
                   </Grid>
                 </Grid>
 
