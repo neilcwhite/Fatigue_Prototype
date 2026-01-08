@@ -522,9 +522,10 @@ export function FatigueView({
     ).length;
 
     // Create a map for easy lookup by HSE day number (Mon=1, Tue=2, etc.)
+    // Use shiftDefinitions[idx].day as the key (same approach as debug page)
     const calculationsMap = new Map<number, typeof calculationsWithDuty[0]>();
-    calculationsWithDuty.forEach(calc => {
-      calculationsMap.set(calc.day, calc);
+    shiftDefinitions.forEach((sd, idx) => {
+      calculationsMap.set(sd.day, calculationsWithDuty[idx]);
     });
 
     return {
