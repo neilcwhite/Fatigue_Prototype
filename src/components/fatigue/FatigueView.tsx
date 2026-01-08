@@ -1531,9 +1531,9 @@ export function FatigueView({
                           if (endHour <= startHour) endHour += 24;
                           const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
 
-                          // Look up results using NR day number (map is keyed by original shift.day)
+                          // Look up results - find by matching the shift id
                           const nrDayNum = nrDayIndexToShiftDay(index);
-                          const dayResult = results?.calculationsMap.get(nrDayNum);
+                          const dayResult = results?.calculations.find(c => c.id === shift?.id);
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
                           // Fatigue Index data
