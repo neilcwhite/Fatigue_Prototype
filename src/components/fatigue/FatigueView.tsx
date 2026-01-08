@@ -27,7 +27,8 @@ import Grid from '@mui/material/Grid';
 import Collapse from '@mui/material/Collapse';
 import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
-import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X, Edit } from '@/components/ui/Icons';
+import { ChevronLeft, Plus, Trash2, Settings, ChevronDown, ChevronUp, Download, FileText, BarChart, Users, X, Edit, Copy } from '@/components/ui/Icons';
+import Menu from '@mui/material/Menu';
 import {
   calculateFatigueSequence,
   calculateFatigueIndexSequence,
@@ -300,6 +301,10 @@ export function FatigueView({
 
   // Track if we've initialized from props
   const initializedFromProps = useRef(false);
+
+  // Copy day to other days menu state
+  const [copyMenuAnchor, setCopyMenuAnchor] = useState<null | HTMLElement>(null);
+  const [copySourceDay, setCopySourceDay] = useState<number | null>(null);
 
   // Handle initial create mode when navigating from Planning view
   useEffect(() => {
@@ -725,6 +730,64 @@ export function FatigueView({
   const getShiftForDay = (dayIndex: number): Shift | undefined => {
     const dayNum = nrDayIndexToShiftDay(dayIndex);
     return shifts.find(s => s.day === dayNum);
+  };
+
+  // Copy day settings to other days
+  const handleCopyDayClick = (event: React.MouseEvent<HTMLElement>, dayIndex: number) => {
+    setCopyMenuAnchor(event.currentTarget);
+    setCopySourceDay(dayIndex);
+  };
+
+  const handleCopyMenuClose = () => {
+    setCopyMenuAnchor(null);
+    setCopySourceDay(null);
+  };
+
+  const handleCopyToDay = (targetDayIndex: number) => {
+    if (copySourceDay === null) return;
+    const sourceShift = getShiftForDay(copySourceDay);
+    if (!sourceShift) return;
+
+    const targetDayNum = nrDayIndexToShiftDay(targetDayIndex);
+
+    setShifts(prev => prev.map(s => {
+      if (s.day === targetDayNum) {
+        return {
+          ...s,
+          startTime: sourceShift.startTime,
+          endTime: sourceShift.endTime,
+          isRestDay: sourceShift.isRestDay,
+          commuteIn: sourceShift.commuteIn,
+          commuteOut: sourceShift.commuteOut,
+          workload: sourceShift.workload,
+          attention: sourceShift.attention,
+          breakFreq: sourceShift.breakFreq,
+          breakLen: sourceShift.breakLen,
+        };
+      }
+      return s;
+    }));
+    handleCopyMenuClose();
+  };
+
+  const handleCopyToAllDays = () => {
+    if (copySourceDay === null) return;
+    const sourceShift = getShiftForDay(copySourceDay);
+    if (!sourceShift) return;
+
+    setShifts(prev => prev.map(s => ({
+      ...s,
+      startTime: sourceShift.startTime,
+      endTime: sourceShift.endTime,
+      isRestDay: sourceShift.isRestDay,
+      commuteIn: sourceShift.commuteIn,
+      commuteOut: sourceShift.commuteOut,
+      workload: sourceShift.workload,
+      attention: sourceShift.attention,
+      breakFreq: sourceShift.breakFreq,
+      breakLen: sourceShift.breakLen,
+    })));
+    handleCopyMenuClose();
   };
 
   // Entry modal handlers
@@ -1239,84 +1302,118 @@ export function FatigueView({
           </Paper>
         )}
 
-        {/* Top Row: Chart (right half) - full width on small screens */}
+        {/* Top Row: Global Params (left) + Two Charts (right) */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            {/* Summary stats inline */}
+          {/* Global Parameters Panel */}
+          <Grid size={{ xs: 12, md: 4, lg: 3 }}>
             <Paper elevation={2} sx={{ height: '100%' }}>
               <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-                <Typography variant="subtitle2" fontWeight={600}>Summary</Typography>
+                <Typography variant="subtitle2" fontWeight={600}>Global Parameters (HSE RR446 Defaults)</Typography>
               </Box>
-              <Box sx={{ p: 2 }}>
-                {results ? (
-                  <Grid container spacing={1}>
-                    <Grid size={{ xs: 6 }}>
-                      <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.avgRisk).level) }}>
-                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Avg FRI</Typography>
-                        <Typography variant="h6" fontWeight={700}>{results.summary.avgRisk}</Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Paper sx={{ p: 1, border: 1, ...getRiskCardSx(getRiskLevel(results.summary.maxRisk).level) }}>
-                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Peak FRI</Typography>
-                        <Typography variant="h6" fontWeight={700}>{results.summary.maxRisk}</Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Paper sx={{ p: 1, border: 1, ...getFatigueCardSx(getFatigueLevel(results.summary.avgFatigue).level) }}>
-                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Avg FGI</Typography>
-                        <Typography variant="h6" fontWeight={700}>{results.summary.avgFatigue.toFixed(1)}</Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Paper sx={{ p: 1, border: 1, ...getFatigueCardSx(getFatigueLevel(results.summary.maxFatigue).level) }}>
-                        <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem' }}>Peak FGI</Typography>
-                        <Typography variant="h6" fontWeight={700}>{results.summary.maxFatigue.toFixed(1)}</Typography>
-                      </Paper>
-                    </Grid>
+              <Box sx={{ p: 1.5 }}>
+                <Grid container spacing={1}>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField type="number" label="Commute Total (mins)" value={params.commuteTime} onChange={(e) => setParams({ ...params, commuteTime: parseInt(e.target.value) || 0 })} size="small" fullWidth disabled={isReadOnly} />
                   </Grid>
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>Add shifts to see summary</Typography>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField select label="Workload (1-4)" value={params.workload} onChange={(e) => setParams({ ...params, workload: parseInt(e.target.value) })} size="small" fullWidth disabled={isReadOnly}>
+                      <MenuItem value={1}>1 - Extremely demanding</MenuItem>
+                      <MenuItem value={2}>2 - Moderately demanding</MenuItem>
+                      <MenuItem value={3}>3 - Moderately undemanding</MenuItem>
+                      <MenuItem value={4}>4 - Extremely undemanding</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField select label="Attention (1-4)" value={params.attention} onChange={(e) => setParams({ ...params, attention: parseInt(e.target.value) })} size="small" fullWidth disabled={isReadOnly}>
+                      <MenuItem value={1}>1 - All/nearly all the time</MenuItem>
+                      <MenuItem value={2}>2 - Some of the time</MenuItem>
+                      <MenuItem value={3}>3 - Most of the time</MenuItem>
+                      <MenuItem value={4}>4 - Rarely or never</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField type="number" label="Break Freq (mins)" value={params.breakFrequency} onChange={(e) => setParams({ ...params, breakFrequency: parseInt(e.target.value) || 180 })} size="small" fullWidth disabled={isReadOnly} />
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField type="number" label="Break Length (mins)" value={params.breakLength} onChange={(e) => setParams({ ...params, breakLength: parseInt(e.target.value) || 15 })} size="small" fullWidth disabled={isReadOnly} />
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField type="number" label="Max Continuous (mins)" value={params.continuousWork} onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 240 })} size="small" fullWidth disabled={isReadOnly} />
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField type="number" label="Break After Max (mins)" value={params.breakAfterContinuous} onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })} size="small" fullWidth disabled={isReadOnly} />
+                  </Grid>
+                </Grid>
+                {!isReadOnly && shifts.length > 0 && (
+                  <Button variant="contained" color="primary" size="small" fullWidth sx={{ mt: 1.5 }} onClick={handleApplyGlobalToAll}>
+                    Apply Defaults to shift
+                  </Button>
                 )}
               </Box>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            {/* Chart */}
-            <Paper elevation={2} sx={{ height: '100%' }}>
-              <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle2" fontWeight={600}>FRI / FGI Chart</Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <FormControlLabel
-                    control={<Checkbox size="small" checked={showComponents} onChange={(e) => setShowComponents(e.target.checked)} />}
-                    label={<Typography variant="caption">Components</Typography>}
-                    sx={{ mr: 0 }}
-                  />
-                  <Button size="small" variant="text" onClick={handleExportCSV} sx={{ minWidth: 'auto', px: 1 }}>
-                    <Download className="w-3 h-3" />
-                  </Button>
-                </Box>
-              </Box>
-              <Box sx={{ p: 1 }}>
-                {results ? (
-                  <FatigueChart
-                    data={results.calculations}
-                    worstCaseData={worstCaseResults ? results.calculations.map(calc => {
-                      const worst = worstCaseResults.get(calc.day);
-                      return { ...calc, riskIndex: worst?.riskIndex ?? calc.riskIndex, riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel };
-                    }) : undefined}
-                    height={160}
-                    showThresholds={true}
-                    showComponents={showComponents}
-                    showWorstCase={true}
-                  />
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
+
+          {/* Charts Panel - Two side by side */}
+          <Grid size={{ xs: 12, md: 8, lg: 9 }}>
+            <Grid container spacing={2}>
+              {/* Fatigue Chart */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Paper elevation={2} sx={{ height: '100%' }}>
+                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle2" fontWeight={600}>Fatigue</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', fontSize: '0.65rem' }}>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /><span>&lt;1.0</span>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#ff9800', borderRadius: '50%' }} /><span>1.0-1.1</span>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#f44336', borderRadius: '50%' }} /><span>1.1-1.2</span>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#9c27b0', borderRadius: '50%' }} /><span>&gt;1.2</span>
+                    </Box>
                   </Box>
-                )}
-              </Box>
-            </Paper>
+                  <Box sx={{ p: 1, height: 150 }}>
+                    {results ? (
+                      <FatigueChart data={results.calculations} height={140} showThresholds={true} showComponents={false} showWorstCase={false} />
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                        <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+              </Grid>
+              {/* Risk Chart */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Paper elevation={2} sx={{ height: '100%' }}>
+                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="subtitle2" fontWeight={600}>Risk</Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', fontSize: '0.65rem' }}>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /><span>&lt;1.0</span>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#ff9800', borderRadius: '50%' }} /><span>1.0-1.1</span>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#f44336', borderRadius: '50%' }} /><span>1.1-1.2</span>
+                      <Box sx={{ width: 10, height: 10, bgcolor: '#9c27b0', borderRadius: '50%' }} /><span>&gt;1.2</span>
+                      <span style={{ marginLeft: 4 }}>--- Worst</span>
+                    </Box>
+                  </Box>
+                  <Box sx={{ p: 1, height: 150 }}>
+                    {results ? (
+                      <FatigueChart
+                        data={results.calculations}
+                        worstCaseData={worstCaseResults ? results.calculations.map(calc => {
+                          const worst = worstCaseResults.get(calc.day);
+                          return { ...calc, riskIndex: worst?.riskIndex ?? calc.riskIndex, riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel };
+                        }) : undefined}
+                        height={140}
+                        showThresholds={true}
+                        showComponents={false}
+                        showWorstCase={true}
+                      />
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                        <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </Paper>
+              </Grid>
+            </Grid>
           </Grid>
         </Grid>
 
@@ -1392,10 +1489,10 @@ export function FatigueView({
                           </Box>
                         </Alert>
 
-                        {/* Header */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '32px 32px 42px 56px 56px 42px 34px 44px 44px 44px 42px 50px 46px 50px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
+                        {/* Header - Full width with all component columns */}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '36px 32px 40px 58px 58px 40px 32px 40px 40px 40px 40px 40px 40px 48px 48px 48px 48px 48px 48px 48px 32px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1 }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
-                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Rest</Typography>
+                          <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>On</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Start</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>End</Typography>
@@ -1405,9 +1502,16 @@ export function FatigueView({
                           <Tooltip title="Attention (1=All/nearly all the time, 4=Rarely/never)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'secondary.main', cursor: 'help' }}>A</Typography></Tooltip>
                           <Tooltip title="Break Frequency - minutes between breaks" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BF</Typography></Tooltip>
                           <Tooltip title="Break Length - average break duration (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'success.main', cursor: 'help' }}>BL</Typography></Tooltip>
-                          <Tooltip title="Fatigue Risk Index (multiplicative model)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}>FRI</Typography></Tooltip>
-                          <Tooltip title="Fatigue Index (probability model, Day≥35 / Night≥45 = breach)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'primary.main', cursor: 'help' }}>FGI</Typography></Tooltip>
-                          <Tooltip title="Worst-case FRI (Workload=1, Attention=1)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'error.main', cursor: 'help' }}>Worst</Typography></Tooltip>
+                          <Tooltip title="Max Continuous Work - longest work before break (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'warning.main', cursor: 'help' }}>Max C</Typography></Tooltip>
+                          <Tooltip title="Break After Max - break length after longest work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'warning.main', cursor: 'help' }}>Max B</Typography></Tooltip>
+                          <Tooltip title="Fatigue Risk Index (multiplicative model)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#e3f2fd', cursor: 'help' }}>FRI</Typography></Tooltip>
+                          <Tooltip title="Fatigue Index (probability model)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#fff3e0', cursor: 'help' }}>FGI</Typography></Tooltip>
+                          <Tooltip title="Cumulative Risk component" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#e8f5e9', cursor: 'help' }}>Cum(R)</Typography></Tooltip>
+                          <Tooltip title="Timing Risk component" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#e8f5e9', cursor: 'help' }}>Tim(R)</Typography></Tooltip>
+                          <Tooltip title="Job/Breaks Risk component" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#e8f5e9', cursor: 'help' }}>Job(R)</Typography></Tooltip>
+                          <Tooltip title="Cumulative Fatigue component" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#fce4ec', cursor: 'help' }}>Cum(F)</Typography></Tooltip>
+                          <Tooltip title="Time of Day Fatigue component" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: '#fce4ec', cursor: 'help' }}>ToD(F)</Typography></Tooltip>
+                          <Tooltip title="Copy day settings to other days" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', cursor: 'help' }}></Typography></Tooltip>
                         </Box>
 
                         {/* Day Rows */}
@@ -1435,16 +1539,16 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '32px 32px 42px 56px 56px 42px 34px 44px 44px 44px 42px 50px 46px 50px',
+                                gridTemplateColumns: '36px 32px 40px 58px 58px 40px 32px 40px 40px 40px 40px 40px 40px 48px 48px 48px 48px 48px 48px 48px 32px',
                                 gap: 0.5,
-                                p: 1,
+                                p: 0.5,
                                 borderRadius: 1,
                                 alignItems: 'center',
-                                bgcolor: isRestDay ? 'grey.100' : (index < 2 ? 'warning.50' : 'success.50'),
+                                bgcolor: isRestDay ? 'grey.100' : 'inherit',
                                 border: 1,
-                                borderColor: isRestDay ? 'grey.300' : (index < 2 ? 'warning.200' : 'success.200'),
+                                borderColor: isRestDay ? 'grey.300' : 'grey.200',
                                 mb: 0.5,
-                                opacity: isRestDay ? 0.7 : 1,
+                                opacity: isRestDay ? 0.6 : 1,
                               }}
                             >
                               <Typography variant="body2" fontWeight={600} sx={{ textAlign: 'center' }}>{dayName}</Typography>
@@ -1452,7 +1556,7 @@ export function FatigueView({
                               <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Checkbox
                                   size="small"
-                                  checked={isRestDay}
+                                  checked={!isRestDay}
                                   onChange={() => toggleRestDay(index)}
                                   disabled={isReadOnly}
                                   sx={{ p: 0 }}
@@ -1553,48 +1657,58 @@ export function FatigueView({
                                 />
                               </Tooltip>
 
-                              <Tooltip title="Break length (minutes per break)" placement="right" arrow>
-                                <TextField
-                                  type="number"
-                                  size="small"
-                                  value={shift?.breakLen ?? params.breakLength}
-                                  onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)}
-                                  disabled={isRestDay || isReadOnly}
-                                  slotProps={{ htmlInput: { min: 5, max: 60, step: 5, style: { textAlign: 'center', padding: '4px' }, onFocus: (e: React.FocusEvent<HTMLInputElement>) => e.target.select() } }}
-                                  sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }}
-                                />
-                              </Tooltip>
+                              <TextField type="number" size="small" value={shift?.breakLen ?? params.breakLength} onChange={(e) => updateWeeklyShiftParam(index, 'breakLen', parseInt(e.target.value) || 15)} disabled={isRestDay || isReadOnly} slotProps={{ htmlInput: { min: 5, max: 60, style: { textAlign: 'center', padding: '4px' } } }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'success.50' } }} />
 
-                              <Box sx={{ textAlign: 'center' }}>
-                                {isRestDay ? (
-                                  <Typography variant="caption" color="text.disabled">-</Typography>
-                                ) : dayFRI !== undefined ? (
-                                  <Chip size="small" label={dayFRI.toFixed(3)} sx={{ ...getRiskChipSx(dayRiskLevel), fontSize: '0.7rem', fontWeight: 700, height: 22 }} />
-                                ) : (
-                                  <Typography variant="caption" color="text.disabled">-</Typography>
-                                )}
-                              </Box>
+                              {/* Max Continuous Work */}
+                              <TextField type="number" size="small" value={params.continuousWork} onChange={(e) => setParams({ ...params, continuousWork: parseInt(e.target.value) || 240 })} disabled={isRestDay || isReadOnly} slotProps={{ htmlInput: { min: 15, max: 480, style: { textAlign: 'center', padding: '4px' } } }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'warning.50' } }} />
 
-                              {/* Fatigue Index (FGI) column */}
-                              <Box sx={{ textAlign: 'center' }}>
-                                {isRestDay ? (
-                                  <Typography variant="caption" color="text.disabled">-</Typography>
-                                ) : dayFGI !== undefined ? (
-                                  <Chip size="small" label={dayFGI.toFixed(1)} sx={{ ...getFatigueChipSx(dayFatigueLevel), fontSize: '0.7rem', fontWeight: 700, height: 22 }} />
-                                ) : (
-                                  <Typography variant="caption" color="text.disabled">-</Typography>
-                                )}
-                              </Box>
+                              {/* Break After Max */}
+                              <TextField type="number" size="small" value={params.breakAfterContinuous} onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })} disabled={isRestDay || isReadOnly} slotProps={{ htmlInput: { min: 5, max: 60, style: { textAlign: 'center', padding: '4px' } } }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'warning.50' } }} />
 
-                              <Box sx={{ textAlign: 'center' }}>
-                                {isRestDay ? (
-                                  <Typography variant="caption" color="text.disabled">-</Typography>
-                                ) : worstCaseFRI !== undefined ? (
-                                  <Chip size="small" label={worstCaseFRI.toFixed(3)} sx={{ ...getRiskChipSx(worstCaseLevel), fontSize: '0.7rem', fontWeight: 700, height: 22 }} />
-                                ) : (
-                                  <Typography variant="caption" color="text.disabled">-</Typography>
-                                )}
-                              </Box>
+                              {/* FRI */}
+                              <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: isRestDay ? 'transparent' : getRiskColor(dayRiskLevel), color: dayRiskLevel === 'low' ? 'text.primary' : 'white', borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayFRI !== undefined ? dayFRI.toFixed(3) : '-'}
+                              </Typography>
+
+                              {/* FGI */}
+                              <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: isRestDay ? 'transparent' : (dayFatigueLevel === 'low' ? '#e8f5e9' : dayFatigueLevel === 'moderate' ? '#fff3e0' : dayFatigueLevel === 'elevated' ? '#ffebee' : '#f3e5f5'), borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayFGI !== undefined ? dayFGI.toFixed(1) : '-'}
+                              </Typography>
+
+                              {/* Cum(R) */}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayResult?.cumulative !== undefined ? dayResult.cumulative.toFixed(3) : '-'}
+                              </Typography>
+
+                              {/* Tim(R) */}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayResult?.timing !== undefined ? dayResult.timing.toFixed(3) : '-'}
+                              </Typography>
+
+                              {/* Job(R) */}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#e8f5e9', borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayResult?.jobBreaks !== undefined ? dayResult.jobBreaks.toFixed(3) : '-'}
+                              </Typography>
+
+                              {/* Cum(F) */}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#fce4ec', borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayResult?.fatigueCumulative !== undefined ? dayResult.fatigueCumulative.toFixed(1) : '-'}
+                              </Typography>
+
+                              {/* ToD(F) */}
+                              <Typography variant="caption" sx={{ textAlign: 'center', bgcolor: '#fce4ec', borderRadius: 0.5, py: 0.25 }}>
+                                {isRestDay ? '-' : dayResult?.fatigueTimeOfDay !== undefined ? dayResult.fatigueTimeOfDay.toFixed(1) : '-'}
+                              </Typography>
+
+                              {/* Copy button */}
+                              {!isReadOnly && (
+                                <Tooltip title={`Copy ${dayName} to other days`} arrow>
+                                  <IconButton size="small" onClick={(e) => handleCopyDayClick(e, index)} sx={{ p: 0.25 }}>
+                                    <Copy className="w-4 h-4" />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {isReadOnly && <Box />}
                             </Box>
                           );
                         })}
@@ -1936,6 +2050,28 @@ export function FatigueView({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Copy Day Menu */}
+      <Menu
+        anchorEl={copyMenuAnchor}
+        open={Boolean(copyMenuAnchor)}
+        onClose={handleCopyMenuClose}
+      >
+        <MenuItem disabled sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+          Copy {copySourceDay !== null ? NR_DAYS[copySourceDay] : ''} to:
+        </MenuItem>
+        {NR_DAYS.map((dayName, index) => (
+          copySourceDay !== index && (
+            <MenuItem key={dayName} onClick={() => handleCopyToDay(index)} sx={{ fontSize: '0.875rem' }}>
+              {dayName}
+            </MenuItem>
+          )
+        ))}
+        <MenuItem divider />
+        <MenuItem onClick={handleCopyToAllDays} sx={{ fontWeight: 600, color: 'primary.main', fontSize: '0.875rem' }}>
+          Copy to ALL days
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }
