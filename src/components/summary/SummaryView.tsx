@@ -22,8 +22,8 @@ import TableRow from '@mui/material/TableRow';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
-import { AlertTriangle, CheckCircle, Users, Clock, Calendar, XCircle, ChevronDown, ChevronUp, Edit2 } from '@/components/ui/Icons';
-import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule, SupabaseUser } from '@/lib/types';
+import { AlertTriangle, CheckCircle, Users, Clock, Calendar, XCircle, ChevronDown, ChevronUp, Edit2, Eye, FileText } from '@/components/ui/Icons';
+import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule, SupabaseUser, FatigueAssessment } from '@/lib/types';
 import {
   checkProjectCompliance,
   checkEmployeeCompliance,
@@ -40,10 +40,13 @@ interface SummaryViewProps {
   employees: EmployeeCamel[];
   assignments: AssignmentCamel[];
   shiftPatterns: ShiftPatternCamel[];
+  fatigueAssessments?: FatigueAssessment[];
   onSelectProject: (id: number) => void;
   onNavigateToPerson: (employeeId: number) => void;
   onNavigateToPlanning: (projectId: number) => void;
   onEditShiftPattern?: (pattern: ShiftPatternCamel) => void;
+  onViewAssessment?: (assessmentId: string) => void;
+  onCreateAssessment?: (violation: ComplianceViolation) => void;
 }
 
 function getShiftDuration(pattern: ShiftPatternCamel, date: string): number {
@@ -82,10 +85,13 @@ export function SummaryView({
   employees,
   assignments,
   shiftPatterns,
+  fatigueAssessments = [],
   onSelectProject,
   onNavigateToPerson,
   onNavigateToPlanning,
   onEditShiftPattern,
+  onViewAssessment,
+  onCreateAssessment,
 }: SummaryViewProps) {
   const projectAssignments = useMemo(() =>
     assignments.filter(a => a.projectId === project.id),
@@ -126,6 +132,36 @@ export function SummaryView({
     });
     return grouped;
   }, [complianceResult.violations]);
+
+  // Check if violation requires FAMP assessment
+  const requiresAssessment = (type: string): boolean => {
+    return ['LEVEL_1_EXCEEDANCE', 'LEVEL_2_EXCEEDANCE', 'ELEVATED_FATIGUE_INDEX'].includes(type);
+  };
+
+  // Find matching assessment for a violation
+  const findMatchingAssessment = (violation: ComplianceViolation): FatigueAssessment | undefined => {
+    return fatigueAssessments.find(
+      a => a.violationType === violation.type &&
+           a.violationDate === violation.date &&
+           a.employeeId === violation.employeeId
+    );
+  };
+
+  // Get status display info
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return { label: 'FAMP Completed', color: 'success' as const };
+      case 'pending_manager':
+        return { label: 'Awaiting Manager', color: 'warning' as const };
+      case 'pending_employee':
+        return { label: 'Awaiting Employee', color: 'info' as const };
+      case 'draft':
+        return { label: 'FAMP Draft', color: 'default' as const };
+      default:
+        return { label: 'In Progress', color: 'default' as const };
+    }
+  };
 
   const getViolationIcon = (type: string) => {
     switch (type) {
@@ -533,42 +569,126 @@ export function SummaryView({
 
                     {/* Violations */}
                     <Box sx={{ bgcolor: hasBreach ? 'rgba(239, 68, 68, 0.05)' : hasLevel2 ? 'rgba(249, 115, 22, 0.05)' : hasLevel1 ? 'rgba(234, 179, 8, 0.05)' : 'rgba(107, 114, 128, 0.05)' }}>
-                      {empViolations.map((violation, idx) => (
-                        <Box
-                          key={idx}
-                          onClick={() => onNavigateToPerson(Number(empId))}
-                          sx={{
-                            p: 1.5,
-                            borderTop: 1,
-                            borderColor: 'divider',
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: 'action.hover' },
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                            <Typography sx={{ fontSize: '1rem' }}>{getViolationIcon(violation.type)}</Typography>
-                            <Box>
-                              <Typography
-                                variant="body2"
-                                fontWeight={500}
-                                sx={{ color: violation.severity === 'breach' ? '#ef4444' : violation.severity === 'level2' ? '#f97316' : violation.severity === 'level1' ? '#eab308' : '#6b7280' }}
-                              >
-                                {violation.message}
+                      {empViolations.map((violation, idx) => {
+                        const matchingAssessment = requiresAssessment(violation.type)
+                          ? findMatchingAssessment(violation)
+                          : undefined;
+                        const hasAssessment = !!matchingAssessment;
+                        const statusInfo = matchingAssessment ? getStatusInfo(matchingAssessment.status) : null;
+                        const isCompleted = hasAssessment && matchingAssessment?.status === 'completed';
+
+                        return (
+                          <Box
+                            key={idx}
+                            onClick={() => onNavigateToPerson(Number(empId))}
+                            sx={{
+                              p: 1.5,
+                              borderTop: 1,
+                              borderColor: 'divider',
+                              cursor: 'pointer',
+                              bgcolor: isCompleted ? 'rgba(34, 197, 94, 0.08)' : 'transparent',
+                              '&:hover': { bgcolor: isCompleted ? 'rgba(34, 197, 94, 0.15)' : 'action.hover' },
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                              <Typography sx={{ fontSize: '1rem' }}>
+                                {isCompleted ? '✅' : getViolationIcon(violation.type)}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {violation.date && new Date(violation.date).toLocaleDateString('en-GB', {
-                                  weekday: 'short',
-                                  day: 'numeric',
-                                  month: 'short',
-                                })}
-                                <Box component="span" sx={{ color: 'primary.main', ml: 1 }}>
-                                  → Click to view in calendar
+                              <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                  <Typography
+                                    variant="body2"
+                                    fontWeight={500}
+                                    sx={{
+                                      color: isCompleted
+                                        ? '#166534'
+                                        : violation.severity === 'breach' ? '#ef4444'
+                                        : violation.severity === 'level2' ? '#f97316'
+                                        : violation.severity === 'level1' ? '#eab308'
+                                        : '#6b7280'
+                                    }}
+                                  >
+                                    {violation.message}
+                                  </Typography>
+                                  {hasAssessment && statusInfo && (
+                                    <Chip
+                                      label={statusInfo.label}
+                                      size="small"
+                                      color={statusInfo.color}
+                                      sx={{ height: 18, fontSize: '0.65rem' }}
+                                    />
+                                  )}
                                 </Box>
-                              </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {violation.date && new Date(violation.date).toLocaleDateString('en-GB', {
+                                      weekday: 'short',
+                                      day: 'numeric',
+                                      month: 'short',
+                                    })}
+                                  </Typography>
+                                  {requiresAssessment(violation.type) && (
+                                    hasAssessment ? (
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (onViewAssessment && matchingAssessment) {
+                                            onViewAssessment(matchingAssessment.id);
+                                          }
+                                        }}
+                                        startIcon={<Eye className="w-3 h-3" />}
+                                        sx={{
+                                          fontSize: '0.65rem',
+                                          py: 0.25,
+                                          px: 0.75,
+                                          minHeight: 0,
+                                          borderColor: '#22c55e',
+                                          color: '#166534',
+                                          '&:hover': {
+                                            borderColor: '#16a34a',
+                                            bgcolor: '#dcfce7',
+                                          },
+                                        }}
+                                      >
+                                        View FAMP
+                                      </Button>
+                                    ) : onCreateAssessment && (
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onCreateAssessment(violation);
+                                        }}
+                                        startIcon={<FileText className="w-3 h-3" />}
+                                        sx={{
+                                          fontSize: '0.65rem',
+                                          py: 0.25,
+                                          px: 0.75,
+                                          minHeight: 0,
+                                          borderColor: violation.severity === 'breach' ? '#ef4444' : violation.severity === 'level2' ? '#f97316' : '#eab308',
+                                          color: violation.severity === 'breach' ? '#991b1b' : violation.severity === 'level2' ? '#9a3412' : '#854d0e',
+                                          '&:hover': {
+                                            borderColor: violation.severity === 'breach' ? '#dc2626' : violation.severity === 'level2' ? '#ea580c' : '#ca8a04',
+                                            bgcolor: violation.severity === 'breach' ? '#fee2e2' : violation.severity === 'level2' ? '#ffedd5' : '#fef9c3',
+                                          },
+                                        }}
+                                      >
+                                        Create FAMP
+                                      </Button>
+                                    )
+                                  )}
+                                  <Box component="span" sx={{ color: 'primary.main', fontSize: '0.7rem' }}>
+                                    → View in calendar
+                                  </Box>
+                                </Box>
+                              </Box>
                             </Box>
                           </Box>
-                        </Box>
-                      ))}
+                        );
+                      })}
                     </Box>
                   </Paper>
                 );

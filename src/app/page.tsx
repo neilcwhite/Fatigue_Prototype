@@ -420,10 +420,14 @@ export default function Home() {
             employees={employees}
             assignments={assignments}
             shiftPatterns={shiftPatterns}
+            fatigueAssessments={fatigueAssessments}
             onSelectProject={(id) => setSelectedProject(id)}
             onNavigateToPerson={handleNavigateToPerson}
             onNavigateToPlanning={handleSelectProject}
             onEditShiftPattern={(pattern) => setEditingShiftPattern(pattern)}
+            onViewAssessment={(assessmentId) => {
+              setCurrentView('assessments');
+            }}
           />
         )}
 
