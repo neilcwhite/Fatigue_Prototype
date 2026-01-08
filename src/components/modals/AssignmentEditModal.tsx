@@ -49,17 +49,32 @@ export function AssignmentEditModal({
 
   const selectedPattern = allShiftPatterns.find(p => p.id === selectedPatternId) || shiftPattern;
 
-  // Fatigue parameters - initialize from pattern or defaults
+  // Helper to get pattern defaults
+  const getPatternCommuteIn = (pattern: ShiftPatternCamel) =>
+    pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : Math.floor(DEFAULT_FATIGUE_PARAMS.commuteTime / 2);
+  const getPatternCommuteOut = (pattern: ShiftPatternCamel) =>
+    pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : Math.ceil(DEFAULT_FATIGUE_PARAMS.commuteTime / 2);
+
+  // Fatigue parameters - initialize from assignment first, then pattern, then defaults
+  // This ensures when we open the modal, we see what's actually being used for this assignment
   const [commuteIn, setCommuteIn] = useState<number>(
-    selectedPattern.commuteTime ? Math.floor(selectedPattern.commuteTime / 2) : Math.floor(DEFAULT_FATIGUE_PARAMS.commuteTime / 2)
+    assignment.commuteIn ?? getPatternCommuteIn(selectedPattern)
   );
   const [commuteOut, setCommuteOut] = useState<number>(
-    selectedPattern.commuteTime ? Math.ceil(selectedPattern.commuteTime / 2) : Math.ceil(DEFAULT_FATIGUE_PARAMS.commuteTime / 2)
+    assignment.commuteOut ?? getPatternCommuteOut(selectedPattern)
   );
-  const [workload, setWorkload] = useState<number>(selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload);
-  const [attention, setAttention] = useState<number>(selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention);
-  const [breakFrequency, setBreakFrequency] = useState<number>(selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency);
-  const [breakLength, setBreakLength] = useState<number>(selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
+  const [workload, setWorkload] = useState<number>(
+    assignment.workload ?? selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload
+  );
+  const [attention, setAttention] = useState<number>(
+    assignment.attention ?? selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention
+  );
+  const [breakFrequency, setBreakFrequency] = useState<number>(
+    assignment.breakFrequency ?? selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency
+  );
+  const [breakLength, setBreakLength] = useState<number>(
+    assignment.breakLength ?? selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength
+  );
 
   // Check if params differ from pattern defaults
   const patternCommuteIn = selectedPattern.commuteTime ? Math.floor(selectedPattern.commuteTime / 2) : Math.floor(DEFAULT_FATIGUE_PARAMS.commuteTime / 2);
@@ -116,11 +131,27 @@ export function AssignmentEditModal({
         finalCustomEndTime = undefined;
       }
 
+      // Determine if fatigue params differ from pattern defaults
+      // If they do, save them; if not, clear them so we inherit from pattern
+      const saveCommuteIn = commuteIn !== patternCommuteIn ? commuteIn : undefined;
+      const saveCommuteOut = commuteOut !== patternCommuteOut ? commuteOut : undefined;
+      const saveWorkload = workload !== (selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload) ? workload : undefined;
+      const saveAttention = attention !== (selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention) ? attention : undefined;
+      const saveBreakFrequency = breakFrequency !== (selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency) ? breakFrequency : undefined;
+      const saveBreakLength = breakLength !== (selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength) ? breakLength : undefined;
+
       await onSave(assignment.id, {
         shiftPatternId: targetPatternId,
         customStartTime: finalCustomStartTime,
         customEndTime: finalCustomEndTime,
         notes: notes || undefined,
+        // Include fatigue parameters (only if modified from pattern defaults)
+        commuteIn: saveCommuteIn,
+        commuteOut: saveCommuteOut,
+        workload: saveWorkload,
+        attention: saveAttention,
+        breakFrequency: saveBreakFrequency,
+        breakLength: saveBreakLength,
       });
       onClose();
     } catch (err) {

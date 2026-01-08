@@ -335,6 +335,13 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         customEndTime: a.custom_end_time,
         notes: a.notes,
         organisationId: a.organisation_id,
+        // Fatigue parameters
+        commuteIn: a.commute_in,
+        commuteOut: a.commute_out,
+        workload: a.workload,
+        attention: a.attention,
+        breakFrequency: a.break_frequency,
+        breakLength: a.break_length,
       }));
 
       // Map fatigue assessments from snake_case to camelCase
@@ -715,6 +722,18 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       throw new Error('Invalid custom end time format. Use HH:MM format.');
     }
 
+    // Validate fatigue parameters if provided
+    const fatigueValidation = validateFatigueParams({
+      workload: assignmentData.workload,
+      attention: assignmentData.attention,
+      commuteTime: (assignmentData.commuteIn ?? 0) + (assignmentData.commuteOut ?? 0),
+      breakFrequency: assignmentData.breakFrequency,
+      breakLength: assignmentData.breakLength,
+    });
+    if (!fatigueValidation.valid) {
+      throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
+    }
+
     const { error } = await supabase.from('assignments').insert({
       employee_id: assignmentData.employeeId,
       project_id: assignmentData.projectId,
@@ -724,8 +743,15 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       custom_end_time: assignmentData.customEndTime,
       notes: assignmentData.notes,
       organisation_id: organisationId,
+      // Fatigue parameters
+      commute_in: assignmentData.commuteIn,
+      commute_out: assignmentData.commuteOut,
+      workload: assignmentData.workload,
+      attention: assignmentData.attention,
+      break_frequency: assignmentData.breakFrequency,
+      break_length: assignmentData.breakLength,
     });
-    
+
     if (error) throw error;
     await loadAllData();
   };
@@ -746,6 +772,18 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       throw new Error('Invalid custom end time format. Use HH:MM format.');
     }
 
+    // Validate fatigue parameters if any are provided
+    const fatigueValidation = validateFatigueParams({
+      workload: updateData.workload,
+      attention: updateData.attention,
+      commuteTime: (updateData.commuteIn ?? 0) + (updateData.commuteOut ?? 0),
+      breakFrequency: updateData.breakFrequency,
+      breakLength: updateData.breakLength,
+    });
+    if (!fatigueValidation.valid) {
+      throw new Error(`Invalid fatigue parameters: ${fatigueValidation.errors.join(', ')}`);
+    }
+
     // Include organisation_id filter to prevent cross-tenant writes
     const { error } = await supabase.from('assignments').update({
       employee_id: updateData.employeeId,
@@ -755,6 +793,13 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       custom_start_time: updateData.customStartTime,
       custom_end_time: updateData.customEndTime,
       notes: updateData.notes,
+      // Fatigue parameters
+      commute_in: updateData.commuteIn,
+      commute_out: updateData.commuteOut,
+      workload: updateData.workload,
+      attention: updateData.attention,
+      break_frequency: updateData.breakFrequency,
+      break_length: updateData.breakLength,
     }).eq('id', id).eq('organisation_id', organisationId);
 
     if (error) throw error;

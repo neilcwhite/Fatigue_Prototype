@@ -90,6 +90,13 @@ export interface Assignment {
   organisation_id: string;
   created_at?: string;
   updated_at?: string;
+  // Fatigue parameters (override pattern defaults for this specific assignment)
+  commute_in?: number;       // minutes commute to work
+  commute_out?: number;      // minutes commute from work
+  workload?: number;         // 1-4 scale
+  attention?: number;        // 1-4 scale
+  break_frequency?: number;  // minutes between breaks
+  break_length?: number;     // minutes per break
 }
 
 export interface UserProfile {
@@ -285,6 +292,13 @@ export interface AssignmentCamel {
   customEndTime?: string;
   notes?: string;
   organisationId: string;
+  // Fatigue parameters (override pattern defaults for this specific assignment)
+  commuteIn?: number;       // minutes commute to work
+  commuteOut?: number;      // minutes commute from work
+  workload?: number;        // 1-4 scale
+  attention?: number;       // 1-4 scale
+  breakFrequency?: number;  // minutes between breaks
+  breakLength?: number;     // minutes per break
 }
 
 export interface TeamCamel {

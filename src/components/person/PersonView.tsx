@@ -132,16 +132,22 @@ export function PersonView({
       const endTime = a.customEndTime || pattern?.endTime || '18:00';
       const assignmentDate = new Date(a.date);
       const periodDayNumber = Math.floor((assignmentDate.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+      // Use assignment's fatigue params if set, otherwise fall back to pattern, then defaults
+      const patternCommuteIn = pattern?.commuteTime ? Math.floor(pattern.commuteTime / 2) : undefined;
+      const patternCommuteOut = pattern?.commuteTime ? Math.ceil(pattern.commuteTime / 2) : undefined;
+
       return {
         periodDay: periodDayNumber,
         startTime,
         endTime,
-        workload: pattern?.workload,
-        attention: pattern?.attention,
-        commuteIn: pattern?.commuteTime ? Math.floor(pattern.commuteTime / 2) : undefined,
-        commuteOut: pattern?.commuteTime ? Math.ceil(pattern.commuteTime / 2) : undefined,
-        breakFreq: pattern?.breakFrequency,
-        breakLen: pattern?.breakLength,
+        // Priority: assignment override -> pattern value -> default
+        workload: a.workload ?? pattern?.workload,
+        attention: a.attention ?? pattern?.attention,
+        commuteIn: a.commuteIn ?? patternCommuteIn,
+        commuteOut: a.commuteOut ?? patternCommuteOut,
+        breakFreq: a.breakFrequency ?? pattern?.breakFrequency,
+        breakLen: a.breakLength ?? pattern?.breakLength,
       };
     });
 
