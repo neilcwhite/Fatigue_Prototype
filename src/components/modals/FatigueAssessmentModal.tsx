@@ -66,6 +66,8 @@ interface FatigueAssessmentModalProps {
   violation?: ComplianceViolation;
   assessorName?: string;
   existingAssessment?: FatigueAssessment;
+  /** FRI value from the triggering shift (if available) - used to pre-populate Question 12 */
+  triggerFriValue?: number;
 }
 
 export function FatigueAssessmentModal({
@@ -76,6 +78,7 @@ export function FatigueAssessmentModal({
   violation,
   assessorName = '',
   existingAssessment,
+  triggerFriValue,
 }: FatigueAssessmentModalProps) {
   const [activeStep, setActiveStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -103,6 +106,29 @@ export function FatigueAssessmentModal({
     return [];
   });
 
+  // Helper to determine FRI question answer from FRI value
+  // Question 12 options based on FGI (Fatigue Index), not FRI - but we can use the FRI to estimate
+  // The violation.value for ELEVATED_FATIGUE_INDEX is the FRI score
+  const getFriAnswerFromValue = (friValue: number | undefined): FAMPQuestionAnswer | null => {
+    if (friValue === undefined) return null;
+    // FRI thresholds: < 1.0 low, 1.0-1.2 moderate, > 1.2 high
+    // Map to Question 12 options which use FGI (Fatigue Index) thresholds
+    // But for FRI violations, we can approximate:
+    // - FRI < 1.1 => low (score 1)
+    // - FRI 1.1-1.3 => moderate (score 3)
+    // - FRI > 1.3 => high (score 5)
+    if (friValue < 1.1) {
+      return { questionId: 'fri_score_end_shift', answerValue: 'low', answerLabel: 'Less than 25 (day) / 35 (night)', score: 1 };
+    } else if (friValue <= 1.3) {
+      return { questionId: 'fri_score_end_shift', answerValue: 'moderate', answerLabel: '25-30 (day) / 35-40 (night)', score: 3 };
+    } else {
+      return { questionId: 'fri_score_end_shift', answerValue: 'high', answerLabel: 'In excess of 40 (night) / 30 (day) OR No FRI score available', score: 5 };
+    }
+  };
+
+  // Get FRI value from either prop or violation
+  const friValueFromTrigger = triggerFriValue ?? (violation?.type === 'ELEVATED_FATIGUE_INDEX' ? violation.value : undefined);
+
   // Part 3: Assessment answers
   const [answers, setAnswers] = useState<Record<FAMPQuestionId, FAMPQuestionAnswer | null>>(() => {
     if (existingAssessment?.assessmentAnswers) {
@@ -112,7 +138,13 @@ export function FatigueAssessmentModal({
       });
       return map;
     }
-    return {} as Record<FAMPQuestionId, FAMPQuestionAnswer | null>;
+    // Pre-populate FRI question from trigger value
+    const initial: Record<FAMPQuestionId, FAMPQuestionAnswer | null> = {} as Record<FAMPQuestionId, FAMPQuestionAnswer | null>;
+    const friAnswer = getFriAnswerFromValue(friValueFromTrigger);
+    if (friAnswer) {
+      initial.fri_score_end_shift = friAnswer;
+    }
+    return initial;
   });
 
   // Part 4: Risk adjustment
@@ -159,7 +191,7 @@ export function FatigueAssessmentModal({
   const additionalControls = useMemo(() => getAdditionalControls(), []);
 
   // Validation
-  const isStep1Valid = employeeName.trim() !== '' && assessorNameState.trim() !== '' && assessmentDate !== '';
+  const isStep1Valid = employeeName.trim() !== '' && assessorNameState.trim() !== '' && assessmentDate !== '' && shiftStartTime !== '' && shiftEndTime !== '';
   const isStep2Valid = selectedReasons.length > 0;
   const isStep3Valid = assessmentAnswersList.length === ASSESSMENT_QUESTIONS.length;
   const isStep5Valid = requiredMitigations.every(m => selectedMitigations.includes(m.id));
@@ -338,6 +370,7 @@ export function FatigueAssessmentModal({
             value={shiftStartTime}
             onChange={e => setShiftStartTime(e.target.value)}
             fullWidth
+            required
             size="small"
             InputLabelProps={{ shrink: true }}
           />
@@ -349,6 +382,7 @@ export function FatigueAssessmentModal({
             value={shiftEndTime}
             onChange={e => setShiftEndTime(e.target.value)}
             fullWidth
+            required
             size="small"
             InputLabelProps={{ shrink: true }}
           />
@@ -480,8 +514,11 @@ export function FatigueAssessmentModal({
                   </Typography>
                   {isFriQuestion && (
                     <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
-                      Tip: View the FRI score in the employee&apos;s Person View calendar or the Project Summary heatmap.
-                      If no score is available, select the highest scoring option.
+                      {friValueFromTrigger !== undefined ? (
+                        <>FRI from trigger: <strong>{friValueFromTrigger.toFixed(2)}</strong> (pre-selected below - you can override if needed)</>
+                      ) : (
+                        <>Tip: View the FRI score in the employee&apos;s Person View calendar or the Project Summary heatmap. If no score is available, select the highest scoring option.</>
+                      )}
                     </Typography>
                   )}
                 </FormLabel>
@@ -720,7 +757,17 @@ export function FatigueAssessmentModal({
     );
   };
 
-  const renderAuthorisationStep = () => (
+  // Get all mitigation labels for selected mitigations
+  const getSelectedMitigationLabels = () => {
+    return MITIGATION_OPTIONS
+      .filter(m => selectedMitigations.includes(m.id))
+      .map(m => m.label);
+  };
+
+  const renderAuthorisationStep = () => {
+    const selectedMitigationLabels = getSelectedMitigationLabels();
+
+    return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
         Part 6: Acceptance and Authorisation
@@ -731,9 +778,31 @@ export function FatigueAssessmentModal({
         <Typography variant="body2" fontWeight={600} gutterBottom>
           Employee Acceptance
         </Typography>
+
+        {/* Show mitigations being accepted */}
+        {selectedMitigationLabels.length > 0 && (
+          <Box sx={{ mb: 2, p: 1.5, bgcolor: 'warning.50', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
+            <Typography variant="caption" fontWeight={600} color="warning.dark" sx={{ display: 'block', mb: 1 }}>
+              Mitigations/Controls being applied ({selectedMitigationLabels.length}):
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+              {selectedMitigationLabels.map((label, idx) => (
+                <Typography key={idx} component="li" variant="caption" color="text.secondary">
+                  {label}
+                  {label === 'Other (specify in notes)' && otherMitigationDetails && (
+                    <Typography component="span" variant="caption" color="text.primary" sx={{ ml: 0.5 }}>
+                      - {otherMitigationDetails}
+                    </Typography>
+                  )}
+                </Typography>
+              ))}
+            </Box>
+          </Box>
+        )}
+
         <Typography variant="caption" color="text.secondary" paragraph>
           I consider that I am able to continue working safely for the duration of the exceedance.
-          I understand the mitigation/additional controls necessary to continue working and will
+          I understand the mitigation/additional controls listed above and will
           inform the supervisor if the situation changes.
         </Typography>
         <FormControlLabel
@@ -743,7 +812,7 @@ export function FatigueAssessmentModal({
               onChange={e => setEmployeeAccepted(e.target.checked)}
             />
           }
-          label={<Typography variant="body2" fontWeight={500}>I accept the above statement</Typography>}
+          label={<Typography variant="body2" fontWeight={500}>I accept the above mitigations and confirm I can continue working safely</Typography>}
         />
         <TextField
           label="Employee Comments (optional)"
@@ -799,7 +868,8 @@ export function FatigueAssessmentModal({
         />
       </Paper>
     </Box>
-  );
+    );
+  };
 
   return (
     <Dialog
