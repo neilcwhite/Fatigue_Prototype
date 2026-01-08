@@ -1523,7 +1523,9 @@ export function FatigueView({
                           if (endHour <= startHour) endHour += 24;
                           const duration = shift && !isRestDay ? calculateDutyLength(startHour, endHour) : 0;
 
-                          const dayResult = results?.calculations.find(c => c.day === nrDayIndexToShiftDay(index));
+                          // Look up results using HSE day number (calculations use HSE format)
+                          const hseDayNum = nrDayToHseDay(nrDayIndexToShiftDay(index));
+                          const dayResult = results?.calculations.find(c => c.day === hseDayNum);
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
                           // Fatigue Index data
