@@ -265,8 +265,8 @@ export function ShiftPatternEditModal({
                   size="small"
                 >
                   <MenuItem value={1}>1 - All/nearly all the time</MenuItem>
-                  <MenuItem value={2}>2 - Most of the time</MenuItem>
-                  <MenuItem value={3}>3 - Some of the time</MenuItem>
+                  <MenuItem value={2}>2 - Some of the time</MenuItem>
+                  <MenuItem value={3}>3 - Most of the time</MenuItem>
                   <MenuItem value={4}>4 - Rarely or never</MenuItem>
                 </TextField>
               </Grid>

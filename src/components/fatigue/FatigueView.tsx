@@ -1444,7 +1444,7 @@ export function FatigueView({
                                 </TextField>
                               </Tooltip>
 
-                              <Tooltip title="Attention: 1=All/nearly all the time, 2=Most of the time, 3=Some of the time, 4=Rarely/never" placement="right" arrow>
+                              <Tooltip title="Attention: 1=All/nearly all the time, 2=Some of the time, 3=Most of the time, 4=Rarely/never" placement="right" arrow>
                                 <TextField
                                   select
                                   size="small"
@@ -1691,8 +1691,8 @@ export function FatigueView({
                             onChange={(e) => setParams({ ...params, attention: parseInt(String(e.target.value)) })}
                           >
                             <MenuItem value={1}>1 - All/nearly all the time</MenuItem>
-                            <MenuItem value={2}>2 - Most of the time</MenuItem>
-                            <MenuItem value={3}>3 - Some of the time</MenuItem>
+                            <MenuItem value={2}>2 - Some of the time</MenuItem>
+                            <MenuItem value={3}>3 - Most of the time</MenuItem>
                             <MenuItem value={4}>4 - Rarely or never</MenuItem>
                           </Select>
                         </FormControl>
