@@ -814,11 +814,11 @@ export function FatigueView({
     setSelectedPatternId(pattern.id);
     setShowEntryModal(false);
 
-    // Load the pattern - use NR week day numbering (Sat=1, Sun=2, Mon=3, etc.)
+    // Load the pattern - use HSE week day numbering (Mon=1, Tue=2, ..., Sun=7)
     const loadedShifts: Shift[] = [];
     if (pattern.weeklySchedule) {
-      // NR week: Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6, Fri=7
-      const dayMap: Record<string, number> = { Sat: 1, Sun: 2, Mon: 3, Tue: 4, Wed: 5, Thu: 6, Fri: 7 };
+      // HSE week: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+      const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
       const schedule = pattern.weeklySchedule;
 
       Object.entries(schedule).forEach(([dayName, daySchedule]) => {
@@ -857,9 +857,9 @@ export function FatigueView({
       });
     } else if (pattern.startTime && pattern.endTime) {
       // Fallback: Create full week with Mon-Fri working, Sat-Sun rest
-      // NR week: Sat=1, Sun=2, Mon=3, Tue=4, Wed=5, Thu=6, Fri=7
+      // HSE week: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
       for (let day = 1; day <= 7; day++) {
-        const isRest = day === 1 || day === 2; // Sat, Sun are rest
+        const isRest = day === 6 || day === 7; // Sat=6, Sun=7 are rest
         loadedShifts.push({
           id: Date.now() + day,
           day,
@@ -885,7 +885,7 @@ export function FatigueView({
       const defaultStart = pattern.startTime || '07:00';
       const defaultEnd = pattern.endTime || '19:00';
       for (let day = 1; day <= 7; day++) {
-        const isRest = day === 1 || day === 2; // Sat, Sun are rest by default
+        const isRest = day === 6 || day === 7; // Sat=6, Sun=7 are rest by default
         loadedShifts.push({
           id: Date.now() + day,
           day,
