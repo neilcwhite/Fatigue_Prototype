@@ -1664,11 +1664,14 @@ export function FatigueView({
                               <TextField type="number" size="small" value={params.breakAfterContinuous} onChange={(e) => setParams({ ...params, breakAfterContinuous: parseInt(e.target.value) || 30 })} disabled={isRestDay || isReadOnly} slotProps={{ htmlInput: { min: 5, max: 60, style: { textAlign: 'center', padding: '4px' } } }} sx={{ '& .MuiOutlinedInput-root': { bgcolor: isRestDay || isReadOnly ? 'grey.200' : 'warning.50' } }} />
 
                               {/* FRI - use dayResult existence as source of truth, not isRestDay */}
-                              <Tooltip title={`dayNum=${hseDayNum}, hasResult=${!!dayResult}, ri=${dayResult?.riskIndex}`} arrow>
-                                <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: dayResult ? getRiskColor(dayRiskLevel) : 'transparent', color: dayRiskLevel === 'low' ? 'text.primary' : 'white', borderRadius: 0.5, py: 0.25 }}>
-                                  {dayResult?.riskIndex !== undefined ? dayResult.riskIndex.toFixed(3) : '-'}
-                                </Typography>
-                              </Tooltip>
+                              <Typography variant="caption" fontWeight={600} sx={{
+                                textAlign: 'center',
+                                bgcolor: dayResult ? (dayRiskLevel === 'low' ? '#dcfce7' : dayRiskLevel === 'moderate' ? '#fef9c3' : dayRiskLevel === 'elevated' ? '#fed7aa' : dayRiskLevel === 'critical' ? '#fecaca' : '#e8f5e9') : 'transparent',
+                                borderRadius: 0.5,
+                                py: 0.25
+                              }}>
+                                {dayResult?.riskIndex !== undefined ? dayResult.riskIndex.toFixed(3) : '-'}
+                              </Typography>
 
                               {/* FGI */}
                               <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: dayResult ? (dayFatigueLevel === 'low' ? '#e8f5e9' : dayFatigueLevel === 'moderate' ? '#fff3e0' : dayFatigueLevel === 'elevated' ? '#ffebee' : '#f3e5f5') : 'transparent', borderRadius: 0.5, py: 0.25 }}>
