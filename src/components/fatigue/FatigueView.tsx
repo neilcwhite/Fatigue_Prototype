@@ -1677,7 +1677,7 @@ export function FatigueView({
 
                               {/* FRI */}
                               <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', bgcolor: isRestDay ? 'transparent' : getRiskColor(dayRiskLevel), color: dayRiskLevel === 'low' ? 'text.primary' : 'white', borderRadius: 0.5, py: 0.25 }}>
-                                {isRestDay ? '-' : dayFRI !== undefined ? dayFRI.toFixed(3) : '-'}
+                                {isRestDay ? '-' : dayResult?.riskIndex !== undefined ? dayResult.riskIndex.toFixed(3) : '-'}
                               </Typography>
 
                               {/* FGI */}
