@@ -396,12 +396,17 @@ export default function Home() {
             assignments={assignments}
             shiftPatterns={shiftPatterns}
             projects={projects}
+            fatigueAssessments={fatigueAssessments}
             onSelectEmployee={(id) => setSelectedEmployee(id)}
             onDeleteAssignment={deleteAssignment}
             onUpdateAssignment={updateAssignment}
             onUpdateShiftPattern={updateShiftPattern}
             onCreateAssignment={createAssignment}
             onCreateFatigueAssessment={createFatigueAssessment}
+            onViewAssessment={(assessmentId) => {
+              // Navigate to assessments view - for now, just go to assessments page
+              setCurrentView('assessments');
+            }}
           />
         )}
 

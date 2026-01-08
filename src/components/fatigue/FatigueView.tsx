@@ -409,6 +409,17 @@ export function FatigueView({
     loadedShifts.sort((a, b) => a.day - b.day);
     setStartDayOfWeek(1);
     setShifts(loadedShifts);
+
+    // Update global params to match the pattern's saved values
+    setParams({
+      commuteTime: selectedPattern.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime,
+      workload: selectedPattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload,
+      attention: selectedPattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention,
+      breakFrequency: selectedPattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency,
+      breakLength: selectedPattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength,
+      continuousWork: DEFAULT_FATIGUE_PARAMS.continuousWork,
+      breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
+    });
   };
 
   const handleApplyEmployeeRole = () => {
@@ -904,6 +915,17 @@ export function FatigueView({
     }
 
     setShifts(loadedShifts);
+
+    // Update global params to match the pattern's saved values
+    setParams({
+      commuteTime: pattern.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime,
+      workload: pattern.workload ?? DEFAULT_FATIGUE_PARAMS.workload,
+      attention: pattern.attention ?? DEFAULT_FATIGUE_PARAMS.attention,
+      breakFrequency: pattern.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency,
+      breakLength: pattern.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength,
+      continuousWork: DEFAULT_FATIGUE_PARAMS.continuousWork,
+      breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
+    });
 
     if (selectMode === 'review') {
       enterReviewMode(pattern, project);

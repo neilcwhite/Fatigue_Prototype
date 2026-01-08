@@ -37,6 +37,7 @@ interface PersonViewProps {
   assignments: AssignmentCamel[];
   shiftPatterns: ShiftPatternCamel[];
   projects: ProjectCamel[];
+  fatigueAssessments?: FatigueAssessment[];
   onSelectEmployee: (id: number) => void;
   onDeleteAssignment: (id: number) => Promise<void>;
   onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
@@ -50,6 +51,7 @@ interface PersonViewProps {
     customEndTime?: string;
   }) => Promise<void>;
   onCreateFatigueAssessment?: (assessment: FatigueAssessment) => Promise<void>;
+  onViewAssessment?: (assessmentId: string) => void;
 }
 
 
@@ -62,12 +64,14 @@ export function PersonView({
   assignments,
   shiftPatterns,
   projects,
+  fatigueAssessments = [],
   onSelectEmployee,
   onDeleteAssignment,
   onUpdateAssignment,
   onUpdateShiftPattern,
   onCreateAssignment,
   onCreateFatigueAssessment,
+  onViewAssessment,
 }: PersonViewProps) {
   const { showSuccess, showError } = useNotification();
   // Calculate initial year and period based on today's date
@@ -544,6 +548,8 @@ export function PersonView({
           violations={compliance.violations}
           onViolationClick={handleViolationClick}
           onCreateAssessment={setAssessmentViolation}
+          assessments={fatigueAssessments.filter(a => a.employeeId === employee.id)}
+          onViewAssessment={onViewAssessment}
         />
 
         {/* Schedule Calendar Grid - extracted component */}
