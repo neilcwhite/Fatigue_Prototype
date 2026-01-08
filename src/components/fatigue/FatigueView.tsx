@@ -1717,59 +1717,6 @@ export function FatigueView({
                           );
                         })}
 
-                        {/* DEBUG: Direct calculation comparison */}
-                        <Paper variant="outlined" sx={{ mt: 2, p: 2, bgcolor: '#fff9c4' }}>
-                          <Typography variant="subtitle2" sx={{ mb: 1, color: '#f57f17' }}>
-                            DEBUG: Direct Calculation Results (same method as debug page)
-                          </Typography>
-                          <Box sx={{ fontFamily: 'monospace', fontSize: '11px' }}>
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 1, mb: 1, fontWeight: 'bold' }}>
-                              <span>Day</span>
-                              <span>dayNum</span>
-                              <span>FRI</span>
-                              <span>FGI</span>
-                              <span>Cum(R)</span>
-                              <span>Tim(R)</span>
-                              <span>Job(R)</span>
-                              <span>MapHas?</span>
-                            </Box>
-                            {HSE_DAYS.map((dayName, index) => {
-                              const dayNum = hseDayIndexToShiftDay(index);
-                              const mapResult = results?.calculationsMap.get(dayNum);
-                              const shift = shifts.find(s => s.day === dayNum);
-                              return (
-                                <Box key={dayName} sx={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 1, py: 0.5, borderBottom: '1px solid #eee' }}>
-                                  <span>{dayName}</span>
-                                  <span>{dayNum}</span>
-                                  <span style={{ color: mapResult ? 'green' : 'red' }}>{mapResult?.riskIndex?.toFixed(3) ?? 'NULL'}</span>
-                                  <span>{mapResult?.fatigueIndex?.toFixed(1) ?? '-'}</span>
-                                  <span>{mapResult?.cumulative?.toFixed(3) ?? '-'}</span>
-                                  <span>{mapResult?.timing?.toFixed(3) ?? '-'}</span>
-                                  <span>{mapResult?.jobBreaks?.toFixed(3) ?? '-'}</span>
-                                  <span style={{ color: results?.calculationsMap.has(dayNum) ? 'green' : 'red' }}>
-                                    {results?.calculationsMap.has(dayNum) ? 'YES' : 'NO'}
-                                  </span>
-                                </Box>
-                              );
-                            })}
-                            <Box sx={{ mt: 2, pt: 1, borderTop: '2px solid #f57f17' }}>
-                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Map Keys: </Typography>
-                              <span>{results ? Array.from(results.calculationsMap.keys()).join(', ') : 'none'}</span>
-                            </Box>
-                            <Box sx={{ mt: 1 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Shifts day values: </Typography>
-                              <span>{shifts.map(s => `${s.day}(${s.isRestDay ? 'R' : 'W'})`).join(', ')}</span>
-                            </Box>
-                            <Box sx={{ mt: 1 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>getShiftForDay check: </Typography>
-                              <span>{HSE_DAYS.map((_, idx) => {
-                                const s = getShiftForDay(idx);
-                                return `${idx}→${s ? (s.isRestDay ? 'R' : 'W') : 'NULL'}`;
-                              }).join(', ')}</span>
-                            </Box>
-                          </Box>
-                        </Paper>
-
                         {/* Weekly Summary */}
                         <Paper variant="outlined" sx={{ mt: 2, p: 2 }}>
                           <Grid container spacing={2} sx={{ mb: 2 }}>
