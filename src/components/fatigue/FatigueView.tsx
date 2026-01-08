@@ -1520,7 +1520,7 @@ export function FatigueView({
 
                           // Look up results by HSE day number (Mon=1, Tue=2, etc.)
                           const hseDayNum = hseDayIndexToShiftDay(index);
-                          const dayResult = results?.calculations.find(c => c.day === hseDayNum);
+                          const dayResult = results?.calculationsMap.get(hseDayNum);
                           const dayFRI = dayResult?.riskIndex;
                           const dayRiskLevel = dayResult?.riskLevel?.level || 'low';
                           // Fatigue Index data
