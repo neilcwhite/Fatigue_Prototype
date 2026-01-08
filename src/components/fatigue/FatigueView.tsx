@@ -1667,6 +1667,7 @@ export function FatigueView({
                               <Typography variant="caption" fontWeight={600} sx={{
                                 textAlign: 'center',
                                 bgcolor: dayResult ? (dayRiskLevel === 'low' ? '#dcfce7' : dayRiskLevel === 'moderate' ? '#fef9c3' : dayRiskLevel === 'elevated' ? '#fed7aa' : dayRiskLevel === 'critical' ? '#fecaca' : '#e8f5e9') : 'transparent',
+                                color: '#000000',
                                 borderRadius: 0.5,
                                 py: 0.25
                               }}>
