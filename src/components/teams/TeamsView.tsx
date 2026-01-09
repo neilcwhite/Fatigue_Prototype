@@ -298,14 +298,27 @@ export function TeamsView({
               variant="outlined"
               startIcon={<Plus className="w-4 h-4" />}
               onClick={() => setShowEmployeeModal(true)}
+              sx={{
+                color: '#22c55e',
+                borderColor: '#22c55e',
+                '&:hover': {
+                  borderColor: '#16a34a',
+                  bgcolor: 'rgba(34, 197, 94, 0.1)',
+                },
+              }}
             >
               Add Employee
             </Button>
             <Button
               variant="contained"
-              color="secondary"
               startIcon={<Plus className="w-4 h-4" />}
               onClick={openCreateModal}
+              sx={{
+                bgcolor: '#22c55e',
+                '&:hover': {
+                  bgcolor: '#16a34a',
+                },
+              }}
             >
               Create Team
             </Button>
@@ -321,7 +334,16 @@ export function TeamsView({
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Create a team to group employees and assign them to projects together
             </Typography>
-            <Button variant="contained" color="secondary" onClick={openCreateModal}>
+            <Button
+              variant="contained"
+              onClick={openCreateModal}
+              sx={{
+                bgcolor: '#22c55e',
+                '&:hover': {
+                  bgcolor: '#16a34a',
+                },
+              }}
+            >
               Create Your First Team
             </Button>
           </Card>
@@ -371,11 +393,16 @@ export function TeamsView({
                     <CardActions sx={{ p: 2, pt: 0 }}>
                       <Button
                         variant="contained"
-                        color="secondary"
                         fullWidth
                         startIcon={<Calendar className="w-4 h-4" />}
                         onClick={() => openAssignModal(team)}
                         disabled={teamMembers.length === 0 || projects.length === 0}
+                        sx={{
+                          bgcolor: '#22c55e',
+                          '&:hover': {
+                            bgcolor: '#16a34a',
+                          },
+                        }}
                       >
                         Assign to Shift Pattern
                       </Button>
@@ -397,13 +424,13 @@ export function TeamsView({
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
                   border: '2px dashed',
-                  borderColor: 'secondary.light',
-                  '&:hover': { borderColor: 'secondary.main' },
+                  borderColor: '#22c55e',
+                  '&:hover': { borderColor: '#16a34a' },
                 }}
               >
-                <Box sx={{ bgcolor: 'secondary.main', borderRadius: '50%', p: 1.5, mb: 1.5 }}>
+                <Box sx={{ bgcolor: '#22c55e', borderRadius: '50%', p: 1.5, mb: 1.5 }}>
                   <Plus className="w-6 h-6" />
                 </Box>
                 <Typography variant="subtitle1" fontWeight={600}>Create New Team</Typography>
