@@ -13,6 +13,9 @@ export interface Employee {
   role?: string;
   email?: string;
   sentinel_number?: string;  // 3-15 characters, alphanumeric
+  primary_sponsor?: string;
+  sub_sponsors?: string;
+  current_employer?: string;
   team_id?: number;
   organisation_id: string;
   created_at?: string;
@@ -260,6 +263,9 @@ export interface EmployeeCamel {
   role?: string;
   email?: string;
   sentinelNumber?: string;  // 3-15 characters, alphanumeric
+  primarySponsor?: string;
+  subSponsors?: string;
+  currentEmployer?: string;
   teamId?: number;
   organisationId: string;
 }
@@ -342,6 +348,9 @@ export interface CSVImportRow {
   last_name: string;
   sentinel_number: string;
   role?: string;
+  primary_sponsor?: string;
+  sub_sponsors?: string;
+  current_employer?: string;
 }
 
 export interface CSVImportResult {

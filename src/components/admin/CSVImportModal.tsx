@@ -146,7 +146,14 @@ export function CSVImportModal({
         {step === 'upload' && (
           <Box>
             <Typography variant="body2" color="text.secondary" mb={2}>
-              Upload a CSV file containing employee data. Required columns: first_name, last_name, sentinel_number. Optional: role.
+              Upload a CSV file containing employee data. Supports both custom format and Network Rail format.
+            </Typography>
+            <Typography variant="caption" color="text.secondary" component="div" mb={2}>
+              <strong>Required:</strong> First Name (or first_name), Surname (or last_name), Sentinel Number
+              <br />
+              <strong>Optional:</strong> Role, Primary Sponsor, Sub Sponsors, Current Employer
+              <br />
+              <strong>Note:</strong> Date of Birth and NI Number are ignored for GDPR compliance
             </Typography>
 
             <Button
@@ -221,6 +228,8 @@ export function CSVImportModal({
                         <TableCell>Last Name</TableCell>
                         <TableCell>Sentinel Number</TableCell>
                         <TableCell>Role</TableCell>
+                        <TableCell>Primary Sponsor</TableCell>
+                        <TableCell>Current Employer</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -232,6 +241,8 @@ export function CSVImportModal({
                             <Chip label={row.sentinel_number} size="small" />
                           </TableCell>
                           <TableCell>{row.role || '-'}</TableCell>
+                          <TableCell>{row.primary_sponsor || '-'}</TableCell>
+                          <TableCell>{row.current_employer || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

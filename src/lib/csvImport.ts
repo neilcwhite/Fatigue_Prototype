@@ -15,7 +15,13 @@ import { isValidSentinelNumber } from './permissions';
 
 /**
  * Parse CSV file content into structured rows
- * Expected columns: first_name, last_name, sentinel_number, role (optional)
+ * Supports both custom format and Network Rail format
+ *
+ * Custom format: first_name, last_name, sentinel_number, role (optional)
+ * Network Rail format: First Name, Surname, Sentinel Number, Date Of Birth (ignored),
+ *                      NI Number (ignored), Primary Sponsor, Sub Sponsors, Current Employer
+ *
+ * Note: Date Of Birth and NI Number are intentionally ignored for GDPR compliance
  */
 export function parseCSV(csvContent: string): CSVImportRow[] {
   const lines = csvContent.trim().split('\n');
@@ -23,23 +29,31 @@ export function parseCSV(csvContent: string): CSVImportRow[] {
     throw new Error('CSV file is empty');
   }
 
-  // Parse header row
+  // Parse header row - normalize to lowercase with underscores
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-  const firstNameIndex = headers.findIndex(h => h === 'first_name' || h === 'firstname');
-  const lastNameIndex = headers.findIndex(h => h === 'last_name' || h === 'lastname');
-  const sentinelIndex = headers.findIndex(h =>
-    h === 'sentinel_number' || h === 'sentinel' || h === 'sentinel_number'
-  );
-  const roleIndex = headers.indexOf('role');
 
+  // Find required columns (support multiple naming conventions)
+  const firstNameIndex = headers.findIndex(h => h === 'first_name' || h === 'firstname');
+  const lastNameIndex = headers.findIndex(h => h === 'last_name' || h === 'lastname' || h === 'surname');
+  const sentinelIndex = headers.findIndex(h =>
+    h === 'sentinel_number' || h === 'sentinel' || h === 'sentinelnumber'
+  );
+
+  // Find optional columns
+  const roleIndex = headers.findIndex(h => h === 'role');
+  const primarySponsorIndex = headers.findIndex(h => h === 'primary_sponsor' || h === 'primarysponsor');
+  const subSponsorsIndex = headers.findIndex(h => h === 'sub_sponsors' || h === 'subsponsors');
+  const currentEmployerIndex = headers.findIndex(h => h === 'current_employer' || h === 'currentemployer');
+
+  // Validate required columns
   if (firstNameIndex === -1) {
-    throw new Error('CSV must contain a "first_name" column');
+    throw new Error('CSV must contain a "First Name" or "first_name" column');
   }
   if (lastNameIndex === -1) {
-    throw new Error('CSV must contain a "last_name" column');
+    throw new Error('CSV must contain a "Surname", "Last Name", or "last_name" column');
   }
   if (sentinelIndex === -1) {
-    throw new Error('CSV must contain a "sentinel_number" column');
+    throw new Error('CSV must contain a "Sentinel Number" or "sentinel_number" column');
   }
 
   // Parse data rows
@@ -59,12 +73,27 @@ export function parseCSV(csvContent: string): CSVImportRow[] {
       continue;
     }
 
-    rows.push({
+    const row: CSVImportRow = {
       first_name,
       last_name,
       sentinel_number,
-      role: roleIndex >= 0 ? values[roleIndex] : undefined,
-    });
+    };
+
+    // Add optional fields if present and not empty
+    if (roleIndex >= 0 && values[roleIndex]) {
+      row.role = values[roleIndex];
+    }
+    if (primarySponsorIndex >= 0 && values[primarySponsorIndex]) {
+      row.primary_sponsor = values[primarySponsorIndex];
+    }
+    if (subSponsorsIndex >= 0 && values[subSponsorsIndex]) {
+      row.sub_sponsors = values[subSponsorsIndex];
+    }
+    if (currentEmployerIndex >= 0 && values[currentEmployerIndex]) {
+      row.current_employer = values[currentEmployerIndex];
+    }
+
+    rows.push(row);
   }
 
   return rows;
@@ -187,8 +216,8 @@ export function formatImportSummary(result: CSVImportResult): string {
  * Generate example CSV content for download
  */
 export function generateExampleCSV(): string {
-  return `first_name,last_name,sentinel_number,role
-John,Smith,ABC123,Engineer
-Jane,Doe,XYZ789,Supervisor
-Mike,Johnson,M1234,Technician`;
+  return `first_name,last_name,sentinel_number,role,primary_sponsor,sub_sponsors,current_employer
+John,Smith,ABC123,Engineer,C Spencer Ltd,,C Spencer Ltd
+Jane,Doe,XYZ789,Supervisor,Network Rail,,Network Rail
+Mike,Johnson,M1234,Technician,C Spencer Ltd,,`;
 }
