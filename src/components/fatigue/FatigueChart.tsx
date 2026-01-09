@@ -64,14 +64,16 @@ export function FatigueChart({
     return d.riskLevel;
   };
 
-  // FGI thresholds are different - based on % of 35 (day) or 30 (night)
-  // Using day threshold (35) as default: Low <17.5, Moderate 17.5-26.25, Elevated 26.25-35, Critical >35
-  const FGI_THRESHOLD_LOW = 17.5;
-  const FGI_THRESHOLD_MODERATE = 26.25;
-  const FGI_THRESHOLD_CRITICAL = 35;
-  // Chart dimensions - compact technical look
+  // FGI thresholds - Network Rail NR/L2/OHS/003
+  // Good Practice: 30 (day) / 40 (night) - using day threshold as default
+  // Level 2: 35 (day) / 45 (night)
+  const FGI_GOOD_PRACTICE = 30;
+  const FGI_LEVEL_2 = 35;
+  const FGI_THRESHOLD_CRITICAL = 40;  // Night threshold
+
+  // Chart dimensions - responsive width
   const padding = { top: 12, right: 30, bottom: 28, left: 36 };
-  const width = 400;
+  const width = 500;  // Increased default width for better responsiveness
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -101,7 +103,7 @@ export function FatigueChart({
 
     // Different thresholds for FRI vs FGI
     const thresholdCritical = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
-    const thresholdLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
+    const thresholdLow = chartType === 'FGI' ? FGI_GOOD_PRACTICE : THRESHOLD_LOW;
 
     const dataMaxY = Math.max(...allValues, thresholdCritical);
     const dataMinY = Math.min(...allValues, chartType === 'FGI' ? 0 : thresholdLow - 0.2);
@@ -124,7 +126,7 @@ export function FatigueChart({
     };
 
     return { xScale, yScale, maxY, minY };
-  }, [data, worstCaseData, chartWidth, chartHeight, chartType, getValue, FGI_THRESHOLD_CRITICAL, FGI_THRESHOLD_LOW]);
+  }, [data, worstCaseData, chartWidth, chartHeight, chartType]);
 
   // Generate Y-axis ticks
   const yTicks = useMemo(() => {
@@ -240,8 +242,8 @@ export function FatigueChart({
         <g transform={`translate(${padding.left}, ${padding.top})`}>
           {/* Risk zone backgrounds - use appropriate thresholds for FRI vs FGI */}
           {(() => {
-            const tLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
-            const tMod = chartType === 'FGI' ? FGI_THRESHOLD_MODERATE : THRESHOLD_ELEVATED;
+            const tLow = chartType === 'FGI' ? FGI_GOOD_PRACTICE : THRESHOLD_LOW;
+            const tMod = chartType === 'FGI' ? FGI_LEVEL_2 : THRESHOLD_ELEVATED;
             const tCrit = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
             return (
               <>
@@ -260,8 +262,8 @@ export function FatigueChart({
 
           {/* Grid lines */}
           {yTicks.map(tick => {
-            const tLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
-            const tMod = chartType === 'FGI' ? FGI_THRESHOLD_MODERATE : THRESHOLD_ELEVATED;
+            const tLow = chartType === 'FGI' ? FGI_GOOD_PRACTICE : THRESHOLD_LOW;
+            const tMod = chartType === 'FGI' ? FGI_LEVEL_2 : THRESHOLD_ELEVATED;
             const tCrit = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
             const isThreshold = tick === tLow || tick === tMod || tick === tCrit;
             return (
@@ -292,8 +294,8 @@ export function FatigueChart({
           {showThresholds && (
             <>
               {(() => {
-                const tLow = chartType === 'FGI' ? FGI_THRESHOLD_LOW : THRESHOLD_LOW;
-                const tMod = chartType === 'FGI' ? FGI_THRESHOLD_MODERATE : THRESHOLD_ELEVATED;
+                const tLow = chartType === 'FGI' ? FGI_GOOD_PRACTICE : THRESHOLD_LOW;
+                const tMod = chartType === 'FGI' ? FGI_LEVEL_2 : THRESHOLD_ELEVATED;
                 const tCrit = chartType === 'FGI' ? FGI_THRESHOLD_CRITICAL : THRESHOLD_CRITICAL;
                 return (
                   <>
@@ -482,19 +484,19 @@ export function FatigueChart({
           <>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-[8px] text-slate-500">{'<17.5'}</span>
+              <span className="text-[8px] text-slate-500">{'<30'}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-yellow-500" />
-              <span className="text-[8px] text-slate-500">17.5-26</span>
+              <span className="text-[8px] text-slate-500">30-35</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-[8px] text-slate-500">26-35</span>
+              <span className="text-[8px] text-slate-500">35-40</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-[8px] text-slate-500">{'>35'}</span>
+              <span className="text-[8px] text-slate-500">{'>40'}</span>
             </div>
           </>
         )}

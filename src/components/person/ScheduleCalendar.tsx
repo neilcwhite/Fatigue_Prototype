@@ -195,7 +195,7 @@ export function ScheduleCalendar({
               Chip (NR):
             </Typography>
             <Chip
-              label="Prohibited"
+              label="Breach"
               size="small"
               sx={{ bgcolor: '#ef4444', color: 'white', fontSize: '0.6rem', height: 18 }}
             />
@@ -208,6 +208,11 @@ export function ScheduleCalendar({
               label="Level 1"
               size="small"
               sx={{ bgcolor: '#eab308', color: 'white', fontSize: '0.6rem', height: 18 }}
+            />
+            <Chip
+              label="Good Practice"
+              size="small"
+              sx={{ bgcolor: '#22c55e', color: 'white', fontSize: '0.6rem', height: 18 }}
             />
             <Chip
               label="OK"
