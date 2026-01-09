@@ -279,9 +279,15 @@ export function WeeklyView({
                   }`}
                   onDragOver={onCellDragOver}
                   onDrop={(e) => {
-                    const defaultPattern = shiftPatterns[0];
-                    if (defaultPattern) {
-                      onCellDrop(e, defaultPattern.id, date);
+                    // Always show shift pattern selection when dropping
+                    if (onEmptyCellDrop) {
+                      onEmptyCellDrop(e, date);
+                    } else {
+                      // Fallback to first pattern if no handler provided
+                      const defaultPattern = shiftPatterns[0];
+                      if (defaultPattern) {
+                        onCellDrop(e, defaultPattern.id, date);
+                      }
                     }
                   }}
                 >

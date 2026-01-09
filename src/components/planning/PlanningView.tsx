@@ -23,6 +23,7 @@ import { CustomTimeModal } from '@/components/modals/CustomTimeModal';
 import { ImportModal } from '@/components/modals/ImportModal';
 import { AssignmentEditModal } from '@/components/modals/AssignmentEditModal';
 import { BulkAssignmentModal } from '@/components/modals/BulkAssignmentModal';
+import { ShiftPatternSelectModal } from '@/components/modals/ShiftPatternSelectModal';
 import { exportToExcel, processImport, type ParsedAssignment } from '@/lib/importExport';
 import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
 import { getEmployeeComplianceStatus } from '@/lib/compliance';
@@ -136,6 +137,13 @@ export function PlanningView({
 
   // Error notification state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Shift pattern select modal state (for Weekly Grid drops)
+  const [shiftSelectModal, setShiftSelectModal] = useState<{
+    show: boolean;
+    employees: EmployeeCamel[];
+    date: string;
+  } | null>(null);
 
   // Generate periods for selected year
   const networkRailPeriods = useMemo(() => {
@@ -353,6 +361,94 @@ export function PlanningView({
       setErrorMessage(message);
     }
 
+    clearSelection();
+    dragDataRef.current = null;
+  };
+
+  // Handle empty cell drop in Weekly Grid - show shift pattern selection modal
+  const handleEmptyCellDrop = (e: React.DragEvent, date: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dragData = dragDataRef.current;
+
+    if (!dragData) {
+      return;
+    }
+
+    // Get the employees to assign (either direct employees or team members)
+    const employeesToAssign = dragData.type === 'employees'
+      ? dragData.employees
+      : dragData.members;
+
+    if (employeesToAssign.length === 0) {
+      dragDataRef.current = null;
+      return;
+    }
+
+    // Show the shift pattern selection modal
+    setShiftSelectModal({
+      show: true,
+      employees: [...employeesToAssign],
+      date,
+    });
+
+    // Don't clear dragDataRef yet - we need it when the modal confirms
+  };
+
+  // Handle shift pattern selection from modal
+  const handleShiftPatternSelect = async (
+    shiftPatternId: string,
+    customTimes?: { startTime: string; endTime: string }
+  ) => {
+    if (!shiftSelectModal) return;
+
+    const { employees: emps, date } = shiftSelectModal;
+
+    try {
+      // Handle custom ad-hoc pattern
+      if (shiftPatternId === 'custom-adhoc' && customTimes) {
+        const patternId = await ensureCustomPattern();
+
+        for (const employee of emps) {
+          const existing = projectAssignments.find(
+            a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
+          );
+
+          if (!existing) {
+            await onCreateAssignment({
+              employeeId: employee.id,
+              projectId: project.id,
+              shiftPatternId: patternId,
+              date,
+              customStartTime: customTimes.startTime,
+              customEndTime: customTimes.endTime,
+            });
+          }
+        }
+      } else {
+        // Standard shift pattern
+        for (const employee of emps) {
+          const existing = projectAssignments.find(
+            a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
+          );
+
+          if (!existing) {
+            await onCreateAssignment({
+              employeeId: employee.id,
+              projectId: project.id,
+              shiftPatternId,
+              date,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create assignment';
+      setErrorMessage(message);
+    }
+
+    setShiftSelectModal(null);
     clearSelection();
     dragDataRef.current = null;
   };
@@ -589,6 +685,7 @@ export function PlanningView({
             onEditAssignment={setEditingAssignment}
             onNavigateToPerson={onNavigateToPerson}
             onCreateAssignment={onCreateAssignment}
+            onCreateShiftPattern={onCreateShiftPattern}
             onRepeatAssignment={(shiftPatternId, startDate, employeeIds) => {
               // Select the employees and open bulk assign modal pre-filled
               const empsToSelect = employees.filter(e => employeeIds.includes(e.id));
@@ -632,6 +729,7 @@ export function PlanningView({
             period={currentPeriod}
             onCellDragOver={handleCellDragOver}
             onCellDrop={handleCellDrop}
+            onEmptyCellDrop={handleEmptyCellDrop}
             onDeleteAssignment={onDeleteAssignment}
             onEditAssignment={setEditingAssignment}
           />
@@ -910,6 +1008,20 @@ export function PlanningView({
           onCreateAssignments={handleBulkAssignments}
           prefilledShiftPatternId={bulkAssignPrefill?.shiftPatternId}
           prefilledStartDate={bulkAssignPrefill?.startDate}
+        />
+      )}
+
+      {/* Shift Pattern Select Modal (for Weekly Grid drops) */}
+      {shiftSelectModal && (
+        <ShiftPatternSelectModal
+          employeeNames={shiftSelectModal.employees.map(e => toTitleCase(e.name))}
+          date={shiftSelectModal.date}
+          shiftPatterns={projectShiftPatterns}
+          onClose={() => {
+            setShiftSelectModal(null);
+            dragDataRef.current = null;
+          }}
+          onSelect={handleShiftPatternSelect}
         />
       )}
 

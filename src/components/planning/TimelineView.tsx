@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
-import { Edit2, Trash2, AlertTriangle, AlertCircle, Copy } from '@/components/ui/Icons';
+import { Edit2, Trash2, AlertTriangle, AlertCircle, Copy, Plus } from '@/components/ui/Icons';
 import { checkEmployeeCompliance, getDateCellViolations, type ComplianceViolation } from '@/lib/compliance';
 import type {
   ProjectCamel,
@@ -47,6 +47,8 @@ interface TimelineViewProps {
     customStartTime?: string;
     customEndTime?: string;
   }) => Promise<void>;
+  /** Called when user clicks to add a new shift pattern */
+  onCreateShiftPattern?: () => void;
 }
 
 // Copy dialog state
@@ -73,6 +75,7 @@ export function TimelineView({
   onNavigateToPerson,
   onRepeatAssignment,
   onCreateAssignment,
+  onCreateShiftPattern,
 }: TimelineViewProps) {
   // Use all assignments/patterns for compliance (cross-project), fall back to project-only
   const complianceAssignments = allAssignments || assignments;
@@ -393,8 +396,9 @@ export function TimelineView({
             <span className="text-sm">Create a shift pattern to start planning.</span>
           </div>
         ) : (
-          // Sort patterns so Custom (Ad-hoc) appears at the bottom
-          [...shiftPatterns]
+          <>
+          {/* Sort patterns so Custom (Ad-hoc) appears at the bottom */}
+          {[...shiftPatterns]
             .sort((a, b) => {
               const aIsCustom = a.id.endsWith('-custom');
               const bIsCustom = b.id.endsWith('-custom');
@@ -571,7 +575,26 @@ export function TimelineView({
                 })}
               </div>
             );
-          })
+          })}
+
+          {/* Add New Shift Pattern Row */}
+          {onCreateShiftPattern && (
+            <div
+              className="grid border-b border-slate-200 hover:bg-blue-50 cursor-pointer transition-colors"
+              style={{ gridTemplateColumns: '200px repeat(28, 100px)' }}
+              onClick={onCreateShiftPattern}
+            >
+              <div className="p-3 sticky left-0 bg-white border-r border-slate-200 z-10 flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                <Plus className="w-4 h-4" />
+                <span className="font-medium text-sm">Add New Shift</span>
+              </div>
+              {/* Empty cells for the grid alignment */}
+              {dates.map((_, idx) => (
+                <div key={idx} className="border-l border-slate-200" />
+              ))}
+            </div>
+          )}
+          </>
         )}
       </div>
 
