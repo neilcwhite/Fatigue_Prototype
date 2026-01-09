@@ -39,6 +39,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ArchiveIcon from '@mui/icons-material/Archive';
 
 interface IconProps {
   className?: string;
@@ -315,6 +316,13 @@ export const Circle = ({ className = "w-6 h-6" }: IconProps) => (
 
 export const RotateCcw = ({ className = "w-6 h-6" }: IconProps) => (
   <RefreshIcon
+    className={className}
+    sx={{ fontSize: getSizeFromClass(className) }}
+  />
+);
+
+export const Archive = ({ className = "w-6 h-6" }: IconProps) => (
+  <ArchiveIcon
     className={className}
     sx={{ fontSize: getSizeFromClass(className) }}
   />

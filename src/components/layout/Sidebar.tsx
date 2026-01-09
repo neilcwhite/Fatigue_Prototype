@@ -13,8 +13,9 @@ import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import { Home, Calendar, Users, User, BarChart, Settings, ChevronLeft, ChevronRight, HelpCircle, FileText } from '@/components/ui/Icons';
+import SettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
-export type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments';
+export type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments' | 'admin';
 
 interface NavItem {
   id: ViewMode;
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { id: 'teams', label: 'Teams', icon: <Users className="w-5 h-5" /> },
   { id: 'assessments', label: 'Assessments', icon: <FileText className="w-5 h-5" /> },
   { id: 'fatigue', label: 'Shift Builder', icon: <Settings className="w-5 h-5" /> },
+  { id: 'admin', label: 'Admin', icon: <SettingsIcon sx={{ fontSize: 20 }} /> },
 ];
 
 interface SidebarProps {

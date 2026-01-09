@@ -44,7 +44,14 @@ interface TeamsViewProps {
   onUpdateTeam: (id: number, data: Partial<TeamCamel>) => Promise<void>;
   onDeleteTeam: (id: number) => Promise<void>;
   onCreateAssignment: (data: Omit<AssignmentCamel, 'id' | 'organisationId'>) => Promise<void>;
-  onCreateEmployee: (name: string, role?: string) => Promise<void>;
+  onCreateEmployee: (data: {
+    name: string;
+    role?: string;
+    sentinelNumber?: string;
+    primarySponsor?: string;
+    subSponsors?: string;
+    currentEmployer?: string;
+  }) => Promise<void>;
 }
 
 export function TeamsView({
@@ -162,7 +169,10 @@ export function TeamsView({
 
     setCreatingEmployee(true);
     try {
-      await onCreateEmployee(newEmployeeName.trim(), newEmployeeRole.trim() || undefined);
+      await onCreateEmployee({
+        name: newEmployeeName.trim(),
+        role: newEmployeeRole.trim() || undefined,
+      });
       showSuccess('Employee created successfully');
       setShowEmployeeModal(false);
       setNewEmployeeName('');
@@ -193,7 +203,14 @@ export function TeamsView({
     try {
       for (const row of rows) {
         const fullName = `${row.first_name} ${row.last_name}`;
-        await onCreateEmployee(fullName, row.role);
+        await onCreateEmployee({
+          name: fullName,
+          role: row.role,
+          sentinelNumber: row.sentinel_number,
+          primarySponsor: row.primary_sponsor,
+          subSponsors: row.sub_sponsors,
+          currentEmployer: row.current_employer,
+        });
       }
       showSuccess(`Successfully imported ${rows.length} employee${rows.length === 1 ? '' : 's'}`);
       setShowCSVImportModal(false);

@@ -12,6 +12,7 @@ import { PersonView } from '@/components/person/PersonView';
 import { SummaryView } from '@/components/summary/SummaryView';
 import { FatigueView } from '@/components/fatigue/FatigueView';
 import { AssessmentsView } from '@/components/assessments';
+import { AdminView } from '@/components/admin/AdminView';
 import { ProjectModal } from '@/components/modals/ProjectModal';
 import { ShiftPatternModal } from '@/components/modals/ShiftPatternModal';
 import { ShiftPatternEditModal } from '@/components/modals/ShiftPatternEditModal';
@@ -23,7 +24,7 @@ import { TutorialOverlay } from '@/components/onboarding/TutorialOverlay';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
 
-type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments';
+type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments' | 'admin';
 
 // Check Supabase configuration at module level
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -53,7 +54,11 @@ export default function Home() {
     loading: dataLoading,
     error: dataError,
     createProject,
+    updateProject,
+    deleteProject,
     createEmployee,
+    updateEmployee,
+    deleteEmployee,
     createAssignment,
     updateAssignment,
     deleteAssignment,
@@ -469,6 +474,21 @@ export default function Home() {
             onDeleteTeam={deleteTeam}
             onCreateAssignment={createAssignment}
             onCreateEmployee={createEmployee}
+          />
+        )}
+
+        {currentView === 'admin' && (
+          <AdminView
+            user={user}
+            userRole={profile?.role as import('@/lib/types').UserRole | undefined}
+            onSignOut={signOut}
+            employees={employees}
+            projects={projects}
+            onCreateEmployee={createEmployee}
+            onDeleteEmployee={deleteEmployee}
+            onUpdateEmployee={updateEmployee}
+            onArchiveProject={async (id, archived) => updateProject(id, { archived })}
+            onDeleteProject={deleteProject}
           />
         )}
 

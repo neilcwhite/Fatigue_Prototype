@@ -210,7 +210,14 @@ interface UseAppDataReturn extends AppData {
   updateProject: (id: number, data: Partial<ProjectCamel>) => Promise<void>;
   deleteProject: (id: number) => Promise<void>;
   // Employee operations
-  createEmployee: (name: string, role?: string) => Promise<void>;
+  createEmployee: (data: {
+    name: string;
+    role?: string;
+    sentinelNumber?: string;
+    primarySponsor?: string;
+    subSponsors?: string;
+    currentEmployer?: string;
+  }) => Promise<void>;
   updateEmployee: (id: number, data: Partial<EmployeeCamel>) => Promise<void>;
   deleteEmployee: (id: number) => Promise<void>;
   // Team operations
@@ -287,6 +294,10 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         name: e.name,
         role: e.role,
         email: e.email,
+        sentinelNumber: e.sentinel_number,
+        primarySponsor: e.primary_sponsor,
+        subSponsors: e.sub_sponsors,
+        currentEmployer: e.current_employer,
         teamId: e.team_id,
         organisationId: e.organisation_id,
       }));
@@ -511,15 +522,26 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
 
   // ==================== EMPLOYEE OPERATIONS ====================
 
-  const createEmployee = async (name: string, role?: string) => {
+  const createEmployee = async (data: {
+    name: string;
+    role?: string;
+    sentinelNumber?: string;
+    primarySponsor?: string;
+    subSponsors?: string;
+    currentEmployer?: string;
+  }) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
-    
+
     const { error } = await supabase.from('employees').insert({
-      name,
-      role,
+      name: data.name,
+      role: data.role,
+      sentinel_number: data.sentinelNumber,
+      primary_sponsor: data.primarySponsor,
+      sub_sponsors: data.subSponsors,
+      current_employer: data.currentEmployer,
       organisation_id: organisationId,
     });
-    
+
     if (error) throw error;
     await loadAllData();
   };
@@ -532,6 +554,10 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
       name: updateData.name,
       role: updateData.role,
       email: updateData.email,
+      sentinel_number: updateData.sentinelNumber,
+      primary_sponsor: updateData.primarySponsor,
+      sub_sponsors: updateData.subSponsors,
+      current_employer: updateData.currentEmployer,
       team_id: updateData.teamId,
     }).eq('id', id).eq('organisation_id', organisationId);
 
