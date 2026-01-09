@@ -27,9 +27,10 @@ import ListItemText from '@mui/material/ListItemText';
 import Checkbox from '@mui/material/Checkbox';
 import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
-import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X } from '@/components/ui/Icons';
-import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser } from '@/lib/types';
+import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X, Upload } from '@/components/ui/Icons';
+import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser, Employee, CSVImportRow } from '@/lib/types';
 import { useNotification } from '@/hooks/useNotification';
+import { CSVImportModal } from '@/components/admin/CSVImportModal';
 
 interface TeamsViewProps {
   user: SupabaseUser;
@@ -81,6 +82,20 @@ export function TeamsView({
   const [newEmployeeName, setNewEmployeeName] = useState('');
   const [newEmployeeRole, setNewEmployeeRole] = useState('');
   const [creatingEmployee, setCreatingEmployee] = useState(false);
+
+  // CSV Import modal state
+  const [showCSVImportModal, setShowCSVImportModal] = useState(false);
+
+  // Convert EmployeeCamel to Employee for CSV import modal
+  const employeesForImport: Employee[] = employees.map(emp => ({
+    id: emp.id,
+    name: emp.name,
+    role: emp.role,
+    email: emp.email,
+    sentinel_number: emp.sentinelNumber,
+    team_id: emp.teamId,
+    organisation_id: emp.organisationId,
+  }));
 
   const openCreateModal = () => {
     setEditingTeam(null);
@@ -173,6 +188,21 @@ export function TeamsView({
   const projectPatterns = selectedProjectId
     ? shiftPatterns.filter(sp => sp.projectId === selectedProjectId)
     : [];
+
+  const handleCSVImport = async (rows: CSVImportRow[]) => {
+    try {
+      for (const row of rows) {
+        const fullName = `${row.first_name} ${row.last_name}`;
+        await onCreateEmployee(fullName, row.role);
+      }
+      showSuccess(`Successfully imported ${rows.length} employee${rows.length === 1 ? '' : 's'}`);
+      setShowCSVImportModal(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to import employees';
+      showError(message);
+      throw err; // Re-throw so modal can handle it
+    }
+  };
 
   const handleBulkAssign = async () => {
     if (!assigningTeam || !selectedProjectId || !selectedPatternId || !assignStartDate || !assignEndDate) {
@@ -308,6 +338,21 @@ export function TeamsView({
               }}
             >
               Add Employee
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Upload className="w-4 h-4" />}
+              onClick={() => setShowCSVImportModal(true)}
+              sx={{
+                color: '#22c55e',
+                borderColor: '#22c55e',
+                '&:hover': {
+                  borderColor: '#16a34a',
+                  bgcolor: 'rgba(34, 197, 94, 0.1)',
+                },
+              }}
+            >
+              Import CSV
             </Button>
             <Button
               variant="contained"
@@ -645,6 +690,15 @@ export function TeamsView({
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        open={showCSVImportModal}
+        onClose={() => setShowCSVImportModal(false)}
+        existingEmployees={employeesForImport}
+        onImport={handleCSVImport}
+        organisationId={user?.id || ''}
+      />
     </Box>
   );
 }
