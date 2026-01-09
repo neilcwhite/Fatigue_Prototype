@@ -276,10 +276,15 @@ export function PersonView({
   }, [currentPeriod]);
 
   const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Period-level stats
     const totalShifts = periodAssignments.length;
     const uniqueProjects = [...new Set(periodAssignments.map(a => a.projectId))].length;
     let totalHours = 0;
     let nightShifts = 0;
+    let periodShiftsCompleted = 0;
+
     periodAssignments.forEach(a => {
       const pattern = shiftPatterns.find(p => p.id === a.shiftPatternId);
       if (pattern?.startTime && pattern?.endTime) {
@@ -290,9 +295,66 @@ export function PersonView({
         totalHours += 12;
       }
       if (pattern?.isNight) nightShifts++;
+      if (a.date < today) periodShiftsCompleted++;
     });
-    return { totalShifts, uniqueProjects, totalHours: Math.round(totalHours), nightShifts };
-  }, [periodAssignments, shiftPatterns]);
+
+    // Year-level stats
+    const yearStart = `${selectedYear}-04-01`;
+    const yearEnd = `${selectedYear + 1}-03-31`;
+    const yearAssignments = empAssignments.filter(a => a.date >= yearStart && a.date <= yearEnd);
+    const yearProjects = [...new Set(yearAssignments.map(a => a.projectId))].length;
+    const yearShiftsTotal = yearAssignments.length;
+    const yearShiftsCompleted = yearAssignments.filter(a => a.date < today).length;
+    const yearShiftsOutstanding = yearShiftsTotal - yearShiftsCompleted;
+
+    // Future shifts (beyond current period)
+    const periodEnd = currentPeriod ? currentPeriod.endDate : today;
+    const futureAssignments = empAssignments.filter(a => a.date > periodEnd);
+    const futureShiftsCount = futureAssignments.length;
+
+    // Non-compliant future shifts without closed FAMP
+    const futureNonCompliantShifts = futureAssignments.filter(a => {
+      // Check if assignment has compliance violations
+      const empCompliance = checkEmployeeCompliance(employee.id, empAssignments, shiftPatterns);
+      const hasViolation = empCompliance.violations.some(v => {
+        // Check if this violation involves this assignment date
+        if (v.type === 'INSUFFICIENT_REST' && v.date === a.date) return true;
+        if ((v.type === 'MAX_WEEKLY_HOURS' || v.type === 'APPROACHING_WEEKLY_LIMIT') && v.date) {
+          const violationDate = new Date(v.date);
+          const assignmentDate = new Date(a.date);
+          const windowEnd = v.windowEnd ? new Date(v.windowEnd) : new Date(violationDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+          return assignmentDate >= violationDate && assignmentDate <= windowEnd;
+        }
+        return false;
+      });
+
+      if (!hasViolation) return false;
+
+      // Check if there's a completed FAMP for this assignment
+      const hasCompletedFAMP = fatigueAssessments?.some(fa =>
+        fa.employeeId === employee.id &&
+        fa.status === 'completed' &&
+        fa.assignmentId === a.id
+      );
+
+      return !hasCompletedFAMP;
+    }).length;
+
+    return {
+      totalShifts,
+      uniqueProjects,
+      totalHours: Math.round(totalHours),
+      nightShifts,
+      periodShiftsCompleted,
+      periodShiftsOutstanding: totalShifts - periodShiftsCompleted,
+      yearProjects,
+      yearShiftsTotal,
+      yearShiftsCompleted,
+      yearShiftsOutstanding,
+      futureShiftsCount,
+      futureNonCompliantShifts
+    };
+  }, [periodAssignments, shiftPatterns, empAssignments, selectedYear, currentPeriod, employee.id, fatigueAssessments]);
 
   const getAssignmentInfo = (assignment: AssignmentCamel) => {
     const pattern = shiftPatterns.find(p => p.id === assignment.shiftPatternId);

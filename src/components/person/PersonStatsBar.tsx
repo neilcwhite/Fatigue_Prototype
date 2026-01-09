@@ -18,6 +18,14 @@ interface PersonStats {
   uniqueProjects: number;
   totalHours: number;
   nightShifts: number;
+  periodShiftsCompleted: number;
+  periodShiftsOutstanding: number;
+  yearProjects: number;
+  yearShiftsTotal: number;
+  yearShiftsCompleted: number;
+  yearShiftsOutstanding: number;
+  futureShiftsCount: number;
+  futureNonCompliantShifts: number;
 }
 
 interface PersonStatsBarProps {
@@ -35,7 +43,7 @@ export function PersonStatsBar({
 }: PersonStatsBarProps) {
   return (
     <Paper sx={{ mb: 2, px: 2, py: 1 }} data-testid="person-stats-bar">
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         {/* Compliance */}
         <Box
           sx={{
@@ -80,16 +88,88 @@ export function PersonStatsBar({
 
         <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
 
-        {/* Period Shifts */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="shifts-stat">
+        {/* Year Projects */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="year-projects-stat">
           <Typography variant="body2" color="text.secondary">
-            Shifts:
+            Projects (Year):
+          </Typography>
+          <Typography variant="body1" fontWeight={700}>
+            {stats.yearProjects}
+          </Typography>
+        </Box>
+
+        <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+        {/* Year Shifts */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="year-shifts-stat">
+          <Typography variant="body2" color="text.secondary">
+            Shifts (Year):
+          </Typography>
+          <Typography variant="body1" fontWeight={700}>
+            {stats.yearShiftsTotal}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            ({stats.yearShiftsCompleted} done / {stats.yearShiftsOutstanding} outstanding)
+          </Typography>
+        </Box>
+
+        <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+        {/* Period Shifts */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="period-shifts-stat">
+          <Typography variant="body2" color="text.secondary">
+            Shifts (Period):
           </Typography>
           <Typography variant="body1" fontWeight={700}>
             {stats.totalShifts}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            ({stats.nightShifts} nights)
+            ({stats.periodShiftsCompleted} done / {stats.periodShiftsOutstanding} outstanding)
+          </Typography>
+        </Box>
+
+        <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+        {/* Future Shifts */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="future-shifts-stat">
+          <Typography variant="body2" color="text.secondary">
+            Future Shifts:
+          </Typography>
+          <Typography variant="body1" fontWeight={700}>
+            {stats.futureShiftsCount}
+          </Typography>
+        </Box>
+
+        <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
+
+        {/* Non-Compliant Future Shifts without FAMP */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            borderLeft: 3,
+            borderColor: stats.futureNonCompliantShifts > 0 ? 'error.main' : 'success.main',
+            pl: 1,
+          }}
+          data-testid="non-compliant-famp-stat"
+        >
+          {stats.futureNonCompliantShifts > 0 ? (
+            <AlertTriangle className="w-4 h-4" />
+          ) : (
+            <CheckCircle className="w-4 h-4" />
+          )}
+          <Typography variant="body2" color="text.secondary">
+            Non-Compliant (No FAMP):
+          </Typography>
+          <Typography
+            variant="body1"
+            fontWeight={700}
+            sx={{
+              color: stats.futureNonCompliantShifts > 0 ? 'error.main' : 'success.main',
+            }}
+          >
+            {stats.futureNonCompliantShifts}
           </Typography>
         </Box>
 
@@ -105,18 +185,6 @@ export function PersonStatsBar({
           </Typography>
           <Typography variant="caption" color="text.secondary">
             ({stats.totalShifts > 0 ? Math.round((stats.totalHours / stats.totalShifts) * 10) / 10 : 0}h avg)
-          </Typography>
-        </Box>
-
-        <Box sx={{ height: 20, borderLeft: 1, borderColor: 'divider' }} />
-
-        {/* Projects */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} data-testid="projects-stat">
-          <Typography variant="body2" color="text.secondary">
-            Projects:
-          </Typography>
-          <Typography variant="body1" fontWeight={700}>
-            {stats.uniqueProjects}
           </Typography>
         </Box>
 
