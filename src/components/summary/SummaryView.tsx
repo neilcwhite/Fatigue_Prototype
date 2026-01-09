@@ -79,6 +79,7 @@ function getShiftDuration(pattern: ShiftPatternCamel, date: string): number {
 
 export function SummaryView({
   user,
+  onSignOut,
   onBack,
   project,
   projects,
@@ -231,45 +232,72 @@ export function SummaryView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" component="span" sx={{ color: 'secondary.light', mr: 3 }}>
-            Project View
+          <Typography variant="h6" component="span" sx={{ color: 'white', fontWeight: 600 }}>
+            {project.name}
           </Typography>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => onNavigateToPlanning(project.id)}
-            sx={{ mr: 'auto' }}
-          >
-            Go to Planning
-          </Button>
-          <FormControl size="small" sx={{ minWidth: 150, mr: 2 }}>
-            <Select
-              value={project.id}
-              onChange={(e) => onSelectProject(Number(e.target.value))}
+          <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
+            <Button
+              variant="contained"
+              onClick={onBack}
               sx={{
-                bgcolor: 'rgba(51, 65, 85, 0.8)',
+                bgcolor: '#f97316',
                 color: 'white',
-                '& .MuiSelect-icon': { color: 'white' },
+                '&:hover': { bgcolor: '#ea580c' },
               }}
             >
-              {projects.map(p => (
-                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Chip
-            label="PROJECT VIEW"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(51, 65, 85, 0.8)',
-              color: 'secondary.light',
-              fontFamily: 'monospace',
-              fontWeight: 500,
-              fontSize: '0.7rem',
-              mr: 2,
-            }}
-          />
-          <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+              Link to Person View
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => onNavigateToPlanning(project.id)}
+            >
+              Go to Planning
+            </Button>
+          </Box>
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <Select
+                value={project.id}
+                onChange={(e) => onSelectProject(Number(e.target.value))}
+                sx={{
+                  bgcolor: 'rgba(51, 65, 85, 0.8)',
+                  color: 'white',
+                  '& .MuiSelect-icon': { color: 'white' },
+                }}
+              >
+                {projects.map(p => (
+                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Chip
+              label="PROJECT VIEW"
+              size="small"
+              sx={{
+                bgcolor: 'rgba(51, 65, 85, 0.8)',
+                color: 'secondary.light',
+                fontFamily: 'monospace',
+                fontWeight: 500,
+                fontSize: '0.7rem',
+              }}
+            />
+            <Typography variant="body2" sx={{ color: 'grey.400', mr: 2 }}>{user?.email}</Typography>
+            <Button
+              variant="outlined"
+              onClick={onSignOut}
+              sx={{
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+                '&:hover': {
+                  borderColor: 'white',
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              Sign Out
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
 

@@ -57,25 +57,27 @@ export const COMPLIANCE_LIMITS = {
 // ==================== TYPES ====================
 
 /**
- * Compliance severity levels (4-tier system per NR/L2/OHS/003):
+ * Compliance severity levels (5-tier system per NR/L2/OHS/003):
  * - 'ok': Green - Fully compliant, no issues
+ * - 'info': Green - Good Practice threshold (informational, monitor and record)
+ * - 'warning': Yellow - Approaching limits (soft warning)
  * - 'level1': Yellow - Level 1 Exceedance (60-72h), requires risk assessment
- * - 'level2': Amber - Level 2 Exceedance (72h+), requires risk assessment
- * - 'breach': Red - Hard breach (e.g., <12h rest), stop working immediately
+ * - 'level2': Amber - Level 2 Exceedance (72h+ or FRI 35/45), requires FAMP
+ * - 'breach': Red - Hard breach (e.g., <12h rest, FRI >1.6), stop working immediately
  */
-export type ViolationSeverity = 'breach' | 'level2' | 'level1' | 'warning';
+export type ViolationSeverity = 'breach' | 'level2' | 'level1' | 'warning' | 'info';
 
 /**
- * Compliance status for display (4-tier)
+ * Compliance status for display (5-tier)
  */
-export type ComplianceStatus = 'ok' | 'level1' | 'level2' | 'breach';
+export type ComplianceStatus = 'ok' | 'info' | 'level1' | 'level2' | 'breach';
 
 export type ViolationType =
   | 'MAX_SHIFT_LENGTH'
   | 'INSUFFICIENT_REST'
   | 'MAX_WEEKLY_HOURS'
-  | 'LEVEL_1_EXCEEDANCE'         // 60-72 hours: amber warning with duty restrictions
-  | 'LEVEL_2_EXCEEDANCE'         // 72+ hours: red error, complete work prohibition
+  | 'LEVEL_1_EXCEEDANCE'         // 60-72 hours: yellow warning with duty restrictions
+  | 'LEVEL_2_EXCEEDANCE'         // 72+ hours: amber, complete work prohibition, requires FAMP
   | 'APPROACHING_WEEKLY_LIMIT'
   | 'MAX_CONSECUTIVE_DAYS'
   | 'CONSECUTIVE_DAYS_WARNING'
@@ -83,7 +85,9 @@ export type ViolationType =
   | 'MAX_CONSECUTIVE_NIGHTS'
   | 'DAY_NIGHT_TRANSITION'
   | 'MULTIPLE_SHIFTS_SAME_DAY'
-  | 'ELEVATED_FATIGUE_INDEX';
+  | 'ELEVATED_FATIGUE_INDEX'     // FRI Risk Index >1.6: red breach
+  | 'GOOD_PRACTICE_FRI'          // FRI 30/40: green info, monitor and record
+  | 'LEVEL_2_FRI_EXCEEDANCE';    // FRI 35/45: amber, requires FAMP
 
 export interface ComplianceViolation {
   type: ViolationType;
@@ -588,12 +592,21 @@ export function check24HourRestAfterLevel2(
 }
 
 /**
- * Check Fatigue Risk Index (FRI) thresholds per NR/L2/OHS/003
- * Module 1, Section 4.3: FRI risk score must not exceed 1.6
+ * Determine if a shift is nighttime based on start time (simple version for FRI checks)
+ * Night shift: starts between 20:00 (8pm) and 06:00 (6am)
+ */
+function isNightShiftTime(startTime: string): boolean {
+  const [hours] = startTime.split(':').map(Number);
+  return hours >= COMPLIANCE_LIMITS.NIGHT_START_HOUR || hours < COMPLIANCE_LIMITS.NIGHT_END_HOUR;
+}
+
+/**
+ * Check Fatigue Risk Index (FRI) thresholds per NR/L2/OHS/003 Chart 1
  *
- * NOTE: The standard also mentions fatigue scores of 35 (daytime) and 45 (nighttime),
- * but these appear to use a different scale than HSE RR446. The risk index threshold
- * of 1.6 is clearly defined and enforced here.
+ * Checks 4 FRI thresholds:
+ * 1. Good Practice: 30 (day) / 40 (night) - Green info
+ * 2. Level 2 FRI: 35 (day) / 45 (night) - Amber, requires FAMP
+ * 3. Risk Index: >1.6 - Red breach, stop work
  */
 export function checkFatigueRiskIndex(
   employeeId: number,
@@ -642,17 +655,52 @@ export function checkFatigueRiskIndex(
 
     const friResult = calculateRiskIndex(shift, index, shiftSequence);
     const assignment = sorted[index];
+    const pattern = patternMap.get(assignment.shiftPatternId);
+    if (!pattern) return;
 
-    // Check if risk index exceeds Network Rail threshold
-    if (friResult.riskIndex > FRI_THRESHOLDS.RISK_SCORE_LIMIT) {
+    const times = getShiftTimes(pattern, assignment.date, assignment);
+    if (!times) return;
+
+    const isNight = isNightShiftTime(times.start);
+    const fatigueScore = friResult.fatigueIndex; // The fatigue score (FGI)
+    const riskIndex = friResult.riskIndex;       // The risk index (FRI)
+
+    // Check thresholds in order of severity (highest to lowest)
+
+    // 1. Risk Index >1.6 - RED BREACH (Chart 1)
+    if (riskIndex > FRI_THRESHOLDS.RISK_SCORE_LIMIT) {
       violations.push({
         type: 'ELEVATED_FATIGUE_INDEX',
-        severity: 'breach',  // Red - FRI limit exceeded
+        severity: 'breach',  // Red - hard limit
         employeeId,
         date: assignment.date,
-        message: `FRI risk score ${friResult.riskIndex.toFixed(2)} exceeds Network Rail limit of ${FRI_THRESHOLDS.RISK_SCORE_LIMIT} (NR/L2/OHS/003 Module 1)`,
-        value: Math.round(friResult.riskIndex * 100) / 100,
+        message: `FRI risk index ${riskIndex.toFixed(2)} exceeds ${FRI_THRESHOLDS.RISK_SCORE_LIMIT} (NR/L2/OHS/003 Chart 1)`,
+        value: Math.round(riskIndex * 100) / 100,
         limit: FRI_THRESHOLDS.RISK_SCORE_LIMIT,
+      });
+    }
+    // 2. Level 2 FRI: 35 (day) / 45 (night) - AMBER (Chart 1 Level 2 Trigger)
+    else if (fatigueScore > (isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME)) {
+      violations.push({
+        type: 'LEVEL_2_FRI_EXCEEDANCE',
+        severity: 'level2',  // Amber - requires FAMP
+        employeeId,
+        date: assignment.date,
+        message: `LEVEL 2 FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Requires FAMP`,
+        value: Math.round(fatigueScore * 10) / 10,
+        limit: isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME,
+      });
+    }
+    // 3. Good Practice: 30 (day) / 40 (night) - GREEN INFO (Chart 1 Good Practice Trigger)
+    else if (fatigueScore > (isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME)) {
+      violations.push({
+        type: 'GOOD_PRACTICE_FRI',
+        severity: 'info',  // Green - informational, monitor and record
+        employeeId,
+        date: assignment.date,
+        message: `Good Practice FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Monitor and record controls`,
+        value: Math.round(fatigueScore * 10) / 10,
+        limit: isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME,
       });
     }
   });

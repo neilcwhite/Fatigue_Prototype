@@ -81,13 +81,18 @@ export const FRI_THRESHOLDS = {
   /** Above ELEVATED, below CRITICAL is elevated risk (orange) */
   CRITICAL: 1.2,
 
-  /** Network Rail NR/L2/OHS/003 compliance thresholds */
-  /** Fatigue score threshold for daytime hours (Module 1, Section 4.3) */
-  FATIGUE_SCORE_DAYTIME: 35,
-  /** Fatigue score threshold for nighttime hours (Module 1, Section 4.3) */
-  FATIGUE_SCORE_NIGHTTIME: 45,
-  /** Risk score threshold regardless of time of day (Module 1, Section 4.3) */
-  RISK_SCORE_LIMIT: 1.6,
+  /** Network Rail NR/L2/OHS/003 compliance thresholds (Chart 1) */
+
+  /** Good Practice Triggers (Green - "where reasonably practicable") */
+  GOOD_PRACTICE_FRI_DAYTIME: 30,   // Chart 1: >30 FRI daytime
+  GOOD_PRACTICE_FRI_NIGHTTIME: 40, // Chart 1: >40 FRI night time
+
+  /** Level 2 Triggers (Amber - "non-compliance requires variation") */
+  LEVEL_2_FRI_DAYTIME: 35,         // Chart 1: >35 FRI daytime
+  LEVEL_2_FRI_NIGHTTIME: 45,       // Chart 1: >45 FRI night time
+
+  /** Risk score threshold (Red - hard limit) */
+  RISK_SCORE_LIMIT: 1.6,           // Chart 1: >1.6 FRI risk score
 } as const;
 
 // ==================== COMPLIANCE LIMITS ====================
@@ -188,16 +193,18 @@ export const RISK_COLORS = {
 } as const;
 
 /**
- * Compliance status colors (4-tier NR system)
+ * Compliance status colors (5-tier NR system per Chart 1)
  * - OK: Green - fully compliant
+ * - INFO: Green - Good Practice threshold (monitor and record)
  * - LEVEL1: Yellow - Level 1 exceedance (60-72h), requires risk assessment
- * - LEVEL2: Amber/Orange - Level 2 exceedance (72h+), requires risk assessment
- * - BREACH: Red - hard breach, stop working immediately
+ * - LEVEL2: Amber/Orange - Level 2 exceedance (72h+ or FRI 35/45), requires FAMP
+ * - BREACH: Red - hard breach (FRI >1.6, <12h rest), stop working immediately
  */
 export const COMPLIANCE_COLORS = {
   OK: '#22c55e',       // green-500 - compliant
+  INFO: '#22c55e',     // green-500 - Good Practice (same as OK but informational)
   LEVEL1: '#eab308',   // yellow-500 - Level 1 exceedance
-  LEVEL2: '#f97316',   // orange-500 - Level 2 exceedance
+  LEVEL2: '#f97316',   // orange-500/amber - Level 2 exceedance
   BREACH: '#ef4444',   // red-500 - hard breach
 } as const;
 
@@ -206,8 +213,9 @@ export const COMPLIANCE_COLORS = {
  */
 export const COMPLIANCE_BG_COLORS = {
   OK: '#dcfce7',       // green-100
+  INFO: '#dcfce7',     // green-100 - Good Practice
   LEVEL1: '#fef9c3',   // yellow-100
-  LEVEL2: '#ffedd5',   // orange-100
+  LEVEL2: '#ffedd5',   // orange-100 / amber
   BREACH: '#fee2e2',   // red-100
 } as const;
 

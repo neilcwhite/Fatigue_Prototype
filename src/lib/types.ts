@@ -187,8 +187,8 @@ export type ViolationType =
   | 'MAX_SHIFT_LENGTH'
   | 'INSUFFICIENT_REST'
   | 'MAX_WEEKLY_HOURS'
-  | 'LEVEL_1_EXCEEDANCE'         // 60-72 hours: amber warning with duty restrictions
-  | 'LEVEL_2_EXCEEDANCE'         // 72+ hours: red error, complete work prohibition
+  | 'LEVEL_1_EXCEEDANCE'         // 60-72 hours: yellow, requires risk assessment
+  | 'LEVEL_2_EXCEEDANCE'         // 72+ hours: amber, requires FAMP
   | 'APPROACHING_WEEKLY_LIMIT'
   | 'MAX_CONSECUTIVE_DAYS'
   | 'CONSECUTIVE_DAYS_WARNING'
@@ -196,9 +196,11 @@ export type ViolationType =
   | 'MAX_CONSECUTIVE_NIGHTS'
   | 'DAY_NIGHT_TRANSITION'
   | 'MULTIPLE_SHIFTS_SAME_DAY'
-  | 'ELEVATED_FATIGUE_INDEX';
+  | 'ELEVATED_FATIGUE_INDEX'     // FRI Risk Index >1.6: red breach
+  | 'GOOD_PRACTICE_FRI'          // FRI 30/40: green info, monitor and record
+  | 'LEVEL_2_FRI_EXCEEDANCE';    // FRI 35/45: amber, requires FAMP
 
-export type ViolationSeverity = 'breach' | 'level2' | 'level1' | 'warning';
+export type ViolationSeverity = 'breach' | 'level2' | 'level1' | 'warning' | 'info';
 
 export interface ComplianceViolation {
   type: ViolationType;

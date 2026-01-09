@@ -203,7 +203,7 @@ export function PersonView({
   }, [periodAssignments, shiftPatterns, fatigueAnalysis]);
 
   const violationAssignmentSeverity = useMemo(() => {
-    const severityMap = new Map<number, 'breach' | 'level2' | 'level1' | 'warning'>();
+    const severityMap = new Map<number, 'breach' | 'level2' | 'level1' | 'warning' | 'info'>();
     compliance.violations.forEach(violation => {
       let violationAssignments: AssignmentCamel[] = [];
       if (violation.type === 'MAX_WEEKLY_HOURS' || violation.type === 'APPROACHING_WEEKLY_LIMIT') {
@@ -230,8 +230,8 @@ export function PersonView({
       } else {
         violationAssignments = empAssignments.filter(a => a.date === violation.date);
       }
-      // Severity priority: breach > level2 > level1 > warning
-      const severityPriority = { breach: 4, level2: 3, level1: 2, warning: 1 };
+      // Severity priority: breach > level2 > level1 > warning > info
+      const severityPriority = { breach: 5, level2: 4, level1: 3, warning: 2, info: 1 };
       violationAssignments.forEach(a => {
         const existingSeverity = severityMap.get(a.id);
         const existingPriority = existingSeverity ? severityPriority[existingSeverity] : 0;
