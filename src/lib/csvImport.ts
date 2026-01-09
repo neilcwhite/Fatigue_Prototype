@@ -15,7 +15,7 @@ import { isValidSentinelNumber } from './permissions';
 
 /**
  * Parse CSV file content into structured rows
- * Expected columns: name, sentinel_number, role (optional), email (optional)
+ * Expected columns: first_name, last_name, sentinel_number, role (optional)
  */
 export function parseCSV(csvContent: string): CSVImportRow[] {
   const lines = csvContent.trim().split('\n');
@@ -24,16 +24,19 @@ export function parseCSV(csvContent: string): CSVImportRow[] {
   }
 
   // Parse header row
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const nameIndex = headers.indexOf('name');
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const firstNameIndex = headers.findIndex(h => h === 'first_name' || h === 'firstname');
+  const lastNameIndex = headers.findIndex(h => h === 'last_name' || h === 'lastname');
   const sentinelIndex = headers.findIndex(h =>
-    h === 'sentinel_number' || h === 'sentinel' || h === 'sentinel number'
+    h === 'sentinel_number' || h === 'sentinel' || h === 'sentinel_number'
   );
   const roleIndex = headers.indexOf('role');
-  const emailIndex = headers.indexOf('email');
 
-  if (nameIndex === -1) {
-    throw new Error('CSV must contain a "name" column');
+  if (firstNameIndex === -1) {
+    throw new Error('CSV must contain a "first_name" column');
+  }
+  if (lastNameIndex === -1) {
+    throw new Error('CSV must contain a "last_name" column');
   }
   if (sentinelIndex === -1) {
     throw new Error('CSV must contain a "sentinel_number" column');
@@ -47,19 +50,20 @@ export function parseCSV(csvContent: string): CSVImportRow[] {
 
     const values = line.split(',').map(v => v.trim());
 
-    const name = values[nameIndex];
+    const first_name = values[firstNameIndex];
+    const last_name = values[lastNameIndex];
     const sentinel_number = values[sentinelIndex];
 
-    if (!name || !sentinel_number) {
-      console.warn(`Skipping row ${i + 1}: missing name or sentinel_number`);
+    if (!first_name || !last_name || !sentinel_number) {
+      console.warn(`Skipping row ${i + 1}: missing required fields`);
       continue;
     }
 
     rows.push({
-      name,
+      first_name,
+      last_name,
       sentinel_number,
       role: roleIndex >= 0 ? values[roleIndex] : undefined,
-      email: emailIndex >= 0 ? values[emailIndex] : undefined,
     });
   }
 
@@ -90,9 +94,14 @@ export function validateCSVRows(rows: CSVImportRow[]): string[] {
   rows.forEach((row, index) => {
     const rowNum = index + 2; // +2 for header and 0-index
 
-    // Validate name
-    if (row.name.length < 2) {
-      errors.push(`Row ${rowNum}: Name too short (minimum 2 characters)`);
+    // Validate first name
+    if (row.first_name.length < 2) {
+      errors.push(`Row ${rowNum}: First name too short (minimum 2 characters)`);
+    }
+
+    // Validate last name
+    if (row.last_name.length < 2) {
+      errors.push(`Row ${rowNum}: Last name too short (minimum 2 characters)`);
     }
 
     // Validate Sentinel number
@@ -101,11 +110,6 @@ export function validateCSVRows(rows: CSVImportRow[]): string[] {
         `Row ${rowNum}: Invalid Sentinel number "${row.sentinel_number}" ` +
         `(must be 3-15 alphanumeric characters)`
       );
-    }
-
-    // Validate email if provided
-    if (row.email && !isValidEmail(row.email)) {
-      errors.push(`Row ${rowNum}: Invalid email address "${row.email}"`);
     }
   });
 
@@ -137,18 +141,20 @@ export function processCSVImport(
   // Process each CSV row
   for (const row of csvRows) {
     const existing = existingBySentinel.get(row.sentinel_number);
+    const fullName = `${row.first_name} ${row.last_name}`;
 
     if (!existing) {
       // Sentinel number is new -> import
       result.imported.push(row);
-    } else if (existing.name === row.name) {
+    } else if (existing.name === fullName) {
       // Sentinel exists + name matches -> skip
       result.skipped.push(row);
     } else {
       // Sentinel exists + name different -> flag conflict
       result.conflicts.push({
         sentinel_number: row.sentinel_number,
-        csvName: row.name,
+        csvFirstName: row.first_name,
+        csvLastName: row.last_name,
         existingName: existing.name,
         existingEmployeeId: existing.id,
       });
@@ -156,13 +162,6 @@ export function processCSVImport(
   }
 
   return result;
-}
-
-/**
- * Simple email validation
- */
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 /**
@@ -188,8 +187,8 @@ export function formatImportSummary(result: CSVImportResult): string {
  * Generate example CSV content for download
  */
 export function generateExampleCSV(): string {
-  return `name,sentinel_number,role,email
-John Smith,ABC123,Engineer,john.smith@example.com
-Jane Doe,XYZ789,Supervisor,jane.doe@example.com
-Mike Johnson,M1234,Technician,mike.j@example.com`;
+  return `first_name,last_name,sentinel_number,role
+John,Smith,ABC123,Engineer
+Jane,Doe,XYZ789,Supervisor
+Mike,Johnson,M1234,Technician`;
 }

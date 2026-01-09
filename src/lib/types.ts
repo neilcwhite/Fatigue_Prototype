@@ -338,10 +338,10 @@ export interface RolePermissions {
 
 // CSV import types
 export interface CSVImportRow {
-  name: string;
+  first_name: string;
+  last_name: string;
   sentinel_number: string;
   role?: string;
-  email?: string;
 }
 
 export interface CSVImportResult {
@@ -352,7 +352,8 @@ export interface CSVImportResult {
 
 export interface CSVImportConflict {
   sentinel_number: string;
-  csvName: string;
+  csvFirstName: string;
+  csvLastName: string;
   existingName: string;
   existingEmployeeId: number;
 }
