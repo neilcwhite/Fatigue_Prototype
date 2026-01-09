@@ -1266,6 +1266,8 @@ export function FatigueView({
         mode={mode}
         onBack={onBack}
         onChangePattern={handleBackToEntry}
+        onSignOut={onSignOut}
+        projectName={loadedProject?.name}
       />
 
       {/* Mode Banner - shows in review mode */}
@@ -1396,48 +1398,48 @@ export function FatigueView({
 
           {/* Charts Panel - Two side by side */}
           <Grid size={{ xs: 12, md: 8, lg: 9 }}>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ height: '100%' }}>
               {/* Fatigue Index Chart (FGI) */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Paper elevation={2} sx={{ height: '100%' }}>
-                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+              <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex' }}>
+                <Paper elevation={2} sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
                     <Typography variant="subtitle2" fontWeight={600}>Fatigue Index (FGI)</Typography>
                   </Box>
-                  <Box sx={{ p: 1, height: 180 }}>
+                  <Box sx={{ p: 1, flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
                     {results ? (
-                      <FatigueChart data={results.calculations} height={170} showThresholds={true} showComponents={false} showWorstCase={false} chartType="FGI" />
-                    ) : (
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                        <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
+                      <Box sx={{ width: '100%', height: '100%' }}>
+                        <FatigueChart data={results.calculations} height={280} showThresholds={true} showComponents={false} showWorstCase={false} chartType="FGI" />
                       </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
                     )}
                   </Box>
                 </Paper>
               </Grid>
               {/* Risk Index Chart (FRI) */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Paper elevation={2} sx={{ height: '100%' }}>
-                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider' }}>
+              <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex' }}>
+                <Paper elevation={2} sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Box sx={{ p: 1, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
                     <Typography variant="subtitle2" fontWeight={600}>Risk Index (FRI)</Typography>
                   </Box>
-                  <Box sx={{ p: 1, height: 180 }}>
+                  <Box sx={{ p: 1, flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
                     {results ? (
-                      <FatigueChart
-                        data={results.calculations}
-                        worstCaseData={worstCaseResults ? results.calculations.map(calc => {
-                          const worst = worstCaseResults.get(calc.day);
-                          return { ...calc, riskIndex: worst?.riskIndex ?? calc.riskIndex, riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel };
-                        }) : undefined}
-                        height={170}
-                        showThresholds={true}
-                        showComponents={false}
-                        showWorstCase={true}
-                        chartType="FRI"
-                      />
-                    ) : (
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                        <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
+                      <Box sx={{ width: '100%', height: '100%' }}>
+                        <FatigueChart
+                          data={results.calculations}
+                          worstCaseData={worstCaseResults ? results.calculations.map(calc => {
+                            const worst = worstCaseResults.get(calc.day);
+                            return { ...calc, riskIndex: worst?.riskIndex ?? calc.riskIndex, riskLevel: worst?.riskLevel ? { level: worst.riskLevel.level, label: '', color: '' } : calc.riskLevel };
+                          }) : undefined}
+                          height={280}
+                          showThresholds={true}
+                          showComponents={false}
+                          showWorstCase={true}
+                          chartType="FRI"
+                        />
                       </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">Add shifts to see chart</Typography>
                     )}
                   </Box>
                 </Paper>

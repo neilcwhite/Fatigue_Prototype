@@ -542,27 +542,28 @@ export function PersonView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" component="span" fontWeight={600}>
-              {employee.name}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'grey.500', ml: 2 }} component="span">
-              {employee.role}
-            </Typography>
-          </Box>
           <Chip
             label="PERSON VIEW"
             size="small"
             sx={{
-              bgcolor: 'rgba(51, 65, 85, 0.8)',
+              bgcolor: 'rgba(249, 115, 22, 0.2)',
               color: 'warning.light',
               fontFamily: 'monospace',
-              fontWeight: 500,
-              fontSize: '0.7rem',
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              px: 1,
               mr: 2,
             }}
           />
-          <SignOutHeader user={user} onSignOut={onSignOut} />
+          <Typography variant="h6" component="span" fontWeight={600} sx={{ mr: 2 }}>
+            {employee.name}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'grey.500' }} component="span">
+            {employee.role}
+          </Typography>
+          <Box sx={{ ml: 'auto' }}>
+            <SignOutHeader user={user} onSignOut={onSignOut} />
+          </Box>
         </Toolbar>
       </AppBar>
 

@@ -453,17 +453,25 @@ export function PlanningView({
         sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #2563eb', flexShrink: 0 }}
       >
         <Toolbar sx={{ px: 3, py: 1.5 }}>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
-              {project.name} <Box component="span" sx={{ color: '#60a5fa' }}>Planning</Box>
-            </Typography>
-          </Box>
           <Chip
-            label="PLANNING VIEW"
+            label="PLANNING"
             size="small"
-            sx={{ bgcolor: 'rgba(255,255,255,0.1)', color: '#60a5fa', fontFamily: 'monospace', fontSize: '0.7rem', mr: 2 }}
+            sx={{
+              bgcolor: 'rgba(37, 99, 235, 0.2)',
+              color: '#60a5fa',
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              px: 1,
+              mr: 2,
+            }}
           />
-          <SignOutHeader user={user} onSignOut={onSignOut} />
+          <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
+            {project.name}
+          </Typography>
+          <Box sx={{ ml: 'auto' }}>
+            <SignOutHeader user={user} onSignOut={onSignOut} />
+          </Box>
         </Toolbar>
       </AppBar>
 

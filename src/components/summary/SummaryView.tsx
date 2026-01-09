@@ -232,59 +232,23 @@ export function SummaryView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" component="span" sx={{ color: 'white', fontWeight: 600 }}>
-            {project.name}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-            <Button
-              variant="contained"
-              onClick={onBack}
-              sx={{
-                bgcolor: '#f97316',
-                color: 'white',
-                '&:hover': { bgcolor: '#ea580c' },
-              }}
-            >
-              Link to Person View
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => onNavigateToPlanning(project.id)}
-            >
-              Go to Planning
-            </Button>
-          </Box>
+          <Chip
+            label="PROJECT VIEW"
+            size="small"
+            sx={{
+              bgcolor: 'rgba(124, 58, 237, 0.2)',
+              color: 'secondary.light',
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              px: 1,
+            }}
+          />
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <Select
-                value={project.id}
-                onChange={(e) => onSelectProject(Number(e.target.value))}
-                sx={{
-                  bgcolor: 'rgba(51, 65, 85, 0.8)',
-                  color: 'white',
-                  '& .MuiSelect-icon': { color: 'white' },
-                }}
-              >
-                {projects.map(p => (
-                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Chip
-              label="PROJECT VIEW"
-              size="small"
-              sx={{
-                bgcolor: 'rgba(51, 65, 85, 0.8)',
-                color: 'secondary.light',
-                fontFamily: 'monospace',
-                fontWeight: 500,
-                fontSize: '0.7rem',
-              }}
-            />
-            <Typography variant="body2" sx={{ color: 'grey.400', mr: 2 }}>{user?.email}</Typography>
+            <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
             <Button
               variant="outlined"
+              size="small"
               onClick={onSignOut}
               sx={{
                 color: 'white',
