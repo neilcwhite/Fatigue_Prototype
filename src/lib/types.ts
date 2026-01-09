@@ -263,6 +263,7 @@ export interface ProjectCamel {
   startDate?: string;
   endDate?: string;
   organisationId: string;
+  updatedAt?: string;
 }
 
 export interface ShiftPatternCamel {

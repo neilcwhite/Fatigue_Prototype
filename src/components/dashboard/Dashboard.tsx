@@ -495,8 +495,6 @@ export function Dashboard({
             </Grid>
           </Box>
         </Box>
-
-        </Box>
     </Box>
   );
 }
