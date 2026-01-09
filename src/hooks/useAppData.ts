@@ -307,7 +307,11 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         name: p.name,
         startDate: p.start_date,
         endDate: p.end_date,
+        archived: p.archived,
+        archivedAt: p.archived_at,
         organisationId: p.organisation_id,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
       }));
 
       const teams: TeamCamel[] = (teamsRes.data || []).map(t => ({
@@ -500,12 +504,20 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   const updateProject = async (id: number, updateData: Partial<ProjectCamel>) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
 
+    // Build update object, only including defined fields
+    const dbUpdate: Record<string, unknown> = {};
+    if (updateData.name !== undefined) dbUpdate.name = updateData.name;
+    if (updateData.startDate !== undefined) dbUpdate.start_date = updateData.startDate;
+    if (updateData.endDate !== undefined) dbUpdate.end_date = updateData.endDate;
+    if (updateData.archived !== undefined) {
+      dbUpdate.archived = updateData.archived;
+      // Set archived_at when archiving, clear when unarchiving
+      dbUpdate.archived_at = updateData.archived ? new Date().toISOString() : null;
+    }
+
     // Include organisation_id filter to prevent cross-tenant writes
-    const { error } = await supabase.from('projects').update({
-      name: updateData.name,
-      start_date: updateData.startDate,
-      end_date: updateData.endDate,
-    }).eq('id', id).eq('organisation_id', organisationId);
+    const { error } = await supabase.from('projects').update(dbUpdate)
+      .eq('id', id).eq('organisation_id', organisationId);
 
     if (error) throw error;
     await loadAllData();

@@ -33,6 +33,7 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import TableSortLabel from '@mui/material/TableSortLabel';
 import {
   Users,
   Search,
@@ -41,8 +42,6 @@ import {
   Trash2,
   Upload,
   Archive,
-  Eye,
-  EyeOff,
   Settings,
 } from '@/components/ui/Icons';
 import { CSVImportModal } from './CSVImportModal';
@@ -106,6 +105,11 @@ export function AdminView({
   const [deleteConfirmProject, setDeleteConfirmProject] = useState<ProjectCamel | null>(null);
   const [deleteProjectName, setDeleteProjectName] = useState('');
 
+  // Project sorting state
+  type ProjectSortField = 'name' | 'startDate' | 'endDate' | 'status' | 'createdAt' | 'archivedAt';
+  const [projectSortField, setProjectSortField] = useState<ProjectSortField>('name');
+  const [projectSortDirection, setProjectSortDirection] = useState<'asc' | 'desc'>('asc');
+
   // Convert employees for CSV import
   const employeesForImport: Employee[] = employees.map(emp => ({
     id: emp.id,
@@ -127,15 +131,54 @@ export function AdminView({
     emp.sentinelNumber?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Filter projects
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesArchived = showArchived ? true : !project.archived;
-    return matchesSearch && matchesArchived;
-  });
+  // Filter and sort projects
+  const filteredProjects = projects
+    .filter(project => {
+      const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesArchived = showArchived ? true : !project.archived;
+      return matchesSearch && matchesArchived;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (projectSortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'startDate':
+          comparison = (a.startDate || '').localeCompare(b.startDate || '');
+          break;
+        case 'endDate':
+          comparison = (a.endDate || '').localeCompare(b.endDate || '');
+          break;
+        case 'status':
+          comparison = (a.archived ? 1 : 0) - (b.archived ? 1 : 0);
+          break;
+        case 'createdAt':
+          comparison = (a.createdAt || '').localeCompare(b.createdAt || '');
+          break;
+        case 'archivedAt':
+          comparison = (a.archivedAt || '').localeCompare(b.archivedAt || '');
+          break;
+      }
+      return projectSortDirection === 'asc' ? comparison : -comparison;
+    });
 
   const archivedCount = projects.filter(p => p.archived).length;
   const activeCount = projects.filter(p => !p.archived).length;
+
+  const handleProjectSort = (field: ProjectSortField) => {
+    if (projectSortField === field) {
+      setProjectSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setProjectSortField(field);
+      setProjectSortDirection('asc');
+    }
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString();
+  };
 
   const handleCSVImport = async (rows: CSVImportRow[]) => {
     for (const row of rows) {
@@ -559,13 +602,64 @@ export function AdminView({
             </Box>
 
             <TableContainer component={Paper} variant="outlined">
-              <Table>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Project Name</TableCell>
-                    <TableCell>Start Date</TableCell>
-                    <TableCell>End Date</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={projectSortField === 'name'}
+                        direction={projectSortField === 'name' ? projectSortDirection : 'asc'}
+                        onClick={() => handleProjectSort('name')}
+                      >
+                        Project Name
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={projectSortField === 'startDate'}
+                        direction={projectSortField === 'startDate' ? projectSortDirection : 'asc'}
+                        onClick={() => handleProjectSort('startDate')}
+                      >
+                        Start Date
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={projectSortField === 'endDate'}
+                        direction={projectSortField === 'endDate' ? projectSortDirection : 'asc'}
+                        onClick={() => handleProjectSort('endDate')}
+                      >
+                        End Date
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={projectSortField === 'createdAt'}
+                        direction={projectSortField === 'createdAt' ? projectSortDirection : 'asc'}
+                        onClick={() => handleProjectSort('createdAt')}
+                      >
+                        Created
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={projectSortField === 'status'}
+                        direction={projectSortField === 'status' ? projectSortDirection : 'asc'}
+                        onClick={() => handleProjectSort('status')}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel
+                        active={projectSortField === 'archivedAt'}
+                        direction={projectSortField === 'archivedAt' ? projectSortDirection : 'asc'}
+                        onClick={() => handleProjectSort('archivedAt')}
+                      >
+                        Archived Date
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="center">Active</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
@@ -573,8 +667,9 @@ export function AdminView({
                   {filteredProjects.map((project) => (
                     <TableRow key={project.id} sx={{ opacity: project.archived ? 0.6 : 1 }}>
                       <TableCell>{project.name}</TableCell>
-                      <TableCell>{project.startDate || '-'}</TableCell>
-                      <TableCell>{project.endDate || '-'}</TableCell>
+                      <TableCell>{formatDate(project.startDate)}</TableCell>
+                      <TableCell>{formatDate(project.endDate)}</TableCell>
+                      <TableCell>{formatDate(project.createdAt)}</TableCell>
                       <TableCell>
                         <Chip
                           label={project.archived ? 'Archived' : 'Active'}
@@ -582,16 +677,18 @@ export function AdminView({
                           color={project.archived ? 'default' : 'success'}
                         />
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell>{project.archivedAt ? formatDate(project.archivedAt) : '-'}</TableCell>
+                      <TableCell align="center">
                         {onArchiveProject && (
-                          <IconButton
+                          <Switch
                             size="small"
-                            onClick={() => handleArchiveProject(project)}
-                            title={project.archived ? 'Restore' : 'Archive'}
-                          >
-                            {project.archived ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                          </IconButton>
+                            checked={!project.archived}
+                            onChange={() => handleArchiveProject(project)}
+                            color="success"
+                          />
                         )}
+                      </TableCell>
+                      <TableCell align="right">
                         {onDeleteProject && (
                           <IconButton
                             size="small"
@@ -606,7 +703,7 @@ export function AdminView({
                   ))}
                   {filteredProjects.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                         <Typography color="text.secondary">No projects found</Typography>
                       </TableCell>
                     </TableRow>

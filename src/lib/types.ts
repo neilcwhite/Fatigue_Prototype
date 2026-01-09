@@ -28,6 +28,7 @@ export interface Project {
   start_date?: string;
   end_date?: string;
   archived?: boolean;  // Soft delete - hides project and FAMPs from normal users
+  archived_at?: string; // Date when project was archived
   organisation_id: string;
   created_at?: string;
   updated_at?: string;
@@ -276,7 +277,9 @@ export interface ProjectCamel {
   startDate?: string;
   endDate?: string;
   archived?: boolean;  // Soft delete - hides project and FAMPs from normal users
+  archivedAt?: string; // Date when project was archived
   organisationId: string;
+  createdAt?: string;
   updatedAt?: string;
 }
 
