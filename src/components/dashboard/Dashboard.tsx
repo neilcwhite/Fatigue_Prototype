@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/Icons';
 import { checkProjectCompliance } from '@/lib/compliance';
 import { GettingStartedCard } from '@/components/onboarding/GettingStartedCard';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import type {
   ProjectCamel,
   EmployeeCamel,
@@ -80,6 +81,10 @@ export function Dashboard({
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [showNonCompliantOnly, setShowNonCompliantOnly] = useState(false);
+
+  // Check if Getting Started card is visible
+  const { dismissed, isComplete } = useOnboarding();
+  const showGettingStarted = !dismissed && !isComplete;
 
   // Calculate stats for a project
   const getProjectStats = (projectId: number): ProjectStats => {
@@ -344,12 +349,14 @@ export function Dashboard({
           }}
         >
           <Grid container spacing={3}>
-            {/* Getting Started Card */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              <Box sx={{ height: 200, '& > *': { height: '100%' } }}>
-                <GettingStartedCard />
-              </Box>
-            </Grid>
+            {/* Getting Started Card - only show if not dismissed/complete */}
+            {showGettingStarted && (
+              <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                <Box sx={{ height: 200, '& > *': { height: '100%' } }}>
+                  <GettingStartedCard />
+                </Box>
+              </Grid>
+            )}
 
             {/* Create New Project Card */}
             <Grid size={{ xs: 12, md: 6, lg: 4 }}>
