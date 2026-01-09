@@ -61,6 +61,8 @@ interface PlanningViewProps {
   onCreateShiftPattern?: () => void;
   onCreateShiftPatternDirect?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'> & { id?: string }) => Promise<void>;
   onNavigateToPerson?: (employeeId: number) => void;
+  /** Called when user drags employees to Teams tab to create a new team */
+  onCreateTeamWithMembers?: (memberIds: number[]) => void;
 }
 
 type ViewMode = 'timeline' | 'weekly';
@@ -80,6 +82,7 @@ export function PlanningView({
   onCreateShiftPattern,
   onCreateShiftPatternDirect,
   onNavigateToPerson,
+  onCreateTeamWithMembers,
 }: PlanningViewProps) {
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
@@ -144,6 +147,9 @@ export function PlanningView({
     employees: EmployeeCamel[];
     date: string;
   } | null>(null);
+
+  // Teams tab drag state (for creating teams by dragging employees)
+  const [isDraggingOverTeams, setIsDraggingOverTeams] = useState(false);
 
   // Generate periods for selected year
   const networkRailPeriods = useMemo(() => {
@@ -396,50 +402,75 @@ export function PlanningView({
     // Don't clear dragDataRef yet - we need it when the modal confirms
   };
 
+  // Generate date range array
+  const generateDateRange = (startDate: string, endDate?: string): string[] => {
+    if (!endDate || endDate === startDate) {
+      return [startDate];
+    }
+
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
+    return dates;
+  };
+
   // Handle shift pattern selection from modal
   const handleShiftPatternSelect = async (
     shiftPatternId: string,
-    customTimes?: { startTime: string; endTime: string }
+    customTimes?: { startTime: string; endTime: string },
+    endDate?: string
   ) => {
     if (!shiftSelectModal) return;
 
     const { employees: emps, date } = shiftSelectModal;
+
+    // Generate all dates to assign
+    const datesToAssign = generateDateRange(date, endDate);
 
     try {
       // Handle custom ad-hoc pattern
       if (shiftPatternId === 'custom-adhoc' && customTimes) {
         const patternId = await ensureCustomPattern();
 
-        for (const employee of emps) {
-          const existing = projectAssignments.find(
-            a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === patternId
-          );
+        for (const assignDate of datesToAssign) {
+          for (const employee of emps) {
+            const existing = projectAssignments.find(
+              a => a.employeeId === employee.id && a.date === assignDate && a.shiftPatternId === patternId
+            );
 
-          if (!existing) {
-            await onCreateAssignment({
-              employeeId: employee.id,
-              projectId: project.id,
-              shiftPatternId: patternId,
-              date,
-              customStartTime: customTimes.startTime,
-              customEndTime: customTimes.endTime,
-            });
+            if (!existing) {
+              await onCreateAssignment({
+                employeeId: employee.id,
+                projectId: project.id,
+                shiftPatternId: patternId,
+                date: assignDate,
+                customStartTime: customTimes.startTime,
+                customEndTime: customTimes.endTime,
+              });
+            }
           }
         }
       } else {
         // Standard shift pattern
-        for (const employee of emps) {
-          const existing = projectAssignments.find(
-            a => a.employeeId === employee.id && a.date === date && a.shiftPatternId === shiftPatternId
-          );
+        for (const assignDate of datesToAssign) {
+          for (const employee of emps) {
+            const existing = projectAssignments.find(
+              a => a.employeeId === employee.id && a.date === assignDate && a.shiftPatternId === shiftPatternId
+            );
 
-          if (!existing) {
-            await onCreateAssignment({
-              employeeId: employee.id,
-              projectId: project.id,
-              shiftPatternId,
-              date,
-            });
+            if (!existing) {
+              await onCreateAssignment({
+                employeeId: employee.id,
+                projectId: project.id,
+                shiftPatternId,
+                date: assignDate,
+              });
+            }
           }
         }
       }
@@ -451,6 +482,15 @@ export function PlanningView({
     setShiftSelectModal(null);
     clearSelection();
     dragDataRef.current = null;
+  };
+
+  // Handle creating new shift from modal - closes modal and opens shift builder
+  const handleCreateNewShiftFromModal = () => {
+    // Close the modal but keep the selection data for after shift is created
+    setShiftSelectModal(null);
+    dragDataRef.current = null;
+    // Open the shift builder
+    onCreateShiftPattern?.();
   };
 
   // Handle custom time confirmation - assigns to Custom pattern, not original
@@ -774,8 +814,40 @@ export function PlanningView({
               <ToggleButton value="employees" sx={{ px: 1.5, py: 0.5 }}>
                 Employees ({employees.length})
               </ToggleButton>
-              <ToggleButton value="teams" sx={{ px: 1.5, py: 0.5 }}>
-                Teams ({teams.length})
+              <ToggleButton
+                value="teams"
+                sx={{
+                  px: 1.5,
+                  py: 0.5,
+                  ...(isDraggingOverTeams && {
+                    bgcolor: 'primary.100',
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
+                  }),
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (dragDataRef.current?.type === 'employees') {
+                    setIsDraggingOverTeams(true);
+                  }
+                }}
+                onDragLeave={() => setIsDraggingOverTeams(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOverTeams(false);
+
+                  const dragData = dragDataRef.current;
+                  if (dragData?.type === 'employees' && dragData.employees.length > 0 && onCreateTeamWithMembers) {
+                    const memberIds = dragData.employees.map(emp => emp.id);
+                    onCreateTeamWithMembers(memberIds);
+                    clearSelection();
+                  }
+                  dragDataRef.current = null;
+                }}
+              >
+                {isDraggingOverTeams ? '+ Create Team' : `Teams (${teams.length})`}
               </ToggleButton>
             </ToggleButtonGroup>
             <TextField
@@ -786,7 +858,7 @@ export function PlanningView({
               sx={{ width: 200 }}
             />
           </Box>
-          {selectedEmployees.length > 0 && (
+          {selectedEmployees.length > 0 ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="body2" color="primary" fontWeight={600}>
                 {selectedEmployees.length} selected
@@ -803,6 +875,10 @@ export function PlanningView({
                 Clear
               </Button>
             </Box>
+          ) : panelMode === 'employees' && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              Ctrl+click to select multiple • Drag to Teams tab to create team
+            </Typography>
           )}
         </Box>
 
@@ -1022,6 +1098,7 @@ export function PlanningView({
             dragDataRef.current = null;
           }}
           onSelect={handleShiftPatternSelect}
+          onCreateNewShift={onCreateShiftPattern ? handleCreateNewShiftFromModal : undefined}
         />
       )}
 

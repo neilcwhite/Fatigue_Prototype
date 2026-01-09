@@ -146,9 +146,9 @@ HSE Research Report RR446 fatigue index calculator:
 
 **Calculation Validation**: The fatigue calculations have been validated against the official HSE Excel tool (Fatigue Index Calculator / Risk Index Calculator) with **100% accuracy**. Both Risk Index and Fatigue Index match the HSE reference values exactly (0.0 difference) across all test cases including the HSE PDF validation roster (Roster 01: 12h shifts, 2h commute).
 
-**VBA Compatibility**: The TypeScript implementation was reverse-engineered from the HSE Excel VBA macros and validated to produce identical results. Key implementation details:
-- `threeProcessEstimation()` - Matches VBA's three-process fatigue model exactly (amplitude calculation without square root)
-- `dutyFactor()` - Converts app's 1-4 scale to VBA's 0-3 scale for workload/attention
+**Implementation Details**: The TypeScript implementation follows the HSE RR446 methodology:
+- `threeProcessEstimation()` - Three-process fatigue model
+- `dutyFactor()` - Workload/attention scaling (1-4 to 0-3)
 - `cumulativeFatigue()` / `cumulativeRisk()` - PVT tracking with day/night sleep calculations
 
 ### `/src/lib/compliance.ts`
@@ -525,4 +525,4 @@ The system implements strict tenant isolation:
 
 ## License
 
-Proprietary - All rights reserved
+MIT License

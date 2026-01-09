@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -19,7 +19,7 @@ import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
-import { X, Clock, Users } from '@/components/ui/Icons';
+import { X, Clock, Users, Plus, Calendar } from '@/components/ui/Icons';
 import type { ShiftPatternCamel } from '@/lib/types';
 
 interface ShiftPatternSelectModalProps {
@@ -27,10 +27,16 @@ interface ShiftPatternSelectModalProps {
   date: string;
   shiftPatterns: ShiftPatternCamel[];
   onClose: () => void;
-  onSelect: (shiftPatternId: string, customTimes?: { startTime: string; endTime: string }) => void;
+  onSelect: (
+    shiftPatternId: string,
+    customTimes?: { startTime: string; endTime: string },
+    endDate?: string
+  ) => void;
+  /** Called when user wants to create a new shift pattern via Shift Builder */
+  onCreateNewShift?: () => void;
 }
 
-type ModalStep = 'select' | 'custom-times';
+type ModalStep = 'select' | 'custom-times' | 'date-range';
 
 export function ShiftPatternSelectModal({
   employeeNames,
@@ -38,11 +44,13 @@ export function ShiftPatternSelectModal({
   shiftPatterns,
   onClose,
   onSelect,
+  onCreateNewShift,
 }: ShiftPatternSelectModalProps) {
   const [step, setStep] = useState<ModalStep>('select');
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [customStartTime, setCustomStartTime] = useState('07:00');
   const [customEndTime, setCustomEndTime] = useState('19:00');
+  const [endDate, setEndDate] = useState<string>(date); // Default to same day (single assignment)
   const [error, setError] = useState<string | null>(null);
 
   const formattedDate = new Date(date).toLocaleDateString('en-GB', {
@@ -52,12 +60,29 @@ export function ShiftPatternSelectModal({
     year: 'numeric',
   });
 
+  const formattedEndDate = endDate ? new Date(endDate).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }) : null;
+
   const employeeText =
     employeeNames.length > 1
       ? `${employeeNames.length} employees`
       : employeeNames[0];
 
   const isCustomSelected = selectedPatternId === 'custom-adhoc';
+  const isMultipleDays = endDate && endDate !== date;
+
+  // Calculate number of days in range
+  const dayCount = useMemo(() => {
+    if (!endDate || endDate === date) return 1;
+    const start = new Date(date);
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return Math.max(1, diffDays);
+  }, [date, endDate]);
 
   const handleConfirm = () => {
     if (!selectedPatternId) {
@@ -71,7 +96,8 @@ export function ShiftPatternSelectModal({
       return;
     }
 
-    onSelect(selectedPatternId);
+    // Go to date range step
+    setStep('date-range');
   };
 
   const handleCustomTimeConfirm = () => {
@@ -80,7 +106,21 @@ export function ShiftPatternSelectModal({
       return;
     }
 
-    onSelect('custom-adhoc', { startTime: customStartTime, endTime: customEndTime });
+    // Go to date range step
+    setStep('date-range');
+  };
+
+  const handleFinalConfirm = () => {
+    if (endDate && endDate < date) {
+      setError('End date cannot be before start date');
+      return;
+    }
+
+    if (isCustomSelected) {
+      onSelect('custom-adhoc', { startTime: customStartTime, endTime: customEndTime }, isMultipleDays ? endDate : undefined);
+    } else {
+      onSelect(selectedPatternId!, undefined, isMultipleDays ? endDate : undefined);
+    }
   };
 
   const getPatternTypeColor = (pattern: ShiftPatternCamel) => {
@@ -97,12 +137,22 @@ export function ShiftPatternSelectModal({
     }
   };
 
+  const getSelectedPatternName = () => {
+    if (selectedPatternId === 'custom-adhoc') {
+      return `Custom (${customStartTime} - ${customEndTime})`;
+    }
+    const pattern = shiftPatterns.find(p => p.id === selectedPatternId);
+    return pattern?.name || 'Unknown';
+  };
+
   return (
     <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Clock className="w-5 h-5" />
-          {step === 'select' ? 'Select Shift Pattern' : 'Set Custom Work Times'}
+          {step === 'select' && 'Select Shift Pattern'}
+          {step === 'custom-times' && 'Set Custom Work Times'}
+          {step === 'date-range' && 'Set Date Range'}
         </Box>
         <IconButton onClick={onClose} size="small" sx={{ color: 'text.secondary' }}>
           <X className="w-5 h-5" />
@@ -223,6 +273,36 @@ export function ShiftPatternSelectModal({
                   />
                 </ListItemButton>
               </ListItem>
+
+              {/* Create New Shift Pattern option */}
+              {onCreateNewShift && (
+                <>
+                  <Divider />
+                  <ListItem disablePadding>
+                    <ListItemButton
+                      onClick={onCreateNewShift}
+                      sx={{
+                        bgcolor: 'grey.50',
+                        '&:hover': { bgcolor: 'primary.50' },
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 40 }}>
+                        <Plus className="w-5 h-5 text-primary-600" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" fontWeight={500} color="primary">
+                              Create New Shift Pattern
+                            </Typography>
+                          </Box>
+                        }
+                        secondary="Open Shift Builder to create a reusable pattern"
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                </>
+              )}
             </List>
           </DialogContent>
 
@@ -235,7 +315,7 @@ export function ShiftPatternSelectModal({
               onClick={handleConfirm}
               disabled={!selectedPatternId}
             >
-              {isCustomSelected ? 'Next' : 'Assign'}
+              Next
             </Button>
           </DialogActions>
         </>
@@ -247,7 +327,7 @@ export function ShiftPatternSelectModal({
           <DialogContent dividers>
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Set the work times for <strong>{employeeText}</strong> on <strong>{formattedDate}</strong>
+                Set the work times for <strong>{employeeText}</strong>
               </Typography>
             </Box>
 
@@ -286,7 +366,79 @@ export function ShiftPatternSelectModal({
               Back
             </Button>
             <Button variant="contained" onClick={handleCustomTimeConfirm}>
-              Assign
+              Next
+            </Button>
+          </DialogActions>
+        </>
+      )}
+
+      {/* Step 3: Date Range */}
+      {step === 'date-range' && (
+        <>
+          <DialogContent dividers>
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Calendar className="w-4 h-4 text-slate-500" />
+                <Typography variant="body2" color="text.secondary">
+                  Assigning <strong>{employeeText}</strong> to <strong>{getSelectedPatternName()}</strong>
+                </Typography>
+              </Box>
+            </Box>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            )}
+
+            <Typography variant="subtitle2" sx={{ mb: 2 }}>
+              Set the date range for this assignment:
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <TextField
+                label="Start Date"
+                type="date"
+                value={date}
+                disabled
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                }}
+              />
+              <TextField
+                label="End Date (optional)"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                fullWidth
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { min: date },
+                }}
+                helperText="Leave as start date for single day"
+              />
+            </Box>
+
+            {isMultipleDays && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                This will create <strong>{dayCount} assignments</strong> from {formattedDate.split(',')[0]} to {formattedEndDate} for {employeeText}.
+              </Alert>
+            )}
+
+            {!isMultipleDays && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Single day assignment on {formattedDate}
+              </Typography>
+            )}
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={() => setStep(isCustomSelected ? 'custom-times' : 'select')} color="inherit">
+              Back
+            </Button>
+            <Button variant="contained" onClick={handleFinalConfirm}>
+              {isMultipleDays ? `Assign ${dayCount} Days` : 'Assign'}
             </Button>
           </DialogActions>
         </>

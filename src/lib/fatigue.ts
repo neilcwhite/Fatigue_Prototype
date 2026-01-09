@@ -1,8 +1,7 @@
 // ============================================
 // HSE FATIGUE/RISK INDEX CALCULATOR v2.0
-// Reverse-engineered from Excel VBA macros
+// Implementation based on HSE Research Report RR446
 // Validated against 86 test cases (100% match)
-// Based on HSE Research Report RR446 - Crown Copyright
 // ============================================
 
 import { ShiftDefinition, FatigueResult, RiskLevel, FatigueIndexResult, FatigueLevel, CombinedFatigueResult } from './types';
