@@ -18,7 +18,6 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import { ChevronLeft, Download, Upload, Plus, AlertTriangle, CheckCircle, Users } from '@/components/ui/Icons';
 import { TimelineView } from './TimelineView';
-import { GanttView } from './GanttView';
 import { WeeklyView } from './WeeklyView';
 import { CustomTimeModal } from '@/components/modals/CustomTimeModal';
 import { ImportModal } from '@/components/modals/ImportModal';
@@ -62,7 +61,7 @@ interface PlanningViewProps {
   onNavigateToPerson?: (employeeId: number) => void;
 }
 
-type ViewMode = 'timeline' | 'gantt' | 'weekly';
+type ViewMode = 'timeline' | 'weekly';
 
 export function PlanningView({
   user,
@@ -479,7 +478,6 @@ export function PlanningView({
             size="small"
           >
             <ToggleButton value="timeline" sx={{ px: 2 }}>Timeline</ToggleButton>
-            <ToggleButton value="gantt" sx={{ px: 2 }}>Gantt</ToggleButton>
             <ToggleButton value="weekly" sx={{ px: 2 }}>Weekly Grid</ToggleButton>
           </ToggleButtonGroup>
 
@@ -585,7 +583,9 @@ export function PlanningView({
         {viewMode === 'timeline' && currentPeriod && projectShiftPatterns.length === 0 && (
           <Paper sx={{ p: 6, textAlign: 'center' }}>
             <Typography variant="h2" sx={{ color: 'grey.400', mb: 2 }}>📋</Typography>
-            <Typography variant="h6" sx={{ color: 'grey.700', mb: 1 }}>No Shift Patterns</Typography>
+            <Typography variant="h6" sx={{ color: 'grey.700', mb: 1 }}>
+              No Shift Patterns for "{project.name}"
+            </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               Create shift patterns to start assigning employees to this project.
             </Typography>
@@ -601,22 +601,6 @@ export function PlanningView({
               </Button>
             )}
           </Paper>
-        )}
-
-        {viewMode === 'gantt' && currentPeriod && (
-          <GanttView
-            project={project}
-            employees={employees}
-            shiftPatterns={projectShiftPatterns}
-            assignments={projectAssignments}
-            allAssignments={assignments}
-            allShiftPatterns={shiftPatterns}
-            period={currentPeriod}
-            onCellDragOver={handleCellDragOver}
-            onCellDrop={handleCellDrop}
-            onDeleteAssignment={onDeleteAssignment}
-            onEditAssignment={setEditingAssignment}
-          />
         )}
 
         {viewMode === 'weekly' && currentPeriod && (
