@@ -27,7 +27,6 @@ interface CSVImportModalProps {
   onClose: () => void;
   existingEmployees: Employee[];
   onImport: (rows: CSVImportRow[]) => Promise<void>;
-  organisationId: string;
 }
 
 type ImportStep = 'upload' | 'preview' | 'conflicts' | 'importing' | 'complete';
@@ -37,7 +36,6 @@ export function CSVImportModal({
   onClose,
   existingEmployees,
   onImport,
-  organisationId,
 }: CSVImportModalProps) {
   const [step, setStep] = useState<ImportStep>('upload');
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -45,12 +43,10 @@ export function CSVImportModal({
   const [importResult, setImportResult] = useState<CSVImportResult | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     setCsvFile(file);
     setErrors([]);
 
@@ -78,6 +74,40 @@ export function CSVImportModal({
       setErrors([error instanceof Error ? error.message : 'Failed to parse CSV file']);
       setStep('upload');
     }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      setErrors(['Please upload a CSV file']);
+      return;
+    }
+
+    await processFile(file);
   };
 
   const handleDownloadTemplate = () => {
@@ -169,17 +199,22 @@ export function CSVImportModal({
             <Paper
               sx={{
                 border: '2px dashed',
-                borderColor: 'divider',
+                borderColor: isDragging ? 'primary.main' : 'divider',
+                bgcolor: isDragging ? 'action.hover' : 'transparent',
                 p: 4,
                 textAlign: 'center',
                 cursor: 'pointer',
+                transition: 'all 0.2s ease',
                 '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
               }}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <Upload className="w-12 h-12 mx-auto mb-2 text-slate-400" />
               <Typography variant="body1" mb={1}>
-                {csvFile ? csvFile.name : 'Click to upload or drag and drop'}
+                {csvFile ? csvFile.name : isDragging ? 'Drop CSV file here' : 'Click to upload or drag and drop'}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 CSV files only

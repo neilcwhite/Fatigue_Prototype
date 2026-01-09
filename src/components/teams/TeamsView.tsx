@@ -697,7 +697,6 @@ export function TeamsView({
         onClose={() => setShowCSVImportModal(false)}
         existingEmployees={employeesForImport}
         onImport={handleCSVImport}
-        organisationId={user?.id || ''}
       />
     </Box>
   );
