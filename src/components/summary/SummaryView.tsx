@@ -232,9 +232,8 @@ export function SummaryView({
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" component="span">
-              {project.name}{' '}
-              <Box component="span" sx={{ color: 'secondary.light' }}>Project View</Box>
+            <Typography variant="h6" component="span" sx={{ color: 'secondary.light' }}>
+              Project View
             </Typography>
           </Box>
           <Button
