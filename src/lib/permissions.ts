@@ -9,7 +9,7 @@
  * 5. user - Read-only, view assigned projects only
  */
 
-import type { UserRole, RolePermissions } from './types';
+import type { UserRole, RolePermissions, ProjectMemberRole, ProjectMemberCamel } from './types';
 
 /**
  * Get permissions for a given role
@@ -151,6 +151,116 @@ export function formatRoleLabel(role: UserRole): string {
     sheq: 'SHEQ',
     manager: 'Manager',
     user: 'User',
+  };
+  return labels[role];
+}
+
+// ==================== PROJECT ACCESS CONTROL ====================
+
+/**
+ * Check if a user's role bypasses project-level access control
+ * (i.e., they can see all projects regardless of project_members)
+ */
+export function roleBypassesProjectAccess(role: UserRole): boolean {
+  return hasPermission(role, 'canViewAllProjects');
+}
+
+/**
+ * Check if a user can access a specific project
+ * @param userRole - The user's global role
+ * @param projectId - The project to check access for
+ * @param projectMembers - The user's project memberships
+ */
+export function canUserAccessProject(
+  userRole: UserRole,
+  projectId: number,
+  projectMembers: ProjectMemberCamel[]
+): boolean {
+  // Roles with canViewAllProjects bypass project-level access
+  if (roleBypassesProjectAccess(userRole)) {
+    return true;
+  }
+
+  // Check if user is a member of this project
+  return projectMembers.some(pm => pm.projectId === projectId);
+}
+
+/**
+ * Get a user's role on a specific project
+ * Returns undefined if user has no direct project membership
+ */
+export function getUserProjectRole(
+  projectId: number,
+  projectMembers: ProjectMemberCamel[]
+): ProjectMemberRole | undefined {
+  const membership = projectMembers.find(pm => pm.projectId === projectId);
+  return membership?.memberRole;
+}
+
+/**
+ * Check if user can edit a specific project
+ * Requires editor or manager role on the project, OR canEditAllProjects permission
+ */
+export function canUserEditProject(
+  userRole: UserRole,
+  projectId: number,
+  projectMembers: ProjectMemberCamel[]
+): boolean {
+  // Roles with canEditAllProjects can edit any project
+  if (hasPermission(userRole, 'canEditAllProjects')) {
+    return true;
+  }
+
+  // Check project-level role
+  const projectRole = getUserProjectRole(projectId, projectMembers);
+  return projectRole === 'editor' || projectRole === 'manager';
+}
+
+/**
+ * Check if user can manage a specific project (add/remove members)
+ * Requires manager role on the project, OR admin-level permissions
+ */
+export function canUserManageProject(
+  userRole: UserRole,
+  projectId: number,
+  projectMembers: ProjectMemberCamel[]
+): boolean {
+  // Admins can manage any project
+  if (isAdmin(userRole)) {
+    return true;
+  }
+
+  // Check for manager role on this specific project
+  const projectRole = getUserProjectRole(projectId, projectMembers);
+  return projectRole === 'manager';
+}
+
+/**
+ * Filter a list of projects to only those the user can access
+ */
+export function filterAccessibleProjects<T extends { id: number }>(
+  projects: T[],
+  userRole: UserRole,
+  projectMembers: ProjectMemberCamel[]
+): T[] {
+  // Roles with canViewAllProjects see everything
+  if (roleBypassesProjectAccess(userRole)) {
+    return projects;
+  }
+
+  // Filter to only projects user is a member of
+  const accessibleProjectIds = new Set(projectMembers.map(pm => pm.projectId));
+  return projects.filter(p => accessibleProjectIds.has(p.id));
+}
+
+/**
+ * Format project member role for display
+ */
+export function formatProjectRoleLabel(role: ProjectMemberRole): string {
+  const labels: Record<ProjectMemberRole, string> = {
+    viewer: 'Viewer',
+    editor: 'Editor',
+    manager: 'Manager',
   };
   return labels[role];
 }

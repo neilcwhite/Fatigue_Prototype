@@ -45,6 +45,7 @@ import {
   Settings,
 } from '@/components/ui/Icons';
 import { CSVImportModal } from './CSVImportModal';
+import { ProjectAccessPanel } from './ProjectAccessPanel';
 import { formatRoleLabel } from '@/lib/permissions';
 import type {
   SupabaseUser,
@@ -53,11 +54,14 @@ import type {
   ProjectCamel,
   Employee,
   CSVImportRow,
+  ProjectMemberCamel,
+  ProjectMemberRole,
 } from '@/lib/types';
 
 interface AdminViewProps {
   user: SupabaseUser;
   userRole?: UserRole;
+  organisationId?: string;
   onSignOut: () => void;
   employees: EmployeeCamel[];
   projects: ProjectCamel[];
@@ -73,13 +77,19 @@ interface AdminViewProps {
   onUpdateEmployee?: (id: number, data: Partial<EmployeeCamel>) => Promise<void>;
   onArchiveProject?: (id: number, archived: boolean) => Promise<void>;
   onDeleteProject?: (id: number) => Promise<void>;
+  // Project access control
+  addProjectMember?: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
+  updateProjectMemberRole?: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
+  removeProjectMember?: (projectId: number, userId: string) => Promise<void>;
+  getProjectMembers?: (projectId: number) => Promise<ProjectMemberCamel[]>;
 }
 
-type AdminTab = 'overview' | 'employees' | 'projects';
+type AdminTab = 'overview' | 'employees' | 'projects' | 'access';
 
 export function AdminView({
   user,
   userRole,
+  organisationId,
   onSignOut,
   employees,
   projects,
@@ -88,6 +98,10 @@ export function AdminView({
   onUpdateEmployee,
   onArchiveProject,
   onDeleteProject,
+  addProjectMember,
+  updateProjectMemberRole,
+  removeProjectMember,
+  getProjectMembers,
 }: AdminViewProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -308,6 +322,7 @@ export function AdminView({
           <Tab label="Overview" value="overview" />
           <Tab label="Employees" value="employees" />
           <Tab label="Projects" value="projects" />
+          <Tab label="Project Access" value="access" />
         </Tabs>
       </Box>
 
@@ -711,6 +726,26 @@ export function AdminView({
                 </TableBody>
               </Table>
             </TableContainer>
+          </Box>
+        )}
+
+        {/* Project Access Tab */}
+        {activeTab === 'access' && organisationId && addProjectMember && updateProjectMemberRole && removeProjectMember && getProjectMembers && (
+          <ProjectAccessPanel
+            projects={projects}
+            organisationId={organisationId}
+            addProjectMember={addProjectMember}
+            updateProjectMemberRole={updateProjectMemberRole}
+            removeProjectMember={removeProjectMember}
+            getProjectMembers={getProjectMembers}
+          />
+        )}
+
+        {activeTab === 'access' && (!organisationId || !addProjectMember) && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography color="text.secondary">
+              Project access control is not available
+            </Typography>
           </Box>
         )}
       </Box>

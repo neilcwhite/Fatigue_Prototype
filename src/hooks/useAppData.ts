@@ -10,7 +10,11 @@ import type {
   AssignmentCamel,
   FatigueAssessment,
   FatigueAssessmentRow,
+  ProjectMemberCamel,
+  ProjectMemberRole,
+  UserRole,
 } from '@/lib/types';
+import { filterAccessibleProjects, roleBypassesProjectAccess } from '@/lib/permissions';
 
 // ==================== VALIDATION HELPERS ====================
 
@@ -199,6 +203,8 @@ interface AppData {
   shiftPatterns: ShiftPatternCamel[];
   assignments: AssignmentCamel[];
   fatigueAssessments: FatigueAssessment[];
+  /** Current user's project memberships (for access filtering) */
+  projectMembers: ProjectMemberCamel[];
   loading: boolean;
   error: string | null;
 }
@@ -236,9 +242,19 @@ interface UseAppDataReturn extends AppData {
   createFatigueAssessment: (data: FatigueAssessment) => Promise<void>;
   updateFatigueAssessment: (id: string, data: Partial<FatigueAssessment>) => Promise<void>;
   deleteFatigueAssessment: (id: string) => Promise<void>;
+  // Project member operations (for access control)
+  addProjectMember: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
+  updateProjectMemberRole: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
+  removeProjectMember: (projectId: number, userId: string) => Promise<void>;
+  /** Get all members for a specific project (for admin UI) */
+  getProjectMembers: (projectId: number) => Promise<ProjectMemberCamel[]>;
 }
 
-export function useAppData(organisationId: string | null): UseAppDataReturn {
+export function useAppData(
+  organisationId: string | null,
+  userId?: string | null,
+  userRole?: UserRole | null
+): UseAppDataReturn {
   const [data, setData] = useState<AppData>({
     employees: [],
     projects: [],
@@ -246,6 +262,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     shiftPatterns: [],
     assignments: [],
     fatigueAssessments: [],
+    projectMembers: [],
     loading: true,
     error: null,
   });
@@ -263,17 +280,24 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         setData(prev => ({ ...prev, loading: true, error: null }));
       }
 
-      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes] = await Promise.all([
+      // Build project members query - only fetch for current user if they don't have canViewAllProjects
+      const shouldLoadUserMembers = userId && userRole && !roleBypassesProjectAccess(userRole);
+
+      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes, projectMembersRes] = await Promise.all([
         supabase.from('employees').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('projects').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('teams').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('shift_patterns').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('assignments').select('*').eq('organisation_id', organisationId).order('date'),
         supabase.from('fatigue_assessments').select('*').eq('organisation_id', organisationId).order('assessment_date', { ascending: false }),
+        // Load project memberships for the current user (for access filtering)
+        shouldLoadUserMembers
+          ? supabase.from('project_members').select('*').eq('organisation_id', organisationId).eq('user_id', userId)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       // Check for errors on any query - surface them instead of silently showing empty data
-      // Note: fatigue_assessments table may not exist yet, so we handle that gracefully
+      // Note: fatigue_assessments and project_members tables may not exist yet, so we handle that gracefully
       const errors = [
         employeesRes.error && `Employees: ${employeesRes.error.message}`,
         projectsRes.error && `Projects: ${projectsRes.error.message}`,
@@ -282,6 +306,8 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         assignmentsRes.error && `Assignments: ${assignmentsRes.error.message}`,
         // Don't fail if fatigue_assessments table doesn't exist - it's optional
         assessmentsRes.error && !assessmentsRes.error.message.includes('does not exist') && `Assessments: ${assessmentsRes.error.message}`,
+        // Don't fail if project_members table doesn't exist - it's optional (for backwards compatibility)
+        projectMembersRes.error && !projectMembersRes.error.message.includes('does not exist') && `Project members: ${projectMembersRes.error.message}`,
       ].filter(Boolean);
 
       if (errors.length > 0) {
@@ -302,7 +328,18 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         organisationId: e.organisation_id,
       }));
 
-      const projects: ProjectCamel[] = (projectsRes.data || []).map(p => ({
+      // Map project members from snake_case to camelCase
+      const projectMembers: ProjectMemberCamel[] = (projectMembersRes.data || []).map(pm => ({
+        id: pm.id,
+        projectId: pm.project_id,
+        userId: pm.user_id,
+        memberRole: pm.member_role as ProjectMemberRole,
+        organisationId: pm.organisation_id,
+        createdAt: pm.created_at,
+      }));
+
+      // Map all projects first
+      const allProjects: ProjectCamel[] = (projectsRes.data || []).map(p => ({
         id: p.id,
         name: p.name,
         startDate: p.start_date,
@@ -313,6 +350,11 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         createdAt: p.created_at,
         updatedAt: p.updated_at,
       }));
+
+      // Filter projects based on user role and project memberships
+      const projects = userRole
+        ? filterAccessibleProjects(allProjects, userRole, projectMembers)
+        : allProjects;
 
       const teams: TeamCamel[] = (teamsRes.data || []).map(t => ({
         id: t.id,
@@ -406,6 +448,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         shiftPatterns,
         assignments,
         fatigueAssessments,
+        projectMembers,
         loading: false,
         error: null,
       });
@@ -417,7 +460,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
         error: message
       }));
     }
-  }, [organisationId]);
+  }, [organisationId, userId, userRole]);
 
   // Initial load
   useEffect(() => {
@@ -432,7 +475,7 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
   useEffect(() => {
     if (!supabase || !organisationId) return;
 
-    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments'];
+    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments', 'project_members'];
 
     const channel = supabase.channel(`org-${organisationId}-changes`);
 
@@ -976,6 +1019,75 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     await loadAllData();
   };
 
+  // ==================== PROJECT MEMBER OPERATIONS (ACCESS CONTROL) ====================
+
+  const addProjectMember = async (projectId: number, memberUserId: string, role: ProjectMemberRole) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const { error } = await supabase.from('project_members').insert({
+      project_id: projectId,
+      user_id: memberUserId,
+      member_role: role,
+      organisation_id: organisationId,
+    });
+
+    if (error) {
+      // Handle unique constraint violation
+      if (error.code === '23505') {
+        throw new Error('This user is already a member of this project');
+      }
+      throw error;
+    }
+    await loadAllData();
+  };
+
+  const updateProjectMemberRole = async (projectId: number, memberUserId: string, role: ProjectMemberRole) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const { error } = await supabase.from('project_members')
+      .update({ member_role: role })
+      .eq('project_id', projectId)
+      .eq('user_id', memberUserId)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
+  const removeProjectMember = async (projectId: number, memberUserId: string) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const { error } = await supabase.from('project_members')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('user_id', memberUserId)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
+  const getProjectMembers = async (projectId: number): Promise<ProjectMemberCamel[]> => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const { data: members, error } = await supabase
+      .from('project_members')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+
+    return (members || []).map(pm => ({
+      id: pm.id,
+      projectId: pm.project_id,
+      userId: pm.user_id,
+      memberRole: pm.member_role as ProjectMemberRole,
+      organisationId: pm.organisation_id,
+      createdAt: pm.created_at,
+    }));
+  };
+
   return {
     ...data,
     reload: loadAllData,
@@ -997,5 +1109,9 @@ export function useAppData(organisationId: string | null): UseAppDataReturn {
     createFatigueAssessment,
     updateFatigueAssessment,
     deleteFatigueAssessment,
+    addProjectMember,
+    updateProjectMemberRole,
+    removeProjectMember,
+    getProjectMembers,
   };
 }

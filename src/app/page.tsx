@@ -29,7 +29,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { OnboardingPanel } from '@/components/onboarding/OnboardingPanel';
 import { TutorialOverlay } from '@/components/onboarding/TutorialOverlay';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel } from '@/lib/types';
+import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel, UserRole } from '@/lib/types';
 
 type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments' | 'admin';
 
@@ -81,7 +81,15 @@ export default function Home() {
     deleteShiftPattern,
     createFatigueAssessment,
     updateFatigueAssessment,
-  } = useAppData(profile?.organisationId || null);
+    addProjectMember,
+    updateProjectMemberRole,
+    removeProjectMember,
+    getProjectMembers,
+  } = useAppData(
+    profile?.organisationId || null,
+    profile?.id || null,
+    profile?.role as UserRole || null
+  );
 
   // Auto-select default project and employee when data loads
   useEffect(() => {
@@ -507,6 +515,7 @@ export default function Home() {
           <AdminView
             user={user}
             userRole={profile?.role as import('@/lib/types').UserRole | undefined}
+            organisationId={profile?.organisationId}
             onSignOut={signOut}
             employees={employees}
             projects={projects}
@@ -515,6 +524,10 @@ export default function Home() {
             onUpdateEmployee={updateEmployee}
             onArchiveProject={async (id, archived) => updateProject(id, { archived })}
             onDeleteProject={deleteProject}
+            addProjectMember={addProjectMember}
+            updateProjectMemberRole={updateProjectMemberRole}
+            removeProjectMember={removeProjectMember}
+            getProjectMembers={getProjectMembers}
           />
         )}
 

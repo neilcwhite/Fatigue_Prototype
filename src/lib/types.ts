@@ -330,6 +330,41 @@ export interface TeamCamel {
   organisationId: string;
 }
 
+// ==================== PROJECT ACCESS CONTROL ====================
+
+/** Role a user has on a specific project */
+export type ProjectMemberRole = 'viewer' | 'editor' | 'manager';
+
+/** Database schema for project_members table (snake_case) */
+export interface ProjectMember {
+  id: number;
+  project_id: number;
+  user_id: string;
+  member_role: ProjectMemberRole;
+  organisation_id: string;
+  created_at?: string;
+}
+
+/** CamelCase version for frontend use */
+export interface ProjectMemberCamel {
+  id: number;
+  projectId: number;
+  userId: string;
+  memberRole: ProjectMemberRole;
+  organisationId: string;
+  createdAt?: string;
+}
+
+/** Project with access information for the current user */
+export interface ProjectWithAccess extends ProjectCamel {
+  /** Current user's role on this project (undefined if no direct access) */
+  userRole?: ProjectMemberRole;
+  /** Whether user can edit this project */
+  canEdit: boolean;
+  /** Whether user can manage this project (add/remove members) */
+  canManage: boolean;
+}
+
 // ==================== ADMIN & PERMISSIONS ====================
 
 // Role hierarchy: super_admin > admin > sheq > manager > user
