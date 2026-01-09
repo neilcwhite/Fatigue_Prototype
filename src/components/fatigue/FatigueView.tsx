@@ -1891,7 +1891,7 @@ export function FatigueView({
                 onChange={(e) => setSaveProjectId(e.target.value ? Number(e.target.value) : null)}
               >
                 <MenuItem value="">Select project...</MenuItem>
-                {projects.map(project => (
+                {projects.filter(p => !p.archived).map(project => (
                   <MenuItem key={project.id} value={project.id}>{project.name}</MenuItem>
                 ))}
               </Select>

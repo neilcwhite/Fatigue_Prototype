@@ -130,9 +130,12 @@ export function Dashboard({
     };
   };
 
-  // Filter and search projects
+  // Filter and search projects (excluding archived)
   const filteredProjects = useMemo(() => {
     const filtered = projects.filter(project => {
+      // Exclude archived projects from dashboard
+      if (project.archived) return false;
+
       // Search filter
       const matchesSearch = searchQuery === '' ||
         project.name.toLowerCase().includes(searchQuery.toLowerCase());

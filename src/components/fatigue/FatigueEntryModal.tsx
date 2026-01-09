@@ -257,13 +257,13 @@ export function FatigueEntryModal({
               Select an existing project or create a new one to manage shift patterns.
             </Typography>
 
-            {projects.length === 0 ? (
+            {projects.filter(p => !p.archived).length === 0 ? (
               <Alert severity="info" sx={{ mb: 2 }}>
-                No projects found. Create your first project to get started.
+                No active projects found. Create your first project to get started.
               </Alert>
             ) : (
               <Grid container spacing={1.5} sx={{ maxHeight: 300, overflow: 'auto' }}>
-                {projects.map((project) => (
+                {projects.filter(p => !p.archived).map((project) => (
                   <Grid size={{ xs: 6 }} key={project.id}>
                     <Card
                       variant="outlined"

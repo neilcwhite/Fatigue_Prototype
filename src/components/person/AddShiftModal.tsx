@@ -179,7 +179,7 @@ export function AddShiftModal({
               onChange={(e) => handleProjectChange(Number(e.target.value))}
               label="Project"
             >
-              {projects.map((project) => (
+              {projects.filter(p => !p.archived).map((project) => (
                 <MenuItem key={project.id} value={project.id}>
                   {project.name}
                 </MenuItem>

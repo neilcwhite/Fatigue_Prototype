@@ -591,7 +591,7 @@ export function TeamsView({
               required
             >
               <MenuItem value="">Select a project...</MenuItem>
-              {projects.map(p => (
+              {projects.filter(p => !p.archived).map(p => (
                 <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
               ))}
             </TextField>
