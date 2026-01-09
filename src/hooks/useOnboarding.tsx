@@ -9,6 +9,8 @@ export interface OnboardingTask {
   description: string;
   category: 'setup' | 'data' | 'advanced';
   order: number;
+  /** Keywords for search - includes related terms users might search for */
+  keywords: string[];
 }
 
 export const ONBOARDING_TASKS: OnboardingTask[] = [
@@ -18,6 +20,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Set up your first project to organise shifts and employees',
     category: 'setup',
     order: 1,
+    keywords: ['project', 'new project', 'add project', 'job', 'site', 'contract', 'work location', 'dashboard', 'start', 'begin', 'setup'],
   },
   {
     id: 'add_employee',
@@ -25,6 +28,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Add your first employee to the system',
     category: 'data',
     order: 2,
+    keywords: ['employee', 'staff', 'worker', 'person', 'add person', 'new employee', 'team member', 'name', 'role', 'job title'],
   },
   {
     id: 'import_employees',
@@ -32,6 +36,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Bulk import employees from a CSV file',
     category: 'data',
     order: 3,
+    keywords: ['import', 'csv', 'spreadsheet', 'excel', 'bulk', 'upload', 'file', 'network rail', 'multiple employees', 'batch'],
   },
   {
     id: 'create_team',
@@ -39,6 +44,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Group employees into teams for faster scheduling',
     category: 'setup',
     order: 4,
+    keywords: ['team', 'group', 'crew', 'gang', 'squad', 'department', 'members', 'organise', 'organize'],
   },
   {
     id: 'create_shift_pattern',
@@ -46,6 +52,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Define reusable shift patterns with fatigue scoring',
     category: 'setup',
     order: 5,
+    keywords: ['shift', 'pattern', 'shift builder', 'hours', 'working hours', 'schedule', 'roster', 'fatigue', 'FRI', 'risk', 'night shift', 'day shift', 'times', 'start time', 'end time'],
   },
   {
     id: 'assign_shift',
@@ -53,6 +60,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Drag employees to the schedule in Planning view',
     category: 'data',
     order: 6,
+    keywords: ['assign', 'schedule', 'planning', 'drag', 'drop', 'allocation', 'rota', 'roster', 'timeline', 'weekly', 'calendar', 'book'],
   },
   {
     id: 'view_compliance',
@@ -60,6 +68,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     description: 'Check fatigue compliance across your workforce',
     category: 'advanced',
     order: 7,
+    keywords: ['compliance', 'fatigue', 'hours', 'violations', 'warnings', 'rest', 'break', 'overtime', 'limits', 'rules', 'regulations', 'red', 'amber', 'green', 'status', 'check'],
   },
 ];
 
