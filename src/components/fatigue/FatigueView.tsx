@@ -252,6 +252,11 @@ export function FatigueView({
   const [showComponents, setShowComponents] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  // Track unsaved changes - only when editing an existing pattern
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+
   // Mode management for entry modal and read-only state
   const {
     mode,
@@ -308,6 +313,24 @@ export function FatigueView({
   // Copy day to other days menu state
   const [copyMenuAnchor, setCopyMenuAnchor] = useState<null | HTMLElement>(null);
   const [copySourceDay, setCopySourceDay] = useState<number | null>(null);
+
+  // Helper to mark changes when editing an existing pattern
+  const markAsDirty = () => {
+    // Only mark as dirty if we're editing an existing pattern (not creating new)
+    if (mode === 'edit' && selectedPatternId && loadedPattern) {
+      setHasUnsavedChanges(true);
+    }
+  };
+
+  // Helper to check for unsaved changes before navigation
+  const checkUnsavedChangesBeforeAction = (action: () => void) => {
+    if (hasUnsavedChanges && mode === 'edit' && selectedPatternId) {
+      setPendingNavigation(() => action);
+      setShowUnsavedChangesDialog(true);
+      return true; // prevented
+    }
+    return false; // allow action
+  };
 
   // Handle initial create mode when navigating from Planning view
   useEffect(() => {
@@ -652,15 +675,18 @@ export function FatigueView({
       breakFreq: params.breakFrequency,
       breakLen: params.breakLength,
     }]);
+    markAsDirty();
   };
 
   const handleRemoveShift = (id: number) => {
     setShifts(shifts.filter(s => s.id !== id));
     if (expandedShiftParams === id) setExpandedShiftParams(null);
+    markAsDirty();
   };
 
   const handleUpdateShift = (id: number, field: keyof Shift, value: Shift[keyof Shift]) => {
     setShifts(shifts.map(s => s.id === id ? { ...s, [field]: value } : s));
+    markAsDirty();
   };
 
   const handleApplyGlobalToAll = () => {
@@ -673,6 +699,7 @@ export function FatigueView({
       breakFreq: params.breakFrequency,
       breakLen: params.breakLength,
     })));
+    markAsDirty();
   };
 
   const handleLoadTemplate = (templateKey: string) => {
@@ -741,6 +768,7 @@ export function FatigueView({
     setShifts(prev => prev.map(s =>
       s.day === dayNum ? { ...s, isRestDay: !s.isRestDay } : s
     ));
+    markAsDirty();
   };
 
   const updateWeeklyShiftTime = (dayIndex: number, field: 'startTime' | 'endTime', value: string) => {
@@ -748,6 +776,7 @@ export function FatigueView({
     setShifts(prev => prev.map(s =>
       s.day === dayNum ? { ...s, [field]: value } : s
     ));
+    markAsDirty();
   };
 
   const updateWeeklyShiftParam = (dayIndex: number, field: keyof Shift, value: number) => {
@@ -755,6 +784,7 @@ export function FatigueView({
     setShifts(prev => prev.map(s =>
       s.day === dayNum ? { ...s, [field]: value } : s
     ));
+    markAsDirty();
   };
 
   const getShiftForDay = (dayIndex: number): Shift | undefined => {
@@ -797,6 +827,7 @@ export function FatigueView({
       }
       return s;
     }));
+    markAsDirty();
     handleCopyMenuClose();
   };
 
@@ -817,6 +848,7 @@ export function FatigueView({
       breakFreq: sourceShift.breakFreq,
       breakLen: sourceShift.breakLen,
     })));
+    markAsDirty();
     handleCopyMenuClose();
   };
 
@@ -927,6 +959,9 @@ export function FatigueView({
       breakAfterContinuous: DEFAULT_FATIGUE_PARAMS.breakAfterContinuous,
     });
 
+    // Clear dirty flag when loading a fresh pattern
+    setHasUnsavedChanges(false);
+
     if (selectMode === 'review') {
       enterReviewMode(pattern, project);
     } else {
@@ -938,6 +973,7 @@ export function FatigueView({
     setSelectedProjectId(project.id);
     setSelectedPatternId(null);
     setShowEntryModal(false);
+    setHasUnsavedChanges(false); // Clear dirty flag when creating new
     enterCreateMode(project);
     initializeWeeklyShifts();
   };
@@ -950,9 +986,22 @@ export function FatigueView({
   };
 
   const handleBackToEntry = () => {
+    // Check for unsaved changes before navigating away
+    if (checkUnsavedChangesBeforeAction(() => {
+      setShifts([]);
+      setSelectedProjectId(null);
+      setSelectedPatternId(null);
+      setHasUnsavedChanges(false);
+      resetToEntry();
+      setShowEntryModal(true);
+    })) {
+      return; // Navigation blocked - dialog shown
+    }
+
     setShifts([]);
     setSelectedProjectId(null);
     setSelectedPatternId(null);
+    setHasUnsavedChanges(false);
     resetToEntry();
     setShowEntryModal(true);
   };
@@ -1042,6 +1091,7 @@ export function FatigueView({
       });
 
       setSaveError(null);
+      setHasUnsavedChanges(false); // Clear dirty flag after successful update
       showSuccess('Pattern updated successfully!');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update pattern';
@@ -1480,6 +1530,7 @@ export function FatigueView({
                     ) : (
                       <Box sx={{
                         pb: 1,
+                        width: '100%',
                         overflowX: 'auto',
                         '&::-webkit-scrollbar': { height: 6 },
                         '&::-webkit-scrollbar-thumb': { bgcolor: 'grey.300', borderRadius: 3 },
@@ -1509,8 +1560,8 @@ export function FatigueView({
                           </Box>
                         </Alert>
 
-                        {/* Header - Full width with all component columns */}
-                        <Box sx={{ display: 'grid', gridTemplateColumns: '36px 32px 40px 60px 60px 40px 36px 56px 56px 44px 44px 44px 44px 50px 50px 50px 50px 50px 50px 50px 32px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 1000 }}>
+                        {/* Header - Full width with all component columns - responsive grid */}
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '40px 32px 44px 64px 64px 44px 40px 56px 56px 44px 44px 48px 48px 52px 52px 52px 52px 52px 52px 52px 36px', gap: 0.5, px: 1, py: 1, bgcolor: 'grey.100', borderRadius: 1, mb: 1, minWidth: 950, width: '100%' }}>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>Day</Typography>
                           <Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center' }}>On</Typography>
                           <Tooltip title="Commute time to work (minutes)" arrow><Typography variant="caption" fontWeight={600} sx={{ textAlign: 'center', color: 'info.main', cursor: 'help' }}>In</Typography></Tooltip>
@@ -1561,7 +1612,7 @@ export function FatigueView({
                               key={dayName}
                               sx={{
                                 display: 'grid',
-                                gridTemplateColumns: '36px 32px 40px 60px 60px 40px 36px 56px 56px 44px 44px 44px 44px 50px 50px 50px 50px 50px 50px 50px 32px',
+                                gridTemplateColumns: '40px 32px 44px 64px 64px 44px 40px 56px 56px 44px 44px 48px 48px 52px 52px 52px 52px 52px 52px 52px 36px',
                                 gap: 0.5,
                                 p: 0.5,
                                 borderRadius: 1,
@@ -1965,6 +2016,73 @@ export function FatigueView({
           Copy to ALL days
         </MenuItem>
       </Menu>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={showUnsavedChangesDialog} onClose={() => setShowUnsavedChangesDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Unsaved Changes
+          <IconButton onClick={() => setShowUnsavedChangesDialog(false)} size="small">
+            <X className="w-5 h-5" />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            You have unsaved changes to &quot;{loadedPattern?.name || 'this pattern'}&quot;.
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            What would you like to do with your changes?
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2, gap: 1, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <Button
+            onClick={() => {
+              setShowUnsavedChangesDialog(false);
+              setHasUnsavedChanges(false);
+              if (pendingNavigation) {
+                pendingNavigation();
+                setPendingNavigation(null);
+              }
+            }}
+            color="inherit"
+          >
+            Discard Changes
+          </Button>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => {
+                setShowUnsavedChangesDialog(false);
+                // Open save as new dialog
+                setSavePatternName(loadedPattern?.name ? `${loadedPattern.name} (Copy)` : 'New Pattern');
+                setSaveProjectId(selectedProjectId);
+                setSaveDutyType(loadedPattern?.dutyType || 'Non-Possession');
+                setSaveIsNight(loadedPattern?.isNight || false);
+                setShowSaveModal(true);
+              }}
+            >
+              Save as New
+            </Button>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={async () => {
+                setShowUnsavedChangesDialog(false);
+                // Update existing pattern
+                await handleUpdateExistingPattern();
+                if (pendingNavigation) {
+                  pendingNavigation();
+                  setPendingNavigation(null);
+                }
+              }}
+            >
+              Update Pattern
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

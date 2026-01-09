@@ -322,3 +322,17 @@ export function formatNumber(value: number, decimals: number = 2): string {
 export function formatPercentage(value: number, decimals: number = 0): string {
   return `${(value * 100).toFixed(decimals)}%`;
 }
+
+/**
+ * Convert string to Title Case (proper name formatting)
+ * Handles all-caps, all-lowercase, and mixed case names
+ * Examples: "JOHN SMITH" -> "John Smith", "jane doe" -> "Jane Doe"
+ */
+export function toTitleCase(str: string): string {
+  if (!str) return str;
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}

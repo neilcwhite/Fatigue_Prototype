@@ -24,6 +24,8 @@ interface WeeklyViewProps {
   period: NetworkRailPeriod;
   onCellDragOver: (e: React.DragEvent) => void;
   onCellDrop: (e: React.DragEvent, shiftPatternId: string, date: string, isValidCell?: boolean) => void;
+  /** Called when dropping on an empty cell - prompts user to select shift pattern */
+  onEmptyCellDrop?: (e: React.DragEvent, date: string) => void;
   onDeleteAssignment: (id: number) => Promise<void>;
   onEditAssignment?: (assignment: AssignmentCamel) => void;
 }
@@ -41,6 +43,7 @@ export function WeeklyView({
   period,
   onCellDragOver,
   onCellDrop,
+  onEmptyCellDrop,
   onDeleteAssignment,
   onEditAssignment,
 }: WeeklyViewProps) {

@@ -26,6 +26,7 @@ import { BulkAssignmentModal } from '@/components/modals/BulkAssignmentModal';
 import { exportToExcel, processImport, type ParsedAssignment } from '@/lib/importExport';
 import { generateNetworkRailPeriods, getAvailableYears } from '@/lib/periods';
 import { getEmployeeComplianceStatus } from '@/lib/compliance';
+import { toTitleCase } from '@/lib/utils';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import type {
@@ -707,8 +708,8 @@ export function PlanningView({
           )}
         </Box>
 
-        <Box sx={{ p: 1.5, overflow: 'auto' }} style={{ height: employeePanelHeight - 60 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ p: 1, overflow: 'auto' }} style={{ height: employeePanelHeight - 60 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
             {panelMode === 'employees' ? (
               // Employees list
               filteredEmployees.map(employee => {
@@ -725,9 +726,9 @@ export function PlanningView({
                     onClick={(e) => handleEmployeeClick(e, employee)}
                     elevation={isSelected ? 4 : 0}
                     sx={{
-                      px: 1.5,
-                      py: 1,
-                      borderRadius: 2,
+                      px: 0.75,
+                      py: 0.25,
+                      borderRadius: 1.5,
                       cursor: 'grab',
                       userSelect: 'none',
                       transition: 'all 0.2s',
@@ -741,7 +742,7 @@ export function PlanningView({
                               ? '#fef9c3'  // yellow-100
                               : '#dcfce7',  // green-100
                       color: isSelected ? 'white' : 'text.primary',
-                      border: 2,
+                      border: 1,
                       borderColor: isSelected
                         ? 'primary.main'
                         : complianceStatus.status === 'breach'
@@ -764,11 +765,11 @@ export function PlanningView({
                       },
                     }}
                     title={complianceStatus.violations.length > 0
-                      ? `${employee.name}\n\n${complianceStatus.violations.map(v => v.message).join('\n')}\n\nDrag to assign to shift. Ctrl+click to select multiple.`
+                      ? `${toTitleCase(employee.name)}\n\n${complianceStatus.violations.map(v => v.message).join('\n')}\n\nDrag to assign to shift. Ctrl+click to select multiple.`
                       : 'Drag to assign to shift. Ctrl+click to select multiple.'
                     }
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {complianceStatus.status === 'breach' && !isSelected && (
                         <Box sx={{ color: '#ef4444', flexShrink: 0, display: 'flex' }}>
                           <AlertTriangle className="w-2.5 h-2.5" />
@@ -789,7 +790,7 @@ export function PlanningView({
                           <CheckCircle className="w-2.5 h-2.5" />
                         </Box>
                       )}
-                      <Typography variant="body2" fontWeight={600}>{employee.name}</Typography>
+                      <Typography variant="caption" fontWeight={500} sx={{ fontSize: '0.7rem', lineHeight: 1.2 }}>{toTitleCase(employee.name)}</Typography>
                     </Box>
                     {employee.role && (
                       <Typography variant="caption" sx={{ color: isSelected ? 'primary.100' : 'text.secondary' }}>
