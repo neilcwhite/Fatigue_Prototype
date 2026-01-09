@@ -725,12 +725,13 @@ export function PersonView({
                 await onCreateFatigueAssessment(assessment as FatigueAssessment);
                 showSuccess('Fatigue assessment saved');
               } else {
-                console.log('Assessment saved (local only):', assessment);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('Assessment saved (local only):', assessment);
+                }
                 showSuccess('Fatigue assessment saved (not persisted)');
               }
             } catch (err) {
-              console.error('Failed to save assessment:', err);
-              showError('Failed to save fatigue assessment');
+              showError(err instanceof Error ? err.message : 'Failed to save fatigue assessment');
             }
             setAssessmentViolation(null);
           }}

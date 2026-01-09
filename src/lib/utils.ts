@@ -55,17 +55,6 @@ export function getFRICardColor(fri: number | null): string {
 }
 
 /**
- * Get CSS classes for FRI (Fatigue Risk Index) value display
- * @deprecated Use getFRIChipColor or getFRICardColor instead
- */
-export function getFRIColor(fri: number): string {
-  if (fri >= 1.2) return 'text-red-600 bg-red-100';
-  if (fri >= 1.1) return 'text-amber-600 bg-amber-100';
-  if (fri >= 1.0) return 'text-yellow-600 bg-yellow-100';
-  return 'text-green-600 bg-green-100';
-}
-
-/**
  * Get human-readable risk level label from FRI value
  */
 export function getFRILevel(fri: number): string {

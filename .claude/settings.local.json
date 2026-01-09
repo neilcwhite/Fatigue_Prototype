@@ -26,7 +26,10 @@
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
       "Bash(python -m pip install:*)",
-      "Bash(python -m oletools.olevba:*)"
+      "Bash(python -m oletools.olevba:*)",
+      "Bash(cloc:*)",
+      "Bash(find:*)",
+      "Bash(supabase --version:*)"
     ]
   }
 }

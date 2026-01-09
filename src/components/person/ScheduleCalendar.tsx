@@ -279,7 +279,7 @@ export function ScheduleCalendar({
         {/* Day Headers */}
         <Box sx={{ display: 'flex', gap: 0.5, mb: 0.5 }}>
           <Box sx={{ width: 40, minWidth: 40 }} />
-          <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, alignItems: 'start' }}>
+          <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, alignItems: 'start' }}>
             {calendarDayHeaders.map((day) => (
               <Typography key={day} variant="caption" fontWeight={600} textAlign="center" color="text.secondary">
                 {day}
@@ -301,7 +301,7 @@ export function ScheduleCalendar({
                   {weekMonthName}
                 </Typography>
               </Box>
-              <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, alignItems: 'start' }}>
+              <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, alignItems: 'start' }}>
                 {weekDates.map((date) => {
                   const { date: dateNum, isWeekend, isToday } = formatDateHeader(date);
                   const dateAssignments = periodAssignments.filter((a) => a.date === date);
@@ -493,14 +493,14 @@ export function ScheduleCalendar({
                                 <Typography
                                   variant="caption"
                                   fontWeight={500}
-                                  noWrap
                                   sx={{
                                     pr: 4,
                                     display: 'block',
                                     fontSize: '0.6rem',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    maxWidth: '100%'
+                                    lineHeight: 1.2,
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    hyphens: 'auto'
                                   }}
                                 >
                                   {project?.name || 'Unknown'}
@@ -508,14 +508,14 @@ export function ScheduleCalendar({
                                 <Typography
                                   variant="caption"
                                   fontWeight={500}
-                                  noWrap
                                   sx={{
                                     pr: 4,
                                     display: 'block',
                                     fontSize: '0.6rem',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    maxWidth: '100%'
+                                    lineHeight: 1.2,
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    hyphens: 'auto'
                                   }}
                                 >
                                   {getAssignmentDisplayName(assignment, pattern)}
