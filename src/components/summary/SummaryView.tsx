@@ -232,18 +232,14 @@ export function SummaryView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Chip
-            label="PROJECT VIEW"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(124, 58, 237, 0.2)',
-              color: 'secondary.light',
-              fontFamily: 'monospace',
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              px: 1,
-            }}
-          />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Box component="span" sx={{ color: 'secondary.light' }}>Project</Box>
+            {' '}
+            <Box component="span" sx={{ color: 'white' }}>Overview</Box>
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: 'grey.400', ml: 3, fontWeight: 400 }}>
+            {project.name}
+          </Typography>
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
             <Button
@@ -251,11 +247,11 @@ export function SummaryView({
               size="small"
               onClick={onSignOut}
               sx={{
-                color: 'white',
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                color: 'secondary.light',
+                borderColor: 'rgba(167, 139, 250, 0.3)',
                 '&:hover': {
-                  borderColor: 'white',
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  borderColor: 'secondary.light',
+                  bgcolor: 'rgba(167, 139, 250, 0.1)',
                 },
               }}
             >

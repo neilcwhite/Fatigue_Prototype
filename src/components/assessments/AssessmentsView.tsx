@@ -138,14 +138,38 @@ export function AssessmentsView({
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar>
-          <IconButton edge="start" onClick={onBack} sx={{ mr: 2 }}>
-            <ChevronLeft className="w-5 h-5" />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'text.primary' }}>
-            Fatigue Assessments
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          background: 'linear-gradient(to right, #1e293b, #0f172a)',
+          borderBottom: '4px solid #ec4899',
+        }}
+      >
+        <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Box component="span" sx={{ color: '#ec4899' }}>Fatigue</Box>
+            {' '}
+            <Box component="span" sx={{ color: 'white' }}>Assessments</Box>
           </Typography>
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onSignOut}
+              sx={{
+                color: '#ec4899',
+                borderColor: 'rgba(236, 72, 153, 0.3)',
+                '&:hover': {
+                  borderColor: '#ec4899',
+                  bgcolor: 'rgba(236, 72, 153, 0.1)',
+                },
+              }}
+            >
+              Sign Out
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
 

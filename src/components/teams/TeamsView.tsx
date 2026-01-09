@@ -48,6 +48,7 @@ interface TeamsViewProps {
 
 export function TeamsView({
   user,
+  onSignOut,
   onBack,
   teams,
   employees,
@@ -253,27 +254,33 @@ export function TeamsView({
         elevation={0}
         sx={{
           background: 'linear-gradient(to right, #1e293b, #0f172a)',
-          borderBottom: '4px solid',
-          borderColor: 'secondary.main',
+          borderBottom: '4px solid #22c55e',
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            <Box component="span" sx={{ color: 'secondary.light' }}>Team</Box> Management
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Box component="span" sx={{ color: '#22c55e' }}>Team</Box>
+            {' '}
+            <Box component="span" sx={{ color: 'white' }}>Management</Box>
           </Typography>
-          <Chip
-            label="TEAMS"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(51, 65, 85, 0.8)',
-              color: 'secondary.light',
-              fontFamily: 'monospace',
-              fontWeight: 500,
-              fontSize: '0.7rem',
-              mr: 2,
-            }}
-          />
-          <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onSignOut}
+              sx={{
+                color: '#22c55e',
+                borderColor: 'rgba(34, 197, 94, 0.3)',
+                '&:hover': {
+                  borderColor: '#22c55e',
+                  bgcolor: 'rgba(34, 197, 94, 0.1)',
+                },
+              }}
+            >
+              Sign Out
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
 

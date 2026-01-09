@@ -542,27 +542,34 @@ export function PersonView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Chip
-            label="PERSON VIEW"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(249, 115, 22, 0.2)',
-              color: 'warning.light',
-              fontFamily: 'monospace',
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              px: 1,
-              mr: 2,
-            }}
-          />
-          <Typography variant="h6" component="span" fontWeight={600} sx={{ mr: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Box component="span" sx={{ color: 'warning.light' }}>Person</Box>
+            {' '}
+            <Box component="span" sx={{ color: 'white' }}>Overview</Box>
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: 'grey.400', ml: 3, fontWeight: 500 }}>
             {employee.name}
           </Typography>
-          <Typography variant="body2" sx={{ color: 'grey.500' }} component="span">
+          <Typography variant="body2" sx={{ color: 'grey.500', ml: 2 }}>
             {employee.role}
           </Typography>
-          <Box sx={{ ml: 'auto' }}>
-            <SignOutHeader user={user} onSignOut={onSignOut} />
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onSignOut}
+              sx={{
+                color: 'warning.light',
+                borderColor: 'rgba(251, 146, 60, 0.3)',
+                '&:hover': {
+                  borderColor: 'warning.light',
+                  bgcolor: 'rgba(251, 146, 60, 0.1)',
+                },
+              }}
+            >
+              Sign Out
+            </Button>
           </Box>
         </Toolbar>
       </AppBar>

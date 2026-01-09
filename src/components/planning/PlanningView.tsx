@@ -453,24 +453,33 @@ export function PlanningView({
         sx={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderBottom: '4px solid #2563eb', flexShrink: 0 }}
       >
         <Toolbar sx={{ px: 3, py: 1.5 }}>
-          <Chip
-            label="PLANNING"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(37, 99, 235, 0.2)',
-              color: '#60a5fa',
-              fontFamily: 'monospace',
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              px: 1,
-              mr: 2,
-            }}
-          />
-          <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Box component="span" sx={{ color: '#60a5fa' }}>Planning</Box>
+            {' '}
+            <Box component="span" sx={{ color: 'white' }}>Overview</Box>
+          </Typography>
+          <Typography variant="subtitle2" sx={{ color: 'grey.400', ml: 3, fontWeight: 400 }}>
             {project.name}
           </Typography>
-          <Box sx={{ ml: 'auto' }}>
-            <SignOutHeader user={user} onSignOut={onSignOut} />
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" sx={{ color: 'grey.400' }}>
+              {user?.email}
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={onSignOut}
+              sx={{
+                color: '#60a5fa',
+                borderColor: 'rgba(96, 165, 250, 0.3)',
+                '&:hover': {
+                  borderColor: '#60a5fa',
+                  bgcolor: 'rgba(96, 165, 250, 0.1)',
+                },
+              }}
+            >
+              Sign Out
+            </Button>
           </Box>
         </Toolbar>
       </AppBar>

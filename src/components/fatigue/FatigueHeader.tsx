@@ -33,25 +33,17 @@ export function FatigueHeader({
       position="static"
       sx={{
         background: 'linear-gradient(to right, #1e293b, #0f172a)',
-        borderBottom: '4px solid #f97316',
+        borderBottom: '4px solid #06b6d4',
       }}
     >
       <Toolbar>
-        <Chip
-          label="SHIFT BUILDER"
-          size="small"
-          sx={{
-            bgcolor: 'rgba(249, 115, 22, 0.2)',
-            color: '#fb923c',
-            fontFamily: 'monospace',
-            fontWeight: 600,
-            fontSize: '0.75rem',
-            px: 1,
-            mr: 2,
-          }}
-        />
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          <Box component="span" sx={{ color: '#06b6d4' }}>Shift</Box>
+          {' '}
+          <Box component="span" sx={{ color: 'white' }}>Builder</Box>
+        </Typography>
         {projectName && (
-          <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 600 }}>
+          <Typography variant="subtitle2" sx={{ color: 'grey.400', ml: 3, fontWeight: 400 }}>
             {projectName}
           </Typography>
         )}
@@ -64,11 +56,11 @@ export function FatigueHeader({
             size="small"
             onClick={onSignOut}
             sx={{
-              color: 'white',
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              color: '#06b6d4',
+              borderColor: 'rgba(6, 182, 212, 0.3)',
               '&:hover': {
-                borderColor: 'white',
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                borderColor: '#06b6d4',
+                bgcolor: 'rgba(6, 182, 212, 0.1)',
               },
             }}
           >
