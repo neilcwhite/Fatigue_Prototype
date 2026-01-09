@@ -29,8 +29,8 @@ const navItems: NavItem[] = [
   { id: 'planning', label: 'Planning', icon: <Calendar className="w-5 h-5" />, requiresProject: true },
   { id: 'summary', label: 'Project View', icon: <BarChart className="w-5 h-5" />, requiresProject: true },
   { id: 'person', label: 'Person View', icon: <Users className="w-5 h-5" />, requiresEmployee: true },
-  { id: 'assessments', label: 'Assessments', icon: <FileText className="w-5 h-5" /> },
   { id: 'teams', label: 'Teams', icon: <Users className="w-5 h-5" /> },
+  { id: 'assessments', label: 'Assessments', icon: <FileText className="w-5 h-5" /> },
   { id: 'fatigue', label: 'Shift Builder', icon: <Settings className="w-5 h-5" /> },
 ];
 

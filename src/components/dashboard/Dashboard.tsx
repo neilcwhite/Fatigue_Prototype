@@ -123,7 +123,7 @@ export function Dashboard({
 
   // Filter and search projects
   const filteredProjects = useMemo(() => {
-    return projects.filter(project => {
+    const filtered = projects.filter(project => {
       // Search filter
       const matchesSearch = searchQuery === '' ||
         project.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -135,6 +135,13 @@ export function Dashboard({
       }
 
       return matchesSearch;
+    });
+
+    // Sort by most recently modified (updated_at descending)
+    return filtered.sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return dateB - dateA;
     });
   }, [projects, searchQuery, showNonCompliantOnly]);
 
@@ -265,112 +272,129 @@ export function Dashboard({
           </Grid>
         </Grid>
 
-        {/* Top Row: Getting Started + Create New Project */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          {/* Getting Started Card */}
-          <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-            <GettingStartedCard />
-          </Grid>
-
-          {/* Create New Project Card - Top Row */}
-          <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-            <Card
-              onClick={onCreateProject}
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                border: '2px dashed',
-                borderColor: 'primary.light',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4,
-                },
-              }}
-            >
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Box
-                  sx={{
-                    bgcolor: 'primary.main',
-                    borderRadius: '50%',
-                    p: 2,
-                    mb: 2,
-                    display: 'inline-flex',
-                  }}
-                >
-                  <Plus className="w-8 h-8" />
-                </Box>
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                  Create New Project
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Add a new project to start planning shifts
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {/* Projects Section with Search */}
-        <Box>
-          {/* Search Bar and Filter */}
-          <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-            <TextField
-              size="small"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={{ flexGrow: 1, minWidth: 250 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search className="w-4 h-4" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={showNonCompliantOnly}
-                  onChange={(e) => setShowNonCompliantOnly(e.target.checked)}
-                  size="small"
-                />
-              }
-              label="Show non-compliant only"
-            />
-          </Box>
-
-          {/* Scrollable Project Cards Container - 3 rows visible */}
-          <Box
+        {/* Search Bar - Above Everything */}
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            bgcolor: 'background.paper',
+            borderRadius: 50,
+            boxShadow: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}
+        >
+          <TextField
+            size="small"
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             sx={{
-              maxHeight: 'calc(3 * 200px + 2 * 24px)', // 3 rows * card height + 2 gaps
-              overflowY: 'auto',
-              pr: 1,
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                bgcolor: 'grey.100',
-                borderRadius: 1,
-              },
-              '&::-webkit-scrollbar-thumb': {
-                bgcolor: 'grey.400',
-                borderRadius: 1,
-                '&:hover': {
-                  bgcolor: 'grey.500',
-                },
-              },
+              flexGrow: 1,
+              minWidth: 250,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 50,
+                bgcolor: 'grey.50',
+              }
             }}
-          >
-            <Grid container spacing={3}>
-              {filteredProjects.map(project => {
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search className="w-5 h-5" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showNonCompliantOnly}
+                onChange={(e) => setShowNonCompliantOnly(e.target.checked)}
+                size="small"
+              />
+            }
+            label="Show non-compliant only"
+          />
+        </Box>
+
+        {/* Projects Section - Getting Started + Create New Project + Projects in same grid */}
+        <Box
+          sx={{
+            maxHeight: 'calc(3 * 200px + 2 * 24px)', // 3 rows * card height + 2 gaps
+            overflowY: 'auto',
+            pr: 1,
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              bgcolor: 'grey.100',
+              borderRadius: 1,
+            },
+            '&::-webkit-scrollbar-thumb': {
+              bgcolor: 'grey.400',
+              borderRadius: 1,
+              '&:hover': {
+                bgcolor: 'grey.500',
+              },
+            },
+          }}
+        >
+          <Grid container spacing={3}>
+            {/* Getting Started Card */}
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+              <GettingStartedCard />
+            </Grid>
+
+            {/* Create New Project Card */}
+            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+              <Card
+                onClick={onCreateProject}
+                sx={{
+                  height: 200,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                  border: '2px dashed',
+                  borderColor: 'primary.light',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    transform: 'translateY(-4px)',
+                    boxShadow: 4,
+                  },
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center' }}>
+                  <Box
+                    sx={{
+                      bgcolor: 'primary.main',
+                      borderRadius: '50%',
+                      p: 2,
+                      mb: 2,
+                      display: 'inline-flex',
+                    }}
+                  >
+                    <Plus className="w-8 h-8" />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                    Create New Project
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Add a new project to start planning shifts
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* Project Cards */}
+            {filteredProjects.map(project => {
             const stats = getProjectStats(project.id);
             return (
               <Grid size={{ xs: 12, md: 6, lg: 4 }} key={project.id}>
