@@ -146,7 +146,7 @@ export function Dashboard({
   }, [projects, searchQuery, showNonCompliantOnly]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ height: '100vh', bgcolor: 'background.default', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <AppBar
         position="static"
@@ -177,7 +177,7 @@ export function Dashboard({
       </AppBar>
 
       {/* Content */}
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {/* Action Cards - Above Projects */}
         <Grid container spacing={3} sx={{ mb: 3 }}>
           <Grid size={{ xs: 12, md: 4 }}>
@@ -346,7 +346,9 @@ export function Dashboard({
           <Grid container spacing={3}>
             {/* Getting Started Card */}
             <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              <GettingStartedCard />
+              <Box sx={{ height: 200, '& > *': { height: '100%' } }}>
+                <GettingStartedCard />
+              </Box>
             </Grid>
 
             {/* Create New Project Card */}

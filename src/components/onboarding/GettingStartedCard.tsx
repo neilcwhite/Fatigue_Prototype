@@ -33,15 +33,18 @@ export function GettingStartedCard() {
         color: 'white',
         borderRadius: 2,
         overflow: 'hidden',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+      <CardContent sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
           <Box>
-            <Typography variant="h6" fontWeight={600} gutterBottom>
+            <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
               Getting Started
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant="caption" sx={{ opacity: 0.9 }}>
               Complete these tasks to set up HerdWatch
             </Typography>
           </Box>
@@ -60,17 +63,17 @@ export function GettingStartedCard() {
         </Box>
 
         {/* Progress bar */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 2 }}>
           <LinearProgress
             variant="determinate"
             value={completionPercentage}
             sx={{
-              height: 6,
-              borderRadius: 3,
+              height: 4,
+              borderRadius: 2,
               bgcolor: 'rgba(255,255,255,0.2)',
               '& .MuiLinearProgress-bar': {
                 bgcolor: '#4ade80',
-                borderRadius: 3,
+                borderRadius: 2,
               },
             }}
           />
@@ -81,15 +84,15 @@ export function GettingStartedCard() {
           <Box
             sx={{
               bgcolor: 'rgba(255,255,255,0.1)',
-              borderRadius: 1.5,
-              px: 2,
-              py: 1.5,
-              mb: 2,
+              borderRadius: 1,
+              px: 1.5,
+              py: 1,
+              mb: 1.5,
             }}
           >
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.7rem' }}>
               <span style={{ opacity: 0.7 }}>Next Step</span>
-              <span style={{ margin: '0 8px' }}>–</span>
+              <span style={{ margin: '0 6px' }}>–</span>
               <span style={{ fontWeight: 500 }}>{nextTask.title}</span>
             </Typography>
           </Box>
@@ -100,11 +103,14 @@ export function GettingStartedCard() {
           fullWidth
           variant="contained"
           onClick={openPanel}
+          size="small"
           endIcon={<ChevronRight className="w-4 h-4" />}
           sx={{
             bgcolor: 'white',
             color: '#233e99',
             fontWeight: 600,
+            py: 0.75,
+            mt: 'auto',
             '&:hover': {
               bgcolor: 'rgba(255,255,255,0.9)',
             },
