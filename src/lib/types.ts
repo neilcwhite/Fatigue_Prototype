@@ -12,6 +12,7 @@ export interface Employee {
   name: string;
   role?: string;
   email?: string;
+  sentinel_number?: string;  // 3-15 characters, alphanumeric
   team_id?: number;
   organisation_id: string;
   created_at?: string;
@@ -23,6 +24,7 @@ export interface Project {
   name: string;
   start_date?: string;
   end_date?: string;
+  archived?: boolean;  // Soft delete - hides project and FAMPs from normal users
   organisation_id: string;
   created_at?: string;
   updated_at?: string;
@@ -101,11 +103,13 @@ export interface Assignment {
   break_after_continuous?: number; // rest after continuous work (minutes)
 }
 
+export type UserRole = 'super_admin' | 'admin' | 'sheq' | 'manager' | 'user';
+
 export interface UserProfile {
   id: string;
   email: string;
   full_name?: string;
-  role: 'admin' | 'manager' | 'viewer';
+  role: UserRole;
   organisation_id: string;
   created_at?: string;
   updated_at?: string;
@@ -255,6 +259,7 @@ export interface EmployeeCamel {
   name: string;
   role?: string;
   email?: string;
+  sentinelNumber?: string;  // 3-15 characters, alphanumeric
   teamId?: number;
   organisationId: string;
 }
@@ -264,6 +269,7 @@ export interface ProjectCamel {
   name: string;
   startDate?: string;
   endDate?: string;
+  archived?: boolean;  // Soft delete - hides project and FAMPs from normal users
   organisationId: string;
   updatedAt?: string;
 }
@@ -313,6 +319,42 @@ export interface TeamCamel {
   name: string;
   memberIds: number[];
   organisationId: string;
+}
+
+// ==================== ADMIN & PERMISSIONS ====================
+
+// Role hierarchy: super_admin > admin > sheq > manager > user
+export interface RolePermissions {
+  canViewArchived: boolean;
+  canArchiveProjects: boolean;
+  canDeleteProjects: boolean;
+  canImportUsers: boolean;
+  canManageRoles: boolean;
+  canViewAllProjects: boolean;
+  canEditAllProjects: boolean;
+  canViewCompliance: boolean;
+  canManageFAMPs: boolean;
+}
+
+// CSV import types
+export interface CSVImportRow {
+  name: string;
+  sentinel_number: string;
+  role?: string;
+  email?: string;
+}
+
+export interface CSVImportResult {
+  imported: CSVImportRow[];
+  skipped: CSVImportRow[];
+  conflicts: CSVImportConflict[];
+}
+
+export interface CSVImportConflict {
+  sentinel_number: string;
+  csvName: string;
+  existingName: string;
+  existingEmployeeId: number;
 }
 
 // ==================== FATIGUE ASSESSMENT (FAMP) ====================
