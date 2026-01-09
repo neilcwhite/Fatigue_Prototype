@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -11,6 +12,10 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Tooltip from '@mui/material/Tooltip';
+import TextField from '@mui/material/TextField';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+import InputAdornment from '@mui/material/InputAdornment';
 import { SignOutHeader } from '@/components/auth/SignOutHeader';
 import {
   Calendar,
@@ -19,7 +24,8 @@ import {
   CheckCircle,
   ErrorTriangle,
   AlertTriangle,
-  BarChart
+  BarChart,
+  Search
 } from '@/components/ui/Icons';
 import { checkProjectCompliance } from '@/lib/compliance';
 import { GettingStartedCard } from '@/components/onboarding/GettingStartedCard';
@@ -71,6 +77,9 @@ export function Dashboard({
   onViewTeams,
   onCreateProject,
 }: DashboardProps) {
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNonCompliantOnly, setShowNonCompliantOnly] = useState(false);
 
   // Calculate stats for a project
   const getProjectStats = (projectId: number): ProjectStats => {
@@ -112,6 +121,23 @@ export function Dashboard({
     };
   };
 
+  // Filter and search projects
+  const filteredProjects = useMemo(() => {
+    return projects.filter(project => {
+      // Search filter
+      const matchesSearch = searchQuery === '' ||
+        project.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Compliance filter
+      if (showNonCompliantOnly) {
+        const stats = getProjectStats(project.id);
+        return matchesSearch && (stats.hasErrors || stats.hasWarnings);
+      }
+
+      return matchesSearch;
+    });
+  }, [projects, searchQuery, showNonCompliantOnly]);
+
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
@@ -125,14 +151,7 @@ export function Dashboard({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Box sx={{ flexGrow: 1 }}>
-            <Box
-              component="img"
-              src="/logo-header.svg"
-              alt="HerdWatch"
-              sx={{ height: 32, width: 'auto' }}
-            />
-          </Box>
+          <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip
               label="DASHBOARD"
@@ -246,117 +265,19 @@ export function Dashboard({
           </Grid>
         </Grid>
 
-        {/* Getting Started + Project Cards */}
-        <Grid container spacing={3}>
+        {/* Top Row: Getting Started + Create New Project */}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
           {/* Getting Started Card */}
           <Grid size={{ xs: 12, md: 6, lg: 4 }}>
             <GettingStartedCard />
           </Grid>
 
-          {projects.map(project => {
-            const stats = getProjectStats(project.id);
-            return (
-              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={project.id}>
-                <Card
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: 6,
-                    },
-                  }}
-                  onClick={() => onSelectProject(project.id)}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                        {project.name}
-                      </Typography>
-                      <Tooltip title={
-                        stats.hasErrors ? `${stats.errorCount} compliance breach${stats.errorCount > 1 ? 'es' : ''}` :
-                        stats.hasWarnings ? `${stats.warningCount} warning${stats.warningCount > 1 ? 's' : ''}` :
-                        'Compliant'
-                      }>
-                        <Box sx={{
-                          transition: 'transform 0.2s',
-                          '&:hover': { transform: 'scale(1.1)' },
-                          color: stats.hasErrors ? 'error.main' : stats.hasWarnings ? 'warning.main' : 'success.main'
-                        }}>
-                          {stats.hasErrors ? (
-                            <ErrorTriangle className="w-6 h-6" />
-                          ) : stats.hasWarnings ? (
-                            <AlertTriangle className="w-6 h-6" />
-                          ) : (
-                            <CheckCircle className="w-6 h-6" />
-                          )}
-                        </Box>
-                      </Tooltip>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Shift Patterns:</Typography>
-                        <Typography variant="body2" fontWeight={600}>{stats.shiftPatternCount}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Total Hours:</Typography>
-                        <Typography variant="body2" fontWeight={600}>{stats.totalHours.toLocaleString()}h</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Employees:</Typography>
-                        <Typography variant="body2" fontWeight={600}>{stats.employeeCount}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="body2" color="text.secondary">Compliance:</Typography>
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          sx={{ color: stats.hasErrors ? 'error.main' : stats.hasWarnings ? 'warning.main' : 'success.main' }}
-                        >
-                          {stats.hasErrors
-                            ? `${stats.errorCount} Breach${stats.errorCount > 1 ? 'es' : ''}`
-                            : stats.hasWarnings
-                            ? `${stats.warningCount} Warning${stats.warningCount > 1 ? 's' : ''}`
-                            : 'Compliant'}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
-                      sx={{ fontWeight: 500 }}
-                    >
-                      Planning
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      fullWidth
-                      onClick={(e) => { e.stopPropagation(); onViewSummary(project.id); }}
-                      sx={{ fontWeight: 500 }}
-                    >
-                      Summary
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
-
-          {/* Create New Project Card */}
+          {/* Create New Project Card - Top Row */}
           <Grid size={{ xs: 12, md: 6, lg: 4 }}>
             <Card
               onClick={onCreateProject}
               sx={{
                 height: '100%',
-                minHeight: 280,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -395,6 +316,161 @@ export function Dashboard({
             </Card>
           </Grid>
         </Grid>
+
+        {/* Projects Section with Search */}
+        <Box>
+          {/* Search Bar and Filter */}
+          <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            <TextField
+              size="small"
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={{ flexGrow: 1, minWidth: 250 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search className="w-4 h-4" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showNonCompliantOnly}
+                  onChange={(e) => setShowNonCompliantOnly(e.target.checked)}
+                  size="small"
+                />
+              }
+              label="Show non-compliant only"
+            />
+          </Box>
+
+          {/* Scrollable Project Cards Container - 3 rows visible */}
+          <Box
+            sx={{
+              maxHeight: 'calc(3 * 200px + 2 * 24px)', // 3 rows * card height + 2 gaps
+              overflowY: 'auto',
+              pr: 1,
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                bgcolor: 'grey.100',
+                borderRadius: 1,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                bgcolor: 'grey.400',
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'grey.500',
+                },
+              },
+            }}
+          >
+            <Grid container spacing={3}>
+              {filteredProjects.map(project => {
+            const stats = getProjectStats(project.id);
+            return (
+              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={project.id}>
+                <Card
+                  sx={{
+                    height: 200,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                  onClick={() => onSelectProject(project.id)}
+                >
+                  <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '1rem' }}>
+                        {project.name}
+                      </Typography>
+                      <Tooltip title={
+                        stats.hasErrors ? `${stats.errorCount} compliance breach${stats.errorCount > 1 ? 'es' : ''}` :
+                        stats.hasWarnings ? `${stats.warningCount} warning${stats.warningCount > 1 ? 's' : ''}` :
+                        'Compliant'
+                      }>
+                        <Box sx={{
+                          transition: 'transform 0.2s',
+                          '&:hover': { transform: 'scale(1.1)' },
+                          color: stats.hasErrors ? 'error.main' : stats.hasWarnings ? 'warning.main' : 'success.main'
+                        }}>
+                          {stats.hasErrors ? (
+                            <ErrorTriangle className="w-6 h-6" />
+                          ) : stats.hasWarnings ? (
+                            <AlertTriangle className="w-6 h-6" />
+                          ) : (
+                            <CheckCircle className="w-6 h-6" />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">Shift Patterns:</Typography>
+                        <Typography variant="caption" fontWeight={600}>{stats.shiftPatternCount}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">Total Hours:</Typography>
+                        <Typography variant="caption" fontWeight={600}>{stats.totalHours.toLocaleString()}h</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">Employees:</Typography>
+                        <Typography variant="caption" fontWeight={600}>{stats.employeeCount}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">Compliance:</Typography>
+                        <Typography
+                          variant="caption"
+                          fontWeight={600}
+                          sx={{ color: stats.hasErrors ? 'error.main' : stats.hasWarnings ? 'warning.main' : 'success.main' }}
+                        >
+                          {stats.hasErrors
+                            ? `${stats.errorCount} Breach${stats.errorCount > 1 ? 'es' : ''}`
+                            : stats.hasWarnings
+                            ? `${stats.warningCount} Warning${stats.warningCount > 1 ? 's' : ''}`
+                            : 'Compliant'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                  <CardActions sx={{ p: 1.5, pt: 0, gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      fullWidth
+                      onClick={(e) => { e.stopPropagation(); onSelectProject(project.id); }}
+                      sx={{ fontWeight: 500, py: 0.5 }}
+                    >
+                      Planning
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      size="small"
+                      fullWidth
+                      onClick={(e) => { e.stopPropagation(); onViewSummary(project.id); }}
+                      sx={{ fontWeight: 500, py: 0.5 }}
+                    >
+                      Summary
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            );
+          })}
+            </Grid>
+          </Box>
+        </Box>
 
         </Box>
     </Box>

@@ -228,34 +228,6 @@ export function Sidebar({
           </Tooltip>
         </List>
       </Box>
-
-      <Divider />
-
-      {/* Context Info (when expanded) */}
-      {!collapsed && (hasSelectedProject || hasSelectedEmployee) && (
-        <Box sx={{ p: 2 }}>
-          {hasSelectedProject && selectedProjectName && (
-            <Box sx={{ mb: 1 }}>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Project
-              </Typography>
-              <Typography variant="body2" fontWeight="medium" noWrap>
-                {selectedProjectName}
-              </Typography>
-            </Box>
-          )}
-          {hasSelectedEmployee && selectedEmployeeName && (
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block">
-                Employee
-              </Typography>
-              <Typography variant="body2" fontWeight="medium" noWrap>
-                {selectedEmployeeName}
-              </Typography>
-            </Box>
-          )}
-        </Box>
-      )}
     </Drawer>
   );
 }

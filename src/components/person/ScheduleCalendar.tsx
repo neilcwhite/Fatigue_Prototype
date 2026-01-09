@@ -438,7 +438,7 @@ export function ScheduleCalendar({
                           </Typography>
                         )
                       ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mx: 0.25, mb: 0.25 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mx: 0.25, mb: 0.25, alignItems: 'stretch' }}>
                           {dateAssignments.map((assignment) => {
                             const { pattern, project } = getAssignmentInfo(assignment);
                             const assignmentViolation = violationAssignmentSeverity.get(assignment.id) || null;
@@ -454,6 +454,7 @@ export function ScheduleCalendar({
                                   p: 0.5,
                                   cursor: 'pointer',
                                   transition: 'all 0.15s',
+                                  flexShrink: 0,
                                   ...getNRComplianceChipSx(assignmentViolation),
                                   // Selection styling
                                   ...(isSelected && {
@@ -520,7 +521,7 @@ export function ScheduleCalendar({
                                 >
                                   {getAssignmentDisplayName(assignment, pattern)}
                                 </Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.55rem' }}>
+                                <Typography variant="caption" sx={{ opacity: 0.9, fontSize: '0.55rem', pb: 0.25 }}>
                                   {assignment.customStartTime || pattern?.startTime || '?'}-
                                   {assignment.customEndTime || pattern?.endTime || '?'}
                                 </Typography>
