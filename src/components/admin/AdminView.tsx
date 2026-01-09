@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/Icons';
 import { CSVImportModal } from './CSVImportModal';
 import { ProjectAccessPanel } from './ProjectAccessPanel';
+import { UserManagementPanel } from './UserManagementPanel';
 import { formatRoleLabel } from '@/lib/permissions';
 import type {
   SupabaseUser,
@@ -84,7 +85,7 @@ interface AdminViewProps {
   getProjectMembers?: (projectId: number) => Promise<ProjectMemberCamel[]>;
 }
 
-type AdminTab = 'overview' | 'employees' | 'projects' | 'access';
+type AdminTab = 'overview' | 'employees' | 'projects' | 'users' | 'access';
 
 export function AdminView({
   user,
@@ -322,6 +323,7 @@ export function AdminView({
           <Tab label="Overview" value="overview" />
           <Tab label="Employees" value="employees" />
           <Tab label="Projects" value="projects" />
+          <Tab label="Users" value="users" />
           <Tab label="Project Access" value="access" />
         </Tabs>
       </Box>
@@ -726,6 +728,24 @@ export function AdminView({
                 </TableBody>
               </Table>
             </TableContainer>
+          </Box>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && organisationId && userRole && addProjectMember && (
+          <UserManagementPanel
+            currentUserRole={userRole}
+            organisationId={organisationId}
+            projects={projects}
+            addProjectMember={addProjectMember}
+          />
+        )}
+
+        {activeTab === 'users' && (!organisationId || !userRole) && (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography color="text.secondary">
+              User management is not available
+            </Typography>
           </Box>
         )}
 

@@ -210,7 +210,7 @@ export function useAuth(): UseAuthReturn {
         .insert({
           id: userId,
           email: userEmail,
-          role: 'admin',
+          role: 'user',  // Default to 'user' (Viewer) - admins can promote later
           organisation_id: orgMapping.organisationId,
         })
         .select('*')

@@ -26,8 +26,11 @@ import DialogActions from '@mui/material/DialogActions';
 import Autocomplete from '@mui/material/Autocomplete';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
-import { FileText, Search, Eye, Plus, ChevronLeft } from '@/components/ui/Icons';
+import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
+import { FileText, Search, Eye, Plus, ChevronLeft, Download } from '@/components/ui/Icons';
 import { FatigueAssessmentModal } from '@/components/modals/FatigueAssessmentModal';
+import { downloadFAMPAsWord } from '@/lib/fampExport';
 import type { SupabaseUser, FatigueAssessment, FAMPRiskLevel, FAMPStatus, EmployeeCamel } from '@/lib/types';
 
 interface AssessmentsViewProps {
@@ -87,6 +90,21 @@ export function AssessmentsView({
   const [showEmployeeSelectDialog, setShowEmployeeSelectDialog] = useState(false);
   const [viewingAssessment, setViewingAssessment] = useState<FatigueAssessment | null>(null);
   const [selectedEmployeeForCreate, setSelectedEmployeeForCreate] = useState<EmployeeCamel | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  // Handle export to Word
+  const handleExportToWord = async (assessment: FatigueAssessment, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click
+    setExportingId(assessment.id);
+    try {
+      await downloadFAMPAsWord(assessment);
+    } catch (error) {
+      console.error('Failed to export FAMP:', error);
+      alert('Failed to export assessment. Please try again.');
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   // Filter assessments
   const filteredAssessments = assessments.filter(assessment => {
@@ -345,15 +363,31 @@ export function AssessmentsView({
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setViewingAssessment(assessment);
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </IconButton>
+                      <Tooltip title="View Assessment">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingAssessment(assessment);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Export to Word">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleExportToWord(assessment, e)}
+                          disabled={exportingId === assessment.id}
+                          sx={{ color: '#22c55e' }}
+                        >
+                          {exportingId === assessment.id ? (
+                            <CircularProgress size={16} color="inherit" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))

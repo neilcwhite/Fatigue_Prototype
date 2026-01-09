@@ -25,7 +25,8 @@ import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
-import { X, AlertTriangle, CheckCircle, FileText } from '@/components/ui/Icons';
+import { X, AlertTriangle, CheckCircle, FileText, Download } from '@/components/ui/Icons';
+import { downloadFAMPAsWord } from '@/lib/fampExport';
 import type {
   FatigueAssessment,
   FAMPAssessmentReason,
@@ -82,7 +83,22 @@ export function FatigueAssessmentModal({
 }: FatigueAssessmentModalProps) {
   const [activeStep, setActiveStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Handle export to Word
+  const handleExportToWord = async () => {
+    if (!existingAssessment) return;
+    setExporting(true);
+    try {
+      await downloadFAMPAsWord(existingAssessment);
+    } catch (err) {
+      console.error('Failed to export FAMP:', err);
+      setError('Failed to export assessment. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Part 1: Details
   const [employeeName, setEmployeeName] = useState(existingAssessment?.employeeName || employee?.name || '');
@@ -912,6 +928,21 @@ export function FatigueAssessmentModal({
         <Button onClick={onClose} disabled={saving}>
           Cancel
         </Button>
+        {existingAssessment && (
+          <Button
+            variant="outlined"
+            onClick={handleExportToWord}
+            disabled={exporting}
+            startIcon={exporting ? <CircularProgress size={16} /> : <Download className="w-4 h-4" />}
+            sx={{
+              color: '#22c55e',
+              borderColor: '#22c55e',
+              '&:hover': { borderColor: '#16a34a', bgcolor: 'rgba(34, 197, 94, 0.1)' },
+            }}
+          >
+            Export to Word
+          </Button>
+        )}
         <Box sx={{ flex: 1 }} />
         {activeStep > 0 && (
           <Button onClick={handleBack} disabled={saving}>
