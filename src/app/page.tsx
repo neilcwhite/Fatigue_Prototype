@@ -395,6 +395,8 @@ export default function Home() {
             user={user}
             onSignOut={signOut}
             project={selectedProjectData}
+            projects={projects}
+            onSelectProject={(projectId) => setSelectedProject(projectId)}
             employees={employees}
             teams={teams}
             assignments={assignments}

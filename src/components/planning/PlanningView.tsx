@@ -43,6 +43,10 @@ interface PlanningViewProps {
   user: SupabaseUser;
   onSignOut: () => void;
   project: ProjectCamel;
+  /** All active projects for the dropdown selector */
+  projects?: ProjectCamel[];
+  /** Called when user selects a different project from the dropdown */
+  onSelectProject?: (projectId: number) => void;
   employees: EmployeeCamel[];
   teams: TeamCamel[];
   assignments: AssignmentCamel[];
@@ -71,6 +75,8 @@ export function PlanningView({
   user,
   onSignOut,
   project,
+  projects,
+  onSelectProject,
   employees,
   teams,
   assignments,
@@ -595,9 +601,32 @@ export function PlanningView({
             {' '}
             <Box component="span" sx={{ color: 'white' }}>Overview</Box>
           </Typography>
-          <Typography variant="subtitle2" sx={{ color: 'grey.400', ml: 3, fontWeight: 400 }}>
-            {project.name}
-          </Typography>
+          {/* Project Selector Dropdown */}
+          {projects && projects.length > 1 && onSelectProject ? (
+            <Select
+              value={project.id}
+              onChange={(e) => onSelectProject(e.target.value as number)}
+              size="small"
+              sx={{
+                ml: 3,
+                color: 'grey.300',
+                '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(148, 163, 184, 0.3)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(148, 163, 184, 0.5)' },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#60a5fa' },
+                '.MuiSvgIcon-root': { color: 'grey.400' },
+                minWidth: 200,
+                maxWidth: 350,
+              }}
+            >
+              {projects.filter(p => !p.archived).map(p => (
+                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+              ))}
+            </Select>
+          ) : (
+            <Typography variant="subtitle2" sx={{ color: 'grey.400', ml: 3, fontWeight: 400 }}>
+              {project.name}
+            </Typography>
+          )}
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" sx={{ color: 'grey.400' }}>
               {user?.email}
