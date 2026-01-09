@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppData } from '@/hooks/useAppData';
 import { AuthScreen } from '@/components/auth/AuthScreen';
@@ -42,6 +49,10 @@ export default function Home() {
   const [editingShiftPattern, setEditingShiftPattern] = useState<ShiftPatternCamel | null>(null);
   const [shiftBuilderCreateMode, setShiftBuilderCreateMode] = useState<{ projectId: number } | null>(null);
   const [tutorialTaskId, setTutorialTaskId] = useState<string | null>(null);
+
+  // Team creation from drag-drop
+  const [teamCreationModal, setTeamCreationModal] = useState<{ memberIds: number[] } | null>(null);
+  const [newTeamName, setNewTeamName] = useState('');
 
   // Load app data once we have an organisation (including fatigue assessments from Supabase)
   const {
@@ -202,6 +213,18 @@ export default function Home() {
     setCurrentView('dashboard');
     setSelectedProject(null);
     setSelectedEmployee(null);
+  };
+
+  const handleCreateTeamWithMembers = (memberIds: number[]) => {
+    setTeamCreationModal({ memberIds });
+    setNewTeamName('');
+  };
+
+  const handleConfirmTeamCreation = async () => {
+    if (!teamCreationModal || !newTeamName.trim()) return;
+    await createTeam(newTeamName.trim(), teamCreationModal.memberIds);
+    setTeamCreationModal(null);
+    setNewTeamName('');
   };
 
   const handleNavigateToSummary = (projectId: number) => {
@@ -389,6 +412,7 @@ export default function Home() {
               setSelectedEmployee(empId);
               setCurrentView('person');
             }}
+            onCreateTeamWithMembers={handleCreateTeamWithMembers}
           />
         )}
 
@@ -565,6 +589,46 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Team Creation Modal (from drag-drop) */}
+      <Dialog
+        open={!!teamCreationModal}
+        onClose={() => setTeamCreationModal(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Create New Team</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {teamCreationModal?.memberIds.length === 1
+              ? '1 employee will be added to this team.'
+              : `${teamCreationModal?.memberIds.length} employees will be added to this team.`}
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Team Name"
+            value={newTeamName}
+            onChange={(e) => setNewTeamName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newTeamName.trim()) {
+                handleConfirmTeamCreation();
+              }
+            }}
+            placeholder="e.g. Night Shift Crew"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTeamCreationModal(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmTeamCreation}
+            disabled={!newTeamName.trim()}
+          >
+            Create Team
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
     </ErrorBoundary>
   );
