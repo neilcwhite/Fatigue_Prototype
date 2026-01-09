@@ -347,6 +347,7 @@ export default function Home() {
         {currentView === 'dashboard' && (
           <Dashboard
             user={user}
+            userRole={profile?.role as import('@/lib/types').UserRole | undefined}
             onSignOut={signOut}
             projects={projects}
             employees={employees}

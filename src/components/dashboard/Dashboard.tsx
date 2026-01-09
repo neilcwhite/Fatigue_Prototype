@@ -35,8 +35,10 @@ import type {
   EmployeeCamel,
   AssignmentCamel,
   ShiftPatternCamel,
-  SupabaseUser
+  SupabaseUser,
+  UserRole
 } from '@/lib/types';
+import { formatRoleLabel } from '@/lib/permissions';
 
 interface ProjectStats {
   totalHours: number;
@@ -51,6 +53,7 @@ interface ProjectStats {
 
 interface DashboardProps {
   user: SupabaseUser;
+  userRole?: UserRole;
   onSignOut: () => void;
   projects: ProjectCamel[];
   employees: EmployeeCamel[];
@@ -66,6 +69,7 @@ interface DashboardProps {
 
 export function Dashboard({
   user,
+  userRole,
   onSignOut,
   projects,
   employees,
@@ -176,6 +180,25 @@ export function Dashboard({
                 fontSize: '0.7rem',
               }}
             />
+            {userRole && (
+              <Chip
+                label={formatRoleLabel(userRole)}
+                size="small"
+                sx={{
+                  bgcolor: userRole === 'super_admin' || userRole === 'admin'
+                    ? 'rgba(34, 197, 94, 0.2)'
+                    : 'rgba(51, 65, 85, 0.8)',
+                  color: userRole === 'super_admin' || userRole === 'admin'
+                    ? '#22c55e'
+                    : 'grey.400',
+                  fontWeight: 500,
+                  fontSize: '0.7rem',
+                  border: userRole === 'super_admin' || userRole === 'admin'
+                    ? '1px solid rgba(34, 197, 94, 0.5)'
+                    : 'none',
+                }}
+              />
+            )}
             <SignOutHeader user={user} onSignOut={onSignOut} />
           </Box>
         </Toolbar>
