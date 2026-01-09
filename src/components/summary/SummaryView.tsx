@@ -231,15 +231,14 @@ export function SummaryView({
         }}
       >
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" component="span" sx={{ color: 'secondary.light' }}>
-              Project View
-            </Typography>
-          </Box>
+          <Typography variant="h6" component="span" sx={{ color: 'secondary.light', mr: 3 }}>
+            Project View
+          </Typography>
           <Button
             variant="contained"
+            color="secondary"
             onClick={() => onNavigateToPlanning(project.id)}
-            sx={{ mr: 2 }}
+            sx={{ mr: 'auto' }}
           >
             Go to Planning
           </Button>
