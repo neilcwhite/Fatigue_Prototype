@@ -7,23 +7,19 @@ import { COMPLIANCE_LIMITS } from './compliance';
 
 // ==================== FRI COLOUR CONSTANTS ====================
 // Standardized colours for Fatigue Risk Index display across all components
-// FRI Thresholds: <1.0 (Low), 1.0-1.1 (Moderate), 1.1-1.2 (Elevated), >=1.2 (Critical)
+// FRI Thresholds per NR/L2/OHS/003: ≤1.6 (Green/OK), >1.6 (Red/Breach)
 
 export const FRI_COLORS = {
   // Solid backgrounds with white text - for chips, badges, small UI elements
   solid: {
-    low: 'bg-green-600 text-white',
-    moderate: 'bg-yellow-500 text-white',
-    elevated: 'bg-orange-500 text-white',
-    critical: 'bg-red-600 text-white',
+    ok: 'bg-green-600 text-white',
+    breach: 'bg-red-600 text-white',
     unknown: 'bg-slate-500 text-white',
   },
   // Light backgrounds with dark text - for cards, larger areas
   light: {
-    low: 'bg-green-100 text-green-800 border-green-300',
-    moderate: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    elevated: 'bg-orange-100 text-orange-800 border-orange-300',
-    critical: 'bg-red-100 text-red-800 border-red-300',
+    ok: 'bg-green-100 text-green-800 border-green-300',
+    breach: 'bg-red-100 text-red-800 border-red-300',
     unknown: 'bg-slate-100 text-slate-800 border-slate-300',
   },
 } as const;
@@ -33,59 +29,97 @@ export const FRI_COLORS = {
 /**
  * Get CSS classes for FRI chip/badge display (solid background, white text)
  * Use for: calendar chips, FRI badges, small indicators
+ * Per NR/L2/OHS/003: ≤1.6 = OK (GREEN), >1.6 = BREACH (RED)
  */
 export function getFRIChipColor(fri: number | null): string {
   if (fri === null) return FRI_COLORS.solid.unknown;
-  if (fri >= 1.2) return FRI_COLORS.solid.critical;
-  if (fri >= 1.1) return FRI_COLORS.solid.elevated;
-  if (fri >= 1.0) return FRI_COLORS.solid.moderate;
-  return FRI_COLORS.solid.low;
+  if (fri > 1.6) return FRI_COLORS.solid.breach;
+  return FRI_COLORS.solid.ok;
 }
 
 /**
  * Get CSS classes for FRI card/area display (light background, dark text)
  * Use for: summary cards, larger display areas
+ * Per NR/L2/OHS/003: ≤1.6 = OK (GREEN), >1.6 = BREACH (RED)
  */
 export function getFRICardColor(fri: number | null): string {
   if (fri === null) return FRI_COLORS.light.unknown;
-  if (fri >= 1.2) return FRI_COLORS.light.critical;
-  if (fri >= 1.1) return FRI_COLORS.light.elevated;
-  if (fri >= 1.0) return FRI_COLORS.light.moderate;
-  return FRI_COLORS.light.low;
+  if (fri > 1.6) return FRI_COLORS.light.breach;
+  return FRI_COLORS.light.ok;
 }
 
 /**
  * Get human-readable risk level label from FRI value
+ * Per NR/L2/OHS/003: ≤1.6 = OK, >1.6 = BREACH
  */
 export function getFRILevel(fri: number): string {
-  if (fri >= 1.2) return 'Critical';
-  if (fri >= 1.1) return 'Elevated';
-  if (fri >= 1.0) return 'Moderate';
-  return 'Low';
+  if (fri > 1.6) return 'Breach';
+  return 'OK';
+}
+
+/**
+ * Get CSS classes for FGI chip/badge display (solid background, white text)
+ * FGI (Fatigue Index 0-100) thresholds per NR/L2/OHS/003:
+ * - ≤Good Practice (30 day/40 night) = OK (GREEN)
+ * - >Level 2 (35 day/45 night) = Requires FARP (YELLOW/AMBER)
+ */
+export function getFGIChipColor(fgi: number | null, isNight: boolean = false): string {
+  if (fgi === null) return 'bg-slate-500 text-white';
+  const level2Threshold = isNight ? 45 : 35;
+  if (fgi > level2Threshold) return 'bg-yellow-500 text-white'; // Level 2 - requires FARP
+  return 'bg-green-600 text-white'; // OK
+}
+
+/**
+ * Get CSS classes for FGI card/area display (light background, dark text)
+ * FGI (Fatigue Index 0-100) thresholds per NR/L2/OHS/003:
+ * - ≤Good Practice (30 day/40 night) = OK (GREEN)
+ * - >Level 2 (35 day/45 night) = Requires FARP (YELLOW/AMBER)
+ */
+export function getFGICardColor(fgi: number | null, isNight: boolean = false): string {
+  if (fgi === null) return 'bg-slate-100 text-slate-800 border-slate-300';
+  const level2Threshold = isNight ? 45 : 35;
+  if (fgi > level2Threshold) return 'bg-yellow-100 text-yellow-800 border-yellow-300'; // Level 2 - requires FARP
+  return 'bg-green-100 text-green-800 border-green-300'; // OK
+}
+
+/**
+ * Get human-readable FGI level label
+ * Per NR/L2/OHS/003: ≤Level 2 = OK, >Level 2 = Requires FARP
+ */
+export function getFGILevel(fgi: number, isNight: boolean = false): string {
+  const goodPracticeThreshold = isNight ? 40 : 30;
+  const level2Threshold = isNight ? 45 : 35;
+
+  if (fgi > level2Threshold) return 'Level 2 - FARP Required';
+  if (fgi > goodPracticeThreshold) return 'Good Practice Advisory';
+  return 'OK';
 }
 
 /**
  * Get CSS classes for risk level display (with border)
  * Used in FatigueView for displaying risk cards
+ * @deprecated Use getFRICardColor or getFGICardColor instead
  */
 export function getRiskColor(level: RiskLevel['level'] | string): string {
   switch (level) {
-    case 'low': return FRI_COLORS.light.low;
-    case 'moderate': return FRI_COLORS.light.moderate;
-    case 'elevated': return FRI_COLORS.light.elevated;
-    case 'critical': return FRI_COLORS.light.critical;
+    case 'low': return FRI_COLORS.light.ok;
+    case 'moderate': return FRI_COLORS.light.ok;
+    case 'elevated': return FRI_COLORS.light.ok;
+    case 'critical': return FRI_COLORS.light.breach;
     default: return FRI_COLORS.light.unknown;
   }
 }
 
 /**
  * Get solid background color class for risk level
+ * @deprecated Use getFRIChipColor or getFGIChipColor instead
  */
 export function getRiskBgColor(level: RiskLevel['level'] | string): string {
   switch (level) {
     case 'low': return 'bg-green-600';
-    case 'moderate': return 'bg-yellow-500';
-    case 'elevated': return 'bg-orange-500';
+    case 'moderate': return 'bg-green-600';
+    case 'elevated': return 'bg-green-600';
     case 'critical': return 'bg-red-600';
     default: return 'bg-slate-500';
   }

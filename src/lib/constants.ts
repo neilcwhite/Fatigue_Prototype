@@ -72,27 +72,27 @@ export const FATIGUE_DEFAULTS = {
 
 /**
  * FRI (Fatigue Risk Index) thresholds per HSE RR446 and NR/L2/OHS/003
+ *
+ * FRI Risk Score (0-2+ scale): Simple binary threshold
+ * - ≤1.6 = Compliant (GREEN)
+ * - >1.6 = Breach (RED) - hard limit, non-compliant
+ *
+ * FGI Fatigue Index (0-100 scale): Three-level threshold
+ * - ≤Good Practice = OK (GREEN)
+ * - >Good Practice, ≤Level 2 = Advisory (informational only)
+ * - >Level 2 = Requires FARP (YELLOW/AMBER)
  */
 export const FRI_THRESHOLDS = {
-  /** Below this is low risk (green) */
-  LOW: 1.0,
-  /** Above LOW, below ELEVATED is moderate risk (yellow) */
-  ELEVATED: 1.1,
-  /** Above ELEVATED, below CRITICAL is elevated risk (orange) */
-  CRITICAL: 1.2,
+  /** Risk score threshold (Red - hard limit, non-compliant) */
+  RISK_SCORE_LIMIT: 1.6,           // Chart 1: >1.6 FRI risk score = BREACH
 
-  /** Network Rail NR/L2/OHS/003 compliance thresholds (Chart 1) */
+  /** Good Practice Triggers (informational - "where reasonably practicable") */
+  GOOD_PRACTICE_FGI_DAYTIME: 30,   // Chart 1: >30 FGI daytime
+  GOOD_PRACTICE_FGI_NIGHTTIME: 40, // Chart 1: >40 FGI night time
 
-  /** Good Practice Triggers (Green - "where reasonably practicable") */
-  GOOD_PRACTICE_FRI_DAYTIME: 30,   // Chart 1: >30 FRI daytime
-  GOOD_PRACTICE_FRI_NIGHTTIME: 40, // Chart 1: >40 FRI night time
-
-  /** Level 2 Triggers (Amber - "non-compliance requires variation") */
-  LEVEL_2_FRI_DAYTIME: 35,         // Chart 1: >35 FRI daytime
-  LEVEL_2_FRI_NIGHTTIME: 45,       // Chart 1: >45 FRI night time
-
-  /** Risk score threshold (Red - hard limit) */
-  RISK_SCORE_LIMIT: 1.6,           // Chart 1: >1.6 FRI risk score
+  /** Level 2 Triggers (Amber - "non-compliance requires variation/FARP") */
+  LEVEL_2_FGI_DAYTIME: 35,         // Chart 1: >35 FGI daytime
+  LEVEL_2_FGI_NIGHTTIME: 45,       // Chart 1: >45 FGI night time
 } as const;
 
 // ==================== COMPLIANCE LIMITS ====================

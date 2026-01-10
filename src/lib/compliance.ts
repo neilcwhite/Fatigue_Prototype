@@ -733,28 +733,28 @@ export function checkFatigueRiskIndex(
           limit: FRI_THRESHOLDS.RISK_SCORE_LIMIT,
         });
       }
-      // 2. Level 2 FRI: 35 (day) / 45 (night) - AMBER (Chart 1 Level 2 Trigger)
-      else if (fatigueScore > (isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME)) {
+      // 2. Level 2 FGI: 35 (day) / 45 (night) - AMBER (Chart 1 Level 2 Trigger)
+      else if (fatigueScore > (isNight ? FRI_THRESHOLDS.LEVEL_2_FGI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FGI_DAYTIME)) {
         violations.push({
           type: 'LEVEL_2_FRI_EXCEEDANCE',
           severity: 'level2',  // Amber - requires FAMP
           employeeId,
           date: checkDate,
-          message: `LEVEL 2 FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Requires FAMP`,
+          message: `LEVEL 2 FGI: Fatigue index ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.LEVEL_2_FGI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FGI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Requires FAMP`,
           value: Math.round(fatigueScore * 10) / 10,
-          limit: isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME,
+          limit: isNight ? FRI_THRESHOLDS.LEVEL_2_FGI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FGI_DAYTIME,
         });
       }
-      // 3. Good Practice: 30 (day) / 40 (night) - GREEN INFO (Chart 1 Good Practice Trigger)
-      else if (fatigueScore > (isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME)) {
+      // 3. Good Practice FGI: 30 (day) / 40 (night) - GREEN INFO (Chart 1 Good Practice Trigger)
+      else if (fatigueScore > (isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FGI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FGI_DAYTIME)) {
         violations.push({
           type: 'GOOD_PRACTICE_FRI',
           severity: 'info',  // Green - informational, monitor and record
           employeeId,
           date: checkDate,
-          message: `Good Practice FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Monitor and record controls`,
+          message: `Good Practice FGI: Fatigue index ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FGI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FGI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Monitor and record controls`,
           value: Math.round(fatigueScore * 10) / 10,
-          limit: isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME,
+          limit: isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FGI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FGI_DAYTIME,
         });
       }
     }
