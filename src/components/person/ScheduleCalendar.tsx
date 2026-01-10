@@ -47,6 +47,55 @@ const getFRICellSx = (fri: number | null | undefined) => {
   return { bgcolor: '#bbf7d0', borderColor: '#22c55e' }; // Green - OK
 };
 
+// Helper to get cell background based on worst compliance violation (5-tier traffic light system)
+// Priority: breach > level2 > level1 > info (Good Practice) > OK
+const getWorstViolationCellSx = (
+  violationSeverity: 'breach' | 'level2' | 'level1' | 'warning' | 'info' | null,
+  fri: number | null | undefined,
+  fgi: number | null | undefined,
+  isNight: boolean = false
+) => {
+  // Check FRI first (most critical - can force red even without violation severity)
+  if (fri !== null && fri !== undefined && fri > 1.6) {
+    return { bgcolor: '#fecaca', borderColor: '#dc2626' }; // Red - FRI BREACH
+  }
+
+  // Check violation severity from compliance checks (hours, rest, consecutive days)
+  if (violationSeverity === 'breach') {
+    return { bgcolor: '#fecaca', borderColor: '#dc2626' }; // Red - BREACH
+  }
+
+  // Check FGI for Level 2 (requires FAMP)
+  const level2Threshold = isNight ? 45 : 35;
+  if (fgi !== null && fgi !== undefined && fgi > level2Threshold) {
+    return { bgcolor: '#ffedd5', borderColor: '#f97316' }; // Amber - Level 2 FGI
+  }
+
+  // Level 2 from other violations (>72h weekly)
+  if (violationSeverity === 'level2') {
+    return { bgcolor: '#ffedd5', borderColor: '#f97316' }; // Amber - Level 2
+  }
+
+  // Level 1 (60-72h weekly)
+  if (violationSeverity === 'level1') {
+    return { bgcolor: '#fef9c3', borderColor: '#eab308' }; // Yellow - Level 1
+  }
+
+  // Check Good Practice threshold for FGI
+  const goodPracticeThreshold = isNight ? 40 : 30;
+  if (fgi !== null && fgi !== undefined && fgi > goodPracticeThreshold) {
+    return { bgcolor: '#d9f99d', borderColor: '#84cc16' }; // Light Green - Good Practice advisory
+  }
+
+  // Info/Good Practice from other sources
+  if (violationSeverity === 'info') {
+    return { bgcolor: '#d9f99d', borderColor: '#84cc16' }; // Light Green - Good Practice
+  }
+
+  // Fully compliant
+  return { bgcolor: '#bbf7d0', borderColor: '#22c55e' }; // Green - OK
+};
+
 // Helper to get FGI chip colors (per NR/L2/OHS/003: >35 day/45 night = Level 2/FARP required)
 const getFGIChipSx = (fgi: number | null | undefined, isNight: boolean = false) => {
   if (fgi === null || fgi === undefined) return { bgcolor: 'grey.200', color: 'grey.700' };
@@ -364,6 +413,12 @@ export function ScheduleCalendar({
                   const hasAssignments = dateAssignments.length > 0;
                   const hasMultipleAssignments = dateAssignments.length > 1;
 
+                  // Determine if any shifts on this date are night shifts (for FGI thresholds)
+                  const hasNightShift = dateAssignments.some((a) => {
+                    const pattern = shiftPatterns.find((p) => p.id === a.shiftPatternId);
+                    return pattern?.isNight || false;
+                  });
+
                   return (
                     <Box
                       key={date}
@@ -389,8 +444,8 @@ export function ScheduleCalendar({
                               zIndex: 10,
                               animation: 'pulse 1s infinite',
                             }
-                          : showFRI && hasAssignments && dateFRI !== null
-                          ? getFRICellSx(dateFRI)
+                          : showFRI && hasAssignments
+                          ? getWorstViolationCellSx(dateViolationSeverity, dateFRI, dateFGI, hasNightShift)
                           : isWeekend
                           ? { bgcolor: 'grey.100', borderColor: 'grey.200' }
                           : isToday

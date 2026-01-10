@@ -61,25 +61,30 @@ export function getFRILevel(fri: number): string {
  * Get CSS classes for FGI chip/badge display (solid background, white text)
  * FGI (Fatigue Index 0-100) thresholds per NR/L2/OHS/003:
  * - ≤Good Practice (30 day/40 night) = OK (GREEN)
+ * - >Good Practice but ≤Level 2 = Advisory (GREEN) - informational only
  * - >Level 2 (35 day/45 night) = Requires FARP (YELLOW/AMBER)
  */
 export function getFGIChipColor(fgi: number | null, isNight: boolean = false): string {
   if (fgi === null) return 'bg-slate-500 text-white';
   const level2Threshold = isNight ? 45 : 35;
   if (fgi > level2Threshold) return 'bg-yellow-500 text-white'; // Level 2 - requires FARP
-  return 'bg-green-600 text-white'; // OK
+  return 'bg-green-600 text-white'; // OK (includes Good Practice advisory)
 }
 
 /**
  * Get CSS classes for FGI card/area display (light background, dark text)
  * FGI (Fatigue Index 0-100) thresholds per NR/L2/OHS/003:
  * - ≤Good Practice (30 day/40 night) = OK (GREEN)
+ * - >Good Practice but ≤Level 2 = Advisory (LIGHT GREEN) - informational only
  * - >Level 2 (35 day/45 night) = Requires FARP (YELLOW/AMBER)
  */
 export function getFGICardColor(fgi: number | null, isNight: boolean = false): string {
   if (fgi === null) return 'bg-slate-100 text-slate-800 border-slate-300';
+  const goodPracticeThreshold = isNight ? 40 : 30;
   const level2Threshold = isNight ? 45 : 35;
+
   if (fgi > level2Threshold) return 'bg-yellow-100 text-yellow-800 border-yellow-300'; // Level 2 - requires FARP
+  if (fgi > goodPracticeThreshold) return 'bg-lime-100 text-lime-800 border-lime-300'; // Good Practice advisory (light green)
   return 'bg-green-100 text-green-800 border-green-300'; // OK
 }
 
@@ -229,18 +234,53 @@ export function getViolationMetadata(type: ViolationType): ViolationMetadata {
 }
 
 /**
- * Get severity color class for violations (4-tier NR system)
+ * Get severity color class for violations (5-tier NR system)
+ * Per NR/L2/OHS/003 Chart 1:
+ * - breach: RED - Stop work immediately (FRI >1.6, <12h rest, >12h shift, >13 consecutive days)
+ * - level2: AMBER - Requires FAMP (>72h weekly, FGI >35 day/45 night)
+ * - level1: YELLOW - Requires risk assessment (60-72h weekly)
+ * - info: LIGHT GREEN - Good Practice advisory (FGI >30 day/40 night but ≤35/45)
+ * - OK: GREEN - Fully compliant
  */
-export function getViolationSeverityColor(severity: 'breach' | 'level2' | 'level1' | 'warning'): string {
+export function getViolationSeverityColor(severity: 'breach' | 'level2' | 'level1' | 'warning' | 'info' | null): string {
   switch (severity) {
     case 'breach':
-      return 'bg-red-100 text-red-800 border-red-300';
+      return 'bg-red-100 text-red-800 border-red-300'; // Red - STOP WORK
     case 'level2':
-      return 'bg-orange-100 text-orange-800 border-orange-300';
+      return 'bg-orange-100 text-orange-800 border-orange-300'; // Amber - FAMP required
     case 'level1':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300'; // Yellow - Risk assessment
+    case 'info':
+      return 'bg-lime-100 text-lime-800 border-lime-300'; // Light Green - Good Practice
+    case 'warning':
+      return 'bg-gray-100 text-gray-800 border-gray-300'; // Gray - Warning
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-300';
+      return 'bg-green-100 text-green-800 border-green-300'; // Green - OK
+  }
+}
+
+/**
+ * Get MUI-compatible severity colors for violations (5-tier NR system)
+ * Returns an object with bgcolor, borderColor for MUI sx prop
+ */
+export function getViolationSeveritySx(severity: 'breach' | 'level2' | 'level1' | 'warning' | 'info' | null): {
+  bgcolor: string;
+  borderColor: string;
+  color?: string;
+} {
+  switch (severity) {
+    case 'breach':
+      return { bgcolor: '#fee2e2', borderColor: '#dc2626', color: '#991b1b' }; // Red
+    case 'level2':
+      return { bgcolor: '#ffedd5', borderColor: '#f97316', color: '#9a3412' }; // Amber/Orange
+    case 'level1':
+      return { bgcolor: '#fef9c3', borderColor: '#eab308', color: '#854d0e' }; // Yellow
+    case 'info':
+      return { bgcolor: '#d9f99d', borderColor: '#84cc16', color: '#365314' }; // Light Green
+    case 'warning':
+      return { bgcolor: '#f3f4f6', borderColor: '#6b7280', color: '#1f2937' }; // Gray
+    default:
+      return { bgcolor: '#bbf7d0', borderColor: '#22c55e', color: '#166534' }; // Green - OK
   }
 }
 
