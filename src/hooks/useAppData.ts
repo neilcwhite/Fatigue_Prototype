@@ -1057,7 +1057,7 @@ export function useAppData(
 
     const id = crypto.randomUUID();
 
-    const insertData: Partial<WorkVerificationRecordRow> = {
+    const insertData = {
       id,
       organisation_id: organisationId,
       project_id: data.projectId,
@@ -1069,7 +1069,7 @@ export function useAppData(
       manager_role: data.managerRole,
       sign_off_date: data.signOffDate || new Date().toISOString(),
       comments: data.comments,
-      summary_data: data.summaryData as unknown as Record<string, unknown>,
+      summary_data: data.summaryData,
     };
 
     const { error } = await supabase
@@ -1083,9 +1083,9 @@ export function useAppData(
   const updateWorkVerification = async (id: string, updateData: Partial<WorkVerificationRecordCamel>) => {
     if (!supabase || !organisationId) throw new Error('Not configured');
 
-    const updateObj: Partial<WorkVerificationRecordRow> = {};
+    const updateObj: Record<string, unknown> = {};
     if (updateData.comments !== undefined) updateObj.comments = updateData.comments;
-    if (updateData.summaryData !== undefined) updateObj.summary_data = updateData.summaryData as unknown as Record<string, unknown>;
+    if (updateData.summaryData !== undefined) updateObj.summary_data = updateData.summaryData;
 
     const { error } = await supabase
       .from('work_verification_records')
