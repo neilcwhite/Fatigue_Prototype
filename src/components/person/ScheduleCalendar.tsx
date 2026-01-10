@@ -12,16 +12,22 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import Tooltip from '@mui/material/Tooltip';
 import { Calendar, Edit2, Trash2, X } from '@/components/ui/Icons';
 import type { AssignmentCamel, ShiftPatternCamel, ProjectCamel, NetworkRailPeriod } from '@/lib/types';
 
-// Helper to get FRI chip colors for MUI
+// Helper to get FRI chip colors for MUI (per NR/L2/OHS/003: ≤1.6 = OK, >1.6 = BREACH)
 const getFRIChipSx = (fri: number | null | undefined) => {
   if (fri === null || fri === undefined) return { bgcolor: 'grey.200', color: 'grey.700' };
-  if (fri >= 1.2) return { bgcolor: '#dc2626', color: 'white' };
-  if (fri >= 1.1) return { bgcolor: '#f97316', color: 'white' };
-  if (fri >= 1.0) return { bgcolor: '#eab308', color: 'white' };
-  return { bgcolor: '#22c55e', color: 'white' };
+  if (fri > 1.6) return { bgcolor: '#dc2626', color: 'white' }; // Red - BREACH
+  return { bgcolor: '#22c55e', color: 'white' }; // Green - OK
+};
+
+// Helper to get FRI tooltip text
+const getFRITooltip = (fri: number | null | undefined) => {
+  if (fri === null || fri === undefined) return 'No FRI data';
+  if (fri > 1.6) return `FRI ${fri.toFixed(2)} > 1.6 - BREACH (Non-compliant, immediate action required)`;
+  return `FRI ${fri.toFixed(2)} ≤ 1.6 - OK (Compliant)`;
 };
 
 // Helper to get NR compliance chip colors for MUI (5-tier system)
@@ -34,13 +40,35 @@ const getNRComplianceChipSx = (severity: 'breach' | 'level2' | 'level1' | 'warni
   return { bgcolor: '#22c55e', color: 'white' };  // Green - compliant
 };
 
-// Helper to get FRI cell background colors
+// Helper to get FRI cell background colors (per NR/L2/OHS/003: ≤1.6 = OK, >1.6 = BREACH)
 const getFRICellSx = (fri: number | null | undefined) => {
   if (fri === null || fri === undefined) return { bgcolor: 'white', borderColor: 'grey.200' };
-  if (fri >= 1.2) return { bgcolor: '#fecaca', borderColor: '#dc2626' }; // Red - High risk
-  if (fri >= 1.1) return { bgcolor: '#fed7aa', borderColor: '#f97316' }; // Orange - Elevated risk
-  if (fri >= 1.0) return { bgcolor: '#fef3c7', borderColor: '#eab308' }; // Yellow/Amber - Moderate risk
-  return { bgcolor: '#bbf7d0', borderColor: '#22c55e' }; // Green - Low risk
+  if (fri > 1.6) return { bgcolor: '#fecaca', borderColor: '#dc2626' }; // Red - BREACH
+  return { bgcolor: '#bbf7d0', borderColor: '#22c55e' }; // Green - OK
+};
+
+// Helper to get FGI chip colors (per NR/L2/OHS/003: >35 day/45 night = Level 2/FARP required)
+const getFGIChipSx = (fgi: number | null | undefined, isNight: boolean = false) => {
+  if (fgi === null || fgi === undefined) return { bgcolor: 'grey.200', color: 'grey.700' };
+  const level2Threshold = isNight ? 45 : 35;
+  if (fgi > level2Threshold) return { bgcolor: '#eab308', color: 'white' }; // Yellow - Level 2, requires FARP
+  return { bgcolor: '#22c55e', color: 'white' }; // Green - OK
+};
+
+// Helper to get FGI tooltip text
+const getFGITooltip = (fgi: number | null | undefined, isNight: boolean = false) => {
+  if (fgi === null || fgi === undefined) return 'No FGI data';
+  const goodPracticeThreshold = isNight ? 40 : 30;
+  const level2Threshold = isNight ? 45 : 35;
+  const timeLabel = isNight ? 'night' : 'day';
+
+  if (fgi > level2Threshold) {
+    return `FGI ${fgi.toFixed(1)} > ${level2Threshold} ${timeLabel}time - Level 2 (FARP required)`;
+  }
+  if (fgi > goodPracticeThreshold) {
+    return `FGI ${fgi.toFixed(1)} > ${goodPracticeThreshold} ${timeLabel}time - Good Practice Advisory (monitor and record)`;
+  }
+  return `FGI ${fgi.toFixed(1)} ≤ ${goodPracticeThreshold} ${timeLabel}time - OK (Compliant)`;
 };
 
 interface FatigueResult {
@@ -390,25 +418,35 @@ export function ScheduleCalendar({
                         </Box>
                         {showFRI && dateFRI !== null && (
                           <Box sx={{ display: 'flex', gap: 0.25, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                            <Chip
-                              label={`R:${dateFRI.toFixed(2)}`}
-                              size="small"
-                              sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.5rem', height: 14, fontWeight: 700, '& .MuiChip-label': { px: 0.5 } }}
-                            />
-                            {dateFGI !== null && (
+                            <Tooltip title={getFRITooltip(dateFRI)} arrow placement="top">
                               <Chip
-                                label={`F:${dateFGI.toFixed(1)}`}
+                                label={`R:${dateFRI.toFixed(2)}`}
                                 size="small"
-                                sx={{
-                                  fontSize: '0.5rem',
-                                  height: 14,
-                                  fontWeight: 700,
-                                  bgcolor: dateFGI >= 35 ? '#ef4444' : dateFGI >= 25 ? '#f97316' : dateFGI >= 17.5 ? '#eab308' : '#22c55e',
-                                  color: 'white',
-                                  '& .MuiChip-label': { px: 0.5 }
-                                }}
+                                sx={{ ...getFRIChipSx(dateFRI), fontSize: '0.5rem', height: 14, fontWeight: 700, '& .MuiChip-label': { px: 0.5 } }}
                               />
-                            )}
+                            </Tooltip>
+                            {dateFGI !== null && (() => {
+                              // Determine if any shifts on this date are night shifts
+                              const hasNightShift = dateAssignments.some((a) => {
+                                const pattern = shiftPatterns.find((p) => p.id === a.shiftPatternId);
+                                return pattern?.isNight || false;
+                              });
+                              return (
+                                <Tooltip title={getFGITooltip(dateFGI, hasNightShift)} arrow placement="top">
+                                  <Chip
+                                    label={`F:${dateFGI.toFixed(1)}`}
+                                    size="small"
+                                    sx={{
+                                      ...getFGIChipSx(dateFGI, hasNightShift),
+                                      fontSize: '0.5rem',
+                                      height: 14,
+                                      fontWeight: 700,
+                                      '& .MuiChip-label': { px: 0.5 }
+                                    }}
+                                  />
+                                </Tooltip>
+                              );
+                            })()}
                           </Box>
                         )}
                       </Box>
