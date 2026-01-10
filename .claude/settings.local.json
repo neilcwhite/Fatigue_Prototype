@@ -32,7 +32,8 @@
       "Bash(supabase --version:*)",
       "Bash(powershell -Command \"cd ''C:\\\\Users\\\\Whitem1359\\\\Downloads\\\\selected_documents''; Expand-Archive -Path ''Fatigue Assessment and Mitigation Plan.docx'' -DestinationPath ''temp_docx'' -Force; Get-Content ''temp_docx\\\\word\\\\document.xml'' -Raw\")",
       "Bash(powershell -Command:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git push:*)"
     ]
   }
 }
