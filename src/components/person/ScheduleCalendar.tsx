@@ -443,7 +443,12 @@ export function ScheduleCalendar({
                   // Debug logging for color mismatch investigation
                   if (date === '2026-01-10' || date === '2026-01-11') {
                     console.log(`[${date}] dateViolationSeverity:`, dateViolationSeverity, 'dateFRI:', dateFRI, 'dateFGI:', dateFGI, 'hasNightShift:', hasNightShift);
-                    console.log(`[${date}] dateViolations:`, dateViolations);
+                    console.log(`[${date}] dateViolations (${dateViolations.length}):`, dateViolations.map(v => ({
+                      type: v.type,
+                      severity: v.severity,
+                      message: v.message
+                    })));
+                    console.log(`[${date}] Cell color from getWorstViolationCellSx:`, getWorstViolationCellSx(dateViolationSeverity, dateFRI, dateFGI, hasNightShift));
                   }
 
                   return (
