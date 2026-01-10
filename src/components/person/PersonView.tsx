@@ -49,6 +49,12 @@ interface PersonViewProps {
     date: string;
     customStartTime?: string;
     customEndTime?: string;
+    commuteIn?: number;
+    commuteOut?: number;
+    workload?: number;
+    attention?: number;
+    breakFrequency?: number;
+    breakLength?: number;
   }) => Promise<void>;
   onCreateFatigueAssessment?: (assessment: FatigueAssessment) => Promise<void>;
   onUpdateFatigueAssessment?: (id: string, data: Partial<FatigueAssessment>) => Promise<void>;

@@ -32,6 +32,12 @@ interface AddShiftModalProps {
     date: string;
     customStartTime?: string;
     customEndTime?: string;
+    commuteIn?: number;
+    commuteOut?: number;
+    workload?: number;
+    attention?: number;
+    breakFrequency?: number;
+    breakLength?: number;
   }) => Promise<void>;
 }
 
@@ -51,6 +57,14 @@ export function AddShiftModal({
   const [customEndTime, setCustomEndTime] = useState('19:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fatigue parameters state
+  const [commuteIn, setCommuteIn] = useState<number | ''>('');
+  const [commuteOut, setCommuteOut] = useState<number | ''>('');
+  const [workload, setWorkload] = useState<number | ''>('');
+  const [attention, setAttention] = useState<number | ''>('');
+  const [breakFrequency, setBreakFrequency] = useState<number | ''>('');
+  const [breakLength, setBreakLength] = useState<number | ''>('');
 
   // Special value for "enter custom times" option
   const CUSTOM_PATTERN_VALUE = '__CUSTOM__';
@@ -100,13 +114,14 @@ export function AddShiftModal({
     }
 
     if (isCustomTimesMode) {
-      // Custom times mode - need a "Custom" pattern to exist
-      if (!customPatternForProject) {
-        setError('No "Custom" shift pattern exists for this project. Please create one first in the Planning view.');
-        return;
-      }
+      // Custom times mode - check for times
       if (!customStartTime || !customEndTime) {
         setError('Please enter both start and end times');
+        return;
+      }
+      // Need at least one pattern for this project (will use Custom if available, otherwise any pattern)
+      if (availablePatterns.length === 0) {
+        setError('No shift patterns exist for this project. Please create one first in the Planning view.');
         return;
       }
     } else if (!selectedPatternId) {
@@ -120,7 +135,7 @@ export function AddShiftModal({
     try {
       // Determine which pattern ID to use
       const patternIdToUse = isCustomTimesMode
-        ? customPatternForProject!.id
+        ? (customPatternForProject?.id || availablePatterns[0]?.id) // Use Custom pattern if exists, otherwise first available
         : selectedPatternId;
 
       // Determine if we need custom times
@@ -133,6 +148,12 @@ export function AddShiftModal({
         date,
         customStartTime: needsCustomTimes ? customStartTime : undefined,
         customEndTime: needsCustomTimes ? customEndTime : undefined,
+        commuteIn: commuteIn !== '' ? commuteIn : undefined,
+        commuteOut: commuteOut !== '' ? commuteOut : undefined,
+        workload: workload !== '' ? workload : undefined,
+        attention: attention !== '' ? attention : undefined,
+        breakFrequency: breakFrequency !== '' ? breakFrequency : undefined,
+        breakLength: breakLength !== '' ? breakLength : undefined,
       });
       onClose();
     } catch (err) {
@@ -235,8 +256,12 @@ export function AddShiftModal({
               <Alert severity="info" sx={{ py: 0.5 }}>
                 <Typography variant="caption">
                   Enter custom start and end times for this shift.
-                  {!customPatternForProject && (
-                    <><br /><strong>Note:</strong> A &quot;Custom&quot; shift pattern must exist for this project.</>
+                  {customPatternForProject ? (
+                    <><br />Using pattern: <strong>{customPatternForProject.name}</strong></>
+                  ) : availablePatterns.length > 0 ? (
+                    <><br />Using pattern: <strong>{availablePatterns[0].name}</strong> (with custom times)</>
+                  ) : (
+                    <><br /><strong>Warning:</strong> No shift patterns exist for this project. Create one in Planning view first.</>
                   )}
                 </Typography>
               </Alert>
@@ -258,6 +283,100 @@ export function AddShiftModal({
                   slotProps={{ htmlInput: { step: 300 } }}
                 />
               </Box>
+            </Box>
+          )}
+
+          {/* Fatigue Parameters - shown when pattern is selected OR in custom mode */}
+          {(selectedPatternId || isCustomTimesMode) && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Fatigue Parameters (Optional Overrides)
+              </Typography>
+
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Commute In (mins)"
+                  type="number"
+                  value={commuteIn}
+                  onChange={(e) => setCommuteIn(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, max: 240 } }}
+                  helperText="Travel to work"
+                />
+                <TextField
+                  label="Commute Out (mins)"
+                  type="number"
+                  value={commuteOut}
+                  onChange={(e) => setCommuteOut(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, max: 240 } }}
+                  helperText="Travel from work"
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Workload"
+                  type="number"
+                  value={workload}
+                  onChange={(e) => setWorkload(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  select
+                  helperText="1=High, 4=Low"
+                >
+                  <MenuItem value={1}>1 - High</MenuItem>
+                  <MenuItem value={2}>2 - Moderate</MenuItem>
+                  <MenuItem value={3}>3 - Light</MenuItem>
+                  <MenuItem value={4}>4 - Very Light</MenuItem>
+                </TextField>
+                <TextField
+                  label="Attention"
+                  type="number"
+                  value={attention}
+                  onChange={(e) => setAttention(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  select
+                  helperText="1=High, 4=Low"
+                >
+                  <MenuItem value={1}>1 - Continuous</MenuItem>
+                  <MenuItem value={2}>2 - Frequent</MenuItem>
+                  <MenuItem value={3}>3 - Occasional</MenuItem>
+                  <MenuItem value={4}>4 - Minimal</MenuItem>
+                </TextField>
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Break Frequency (mins)"
+                  type="number"
+                  value={breakFrequency}
+                  onChange={(e) => setBreakFrequency(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                  helperText="Time between breaks"
+                />
+                <TextField
+                  label="Break Length (mins)"
+                  type="number"
+                  value={breakLength}
+                  onChange={(e) => setBreakLength(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 5, max: 120 } }}
+                  helperText="Duration of each break"
+                />
+              </Box>
+
+              {selectedPattern && (
+                <Alert severity="info" sx={{ py: 0.5 }}>
+                  <Typography variant="caption">
+                    <strong>Pattern defaults:</strong> Commute: {selectedPattern.commuteTime ? `${selectedPattern.commuteTime} mins` : 'Not set'} |
+                    Workload: {selectedPattern.workload || 'Not set'} |
+                    Attention: {selectedPattern.attention || 'Not set'} |
+                    Breaks: {selectedPattern.breakFrequency ? `every ${selectedPattern.breakFrequency} mins` : 'Not set'}
+                    ({selectedPattern.breakLength ? `${selectedPattern.breakLength} mins each` : 'Not set'})
+                  </Typography>
+                </Alert>
+              )}
             </Box>
           )}
 
@@ -319,7 +438,7 @@ export function AddShiftModal({
             isSubmitting ||
             !selectedProjectId ||
             !selectedPatternId ||
-            (isCustomTimesMode && !customPatternForProject)
+            (isCustomTimesMode && availablePatterns.length === 0)
           }
           startIcon={<Plus className="w-4 h-4" />}
         >
