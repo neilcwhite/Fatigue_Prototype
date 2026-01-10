@@ -90,6 +90,27 @@ export function AddShiftModal({
   const selectedPattern = isCustomTimesMode ? null : shiftPatterns.find(p => p.id === selectedPatternId);
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
+  // Check if shift pattern runs on the selected date
+  const patternRunsOnDate = useMemo(() => {
+    if (!selectedPattern) return true; // No pattern selected yet
+
+    // Custom patterns can run any day
+    if (selectedPattern.id.endsWith('-custom')) return true;
+
+    // Check weekly schedule
+    if (selectedPattern.weeklySchedule) {
+      const dayOfWeek = new Date(date).getDay();
+      const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayKey = dayNames[dayOfWeek];
+      const daySchedule = selectedPattern.weeklySchedule[dayKey];
+      return !!(daySchedule?.startTime && daySchedule?.endTime);
+    }
+
+    // Fallback: if pattern has basic times, assume it runs every day
+    return !!(selectedPattern.startTime && selectedPattern.endTime);
+  }, [selectedPattern, date]);
+
   // Format date for display
   const formattedDate = useMemo(() => {
     const d = new Date(date);
@@ -105,6 +126,32 @@ export function AddShiftModal({
     setSelectedProjectId(projectId);
     setSelectedPatternId(''); // Reset pattern when project changes
     setError(null);
+  };
+
+  const handlePatternChange = (patternId: string) => {
+    setSelectedPatternId(patternId);
+    setError(null);
+
+    // If selecting a non-custom pattern, check if it runs on the selected date
+    if (patternId !== CUSTOM_PATTERN_VALUE) {
+      const pattern = shiftPatterns.find(p => p.id === patternId);
+      if (pattern && !pattern.id.endsWith('-custom')) {
+        // Check if pattern runs on this date
+        if (pattern.weeklySchedule) {
+          const dayOfWeek = new Date(date).getDay();
+          const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
+            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const dayKey = dayNames[dayOfWeek];
+          const daySchedule = pattern.weeklySchedule[dayKey];
+          const runsOnDate = !!(daySchedule?.startTime && daySchedule?.endTime);
+
+          if (!runsOnDate) {
+            // Pattern doesn't run on this day - switch to custom times and enable useCustomTimes
+            setUseCustomTimes(true);
+          }
+        }
+      }
+    }
   };
 
   const handleSubmit = async () => {
@@ -216,7 +263,7 @@ export function AddShiftModal({
               value={selectedPatternId}
               onChange={(e) => {
                 const value = e.target.value as string;
-                setSelectedPatternId(value);
+                handlePatternChange(value);
               }}
               label="Shift Pattern"
             >
@@ -249,6 +296,19 @@ export function AddShiftModal({
               )}
             </Select>
           </FormControl>
+
+          {/* Warning: Pattern doesn't run on selected date */}
+          {selectedPattern && !isCustomTimesMode && !patternRunsOnDate && (
+            <Alert severity="warning" sx={{ py: 1 }}>
+              <Typography variant="body2" fontWeight={600}>
+                Pattern Mismatch Detected
+              </Typography>
+              <Typography variant="caption">
+                <strong>{selectedPattern.name}</strong> does not normally run on {formattedDate}.
+                Custom times have been enabled automatically to allow this ad-hoc assignment.
+              </Typography>
+            </Alert>
+          )}
 
           {/* Custom Times Mode - time inputs shown immediately */}
           {isCustomTimesMode && (
