@@ -148,9 +148,29 @@ export function AddShiftModal({
           if (!runsOnDate) {
             // Pattern doesn't run on this day - switch to custom times and enable useCustomTimes
             setUseCustomTimes(true);
+            // Pre-fill with pattern's default times (or any available day's times)
+            if (pattern.startTime && pattern.endTime) {
+              setCustomStartTime(pattern.startTime);
+              setCustomEndTime(pattern.endTime);
+            } else {
+              // Find first available day in weekly schedule and use those times
+              const firstDay = Object.values(pattern.weeklySchedule).find(
+                day => day && day.startTime && day.endTime
+              );
+              if (firstDay) {
+                setCustomStartTime(firstDay.startTime);
+                setCustomEndTime(firstDay.endTime);
+              }
+            }
+          } else {
+            // Pattern runs on this date normally - reset useCustomTimes
+            setUseCustomTimes(false);
           }
         }
       }
+    } else {
+      // Custom times mode selected - reset
+      setUseCustomTimes(false);
     }
   };
 
@@ -174,6 +194,14 @@ export function AddShiftModal({
     } else if (!selectedPatternId) {
       setError('Please select a shift pattern');
       return;
+    }
+
+    // Check if pattern runs on this date - if not, custom times are required
+    if (!isCustomTimesMode && selectedPattern && !patternRunsOnDate) {
+      if (!useCustomTimes || !customStartTime || !customEndTime) {
+        setError(`This shift pattern doesn't run on ${formattedDate}. Please enable custom times or select a different pattern.`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
