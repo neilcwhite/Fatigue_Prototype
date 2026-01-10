@@ -55,6 +55,8 @@ interface PersonViewProps {
     attention?: number;
     breakFrequency?: number;
     breakLength?: number;
+    continuousWork?: number;
+    breakAfterContinuous?: number;
   }) => Promise<void>;
   onCreateFatigueAssessment?: (assessment: FatigueAssessment) => Promise<void>;
   onUpdateFatigueAssessment?: (id: string, data: Partial<FatigueAssessment>) => Promise<void>;

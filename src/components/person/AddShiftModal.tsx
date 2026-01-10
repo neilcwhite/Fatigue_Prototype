@@ -38,6 +38,8 @@ interface AddShiftModalProps {
     attention?: number;
     breakFrequency?: number;
     breakLength?: number;
+    continuousWork?: number;
+    breakAfterContinuous?: number;
   }) => Promise<void>;
 }
 
@@ -65,6 +67,8 @@ export function AddShiftModal({
   const [attention, setAttention] = useState<number | ''>('');
   const [breakFrequency, setBreakFrequency] = useState<number | ''>('');
   const [breakLength, setBreakLength] = useState<number | ''>('');
+  const [continuousWork, setContinuousWork] = useState<number | ''>('');
+  const [breakAfterContinuous, setBreakAfterContinuous] = useState<number | ''>('');
 
   // Special value for "enter custom times" option
   const CUSTOM_PATTERN_VALUE = '__CUSTOM__';
@@ -126,6 +130,22 @@ export function AddShiftModal({
     setSelectedProjectId(projectId);
     setSelectedPatternId(''); // Reset pattern when project changes
     setError(null);
+  };
+
+  const handleApplyPatternDefaults = () => {
+    if (!selectedPattern) return;
+
+    // Apply commute defaults
+    if (selectedPattern.commuteTime) {
+      setCommuteIn(Math.floor(selectedPattern.commuteTime / 2));
+      setCommuteOut(Math.ceil(selectedPattern.commuteTime / 2));
+    }
+
+    // Apply other defaults
+    if (selectedPattern.workload) setWorkload(selectedPattern.workload);
+    if (selectedPattern.attention) setAttention(selectedPattern.attention);
+    if (selectedPattern.breakFrequency) setBreakFrequency(selectedPattern.breakFrequency);
+    if (selectedPattern.breakLength) setBreakLength(selectedPattern.breakLength);
   };
 
   const handlePatternChange = (patternId: string) => {
@@ -229,6 +249,8 @@ export function AddShiftModal({
         attention: attention !== '' ? attention : undefined,
         breakFrequency: breakFrequency !== '' ? breakFrequency : undefined,
         breakLength: breakLength !== '' ? breakLength : undefined,
+        continuousWork: continuousWork !== '' ? continuousWork : undefined,
+        breakAfterContinuous: breakAfterContinuous !== '' ? breakAfterContinuous : undefined,
       });
       onClose();
     } catch (err) {
@@ -377,9 +399,20 @@ export function AddShiftModal({
           {/* Fatigue Parameters - shown when pattern is selected OR in custom mode */}
           {(selectedPatternId || isCustomTimesMode) && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Fatigue Parameters (Optional Overrides)
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Fatigue Parameters (Optional Overrides)
+                </Typography>
+                {selectedPattern && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleApplyPatternDefaults}
+                  >
+                    Apply Pattern Defaults
+                  </Button>
+                )}
+              </Box>
 
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
@@ -451,6 +484,27 @@ export function AddShiftModal({
                   fullWidth
                   slotProps={{ htmlInput: { min: 5, max: 120 } }}
                   helperText="Duration of each break"
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  label="Continuous Work (mins)"
+                  type="number"
+                  value={continuousWork}
+                  onChange={(e) => setContinuousWork(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 30, max: 720 } }}
+                  helperText="Max continuous work time"
+                />
+                <TextField
+                  label="Break After Continuous (mins)"
+                  type="number"
+                  value={breakAfterContinuous}
+                  onChange={(e) => setBreakAfterContinuous(e.target.value === '' ? '' : Number(e.target.value))}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 5, max: 120 } }}
+                  helperText="Rest after continuous work"
                 />
               </Box>
 
