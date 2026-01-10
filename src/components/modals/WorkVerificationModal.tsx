@@ -290,7 +290,7 @@ export function WorkVerificationModal({
 
       {!customDateRange ? (
         <Grid container spacing={2} sx={{ mt: 1 }}>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <FormControl fullWidth>
               <InputLabel>Year</InputLabel>
               <Select
@@ -306,7 +306,7 @@ export function WorkVerificationModal({
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <FormControl fullWidth>
               <InputLabel>Period</InputLabel>
               <Select
@@ -325,7 +325,7 @@ export function WorkVerificationModal({
         </Grid>
       ) : (
         <Grid container spacing={2} sx={{ mt: 1 }}>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <TextField
               label="Start Date"
               type="date"
@@ -335,7 +335,7 @@ export function WorkVerificationModal({
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <TextField
               label="End Date"
               type="date"
@@ -354,7 +354,7 @@ export function WorkVerificationModal({
             Period Quick Summary
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={3}>
+            <Grid size={{ xs: 3 }}>
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h4">{summaryData.totalAssignments}</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -362,7 +362,7 @@ export function WorkVerificationModal({
                 </Typography>
               </Box>
             </Grid>
-            <Grid item xs={3}>
+            <Grid size={{ xs: 3 }}>
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h4">{summaryData.employeeBreakdown.length}</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -370,7 +370,7 @@ export function WorkVerificationModal({
                 </Typography>
               </Box>
             </Grid>
-            <Grid item xs={3}>
+            <Grid size={{ xs: 3 }}>
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h4" color={summaryData.violations.length > 0 ? 'error' : 'success.main'}>
                   {summaryData.violations.length}
@@ -380,7 +380,7 @@ export function WorkVerificationModal({
                 </Typography>
               </Box>
             </Grid>
-            <Grid item xs={3}>
+            <Grid size={{ xs: 3 }}>
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h4">{summaryData.farpAssessmentsCount}</Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -408,7 +408,7 @@ export function WorkVerificationModal({
         </Typography>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={4}>
+          <Grid size={{ xs: 4 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h5" color="primary">
                 {summaryData.totalHoursPlanned.toFixed(1)}h
@@ -418,7 +418,7 @@ export function WorkVerificationModal({
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={{ xs: 4 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h5" color="secondary">
                 {summaryData.totalHoursActual.toFixed(1)}h
@@ -428,7 +428,7 @@ export function WorkVerificationModal({
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={{ xs: 4 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h5" color={summaryData.modificationsCount > 0 ? 'warning.main' : 'text.primary'}>
                 {summaryData.modificationsCount}
@@ -533,7 +533,7 @@ export function WorkVerificationModal({
         </Typography>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={4}>
+          <Grid size={{ xs: 4 }}>
             <Paper sx={{ p: 2, textAlign: 'center' }}>
               <Typography variant="h5">{periodAssessments.length}</Typography>
               <Typography variant="body2" color="text.secondary">
@@ -541,7 +541,7 @@ export function WorkVerificationModal({
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={{ xs: 4 }}>
             <Paper sx={{ p: 2, textAlign: 'center', bgcolor: 'success.50' }}>
               <Typography variant="h5" color="success.main">
                 {completedAssessments.length}
@@ -551,7 +551,7 @@ export function WorkVerificationModal({
               </Typography>
             </Paper>
           </Grid>
-          <Grid item xs={4}>
+          <Grid size={{ xs: 4 }}>
             <Paper
               sx={{
                 p: 2,
@@ -728,25 +728,25 @@ export function WorkVerificationModal({
 
         <Paper sx={{ p: 2, mb: 3, bgcolor: 'grey.50' }}>
           <Grid container spacing={2}>
-            <Grid item xs={6}>
+            <Grid size={{ xs: 6 }}>
               <Typography variant="caption" color="text.secondary">
                 Manager
               </Typography>
               <Typography variant="body1">{managerName}</Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={{ xs: 6 }}>
               <Typography variant="caption" color="text.secondary">
                 Role
               </Typography>
               <Typography variant="body1">{managerRole.toUpperCase()}</Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={{ xs: 6 }}>
               <Typography variant="caption" color="text.secondary">
                 Period
               </Typography>
               <Typography variant="body1">{formatDateRange(dateRange.start, dateRange.end)}</Typography>
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={{ xs: 6 }}>
               <Typography variant="caption" color="text.secondary">
                 Sign-Off Date
               </Typography>
