@@ -252,6 +252,43 @@ export function PersonView({
     return severityMap;
   }, [compliance.violations, empAssignments]);
 
+  // Build map of assignment ID -> violations for tooltips
+  const violationAssignmentDetails = useMemo(() => {
+    const detailsMap = new Map<number, ComplianceViolation[]>();
+    compliance.violations.forEach(violation => {
+      let violationAssignments: AssignmentCamel[] = [];
+      if (violation.type === 'MAX_WEEKLY_HOURS' || violation.type === 'APPROACHING_WEEKLY_LIMIT' || violation.type === 'LEVEL_1_EXCEEDANCE' || violation.type === 'LEVEL_2_EXCEEDANCE') {
+        const windowStart = new Date(violation.date);
+        const windowEnd = violation.windowEnd
+          ? new Date(violation.windowEnd)
+          : new Date(windowStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+        violationAssignments = empAssignments.filter(a => {
+          const aDate = new Date(a.date);
+          return aDate >= windowStart && aDate <= windowEnd;
+        });
+      } else if (violation.type === 'INSUFFICIENT_REST') {
+        const violationDate = new Date(violation.date);
+        const prevDate = new Date(violationDate);
+        prevDate.setDate(prevDate.getDate() - 1);
+        const prevDateStr = prevDate.toISOString().split('T')[0];
+        violationAssignments = empAssignments.filter(a => a.date === violation.date || a.date === prevDateStr);
+      } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING') {
+        if (violation.relatedDates) {
+          violationAssignments = empAssignments.filter(a => violation.relatedDates?.includes(a.date) || a.date === violation.date);
+        } else {
+          violationAssignments = empAssignments.filter(a => a.date === violation.date);
+        }
+      } else {
+        violationAssignments = empAssignments.filter(a => a.date === violation.date);
+      }
+      violationAssignments.forEach(a => {
+        const existing = detailsMap.get(a.id) || [];
+        detailsMap.set(a.id, [...existing, violation]);
+      });
+    });
+    return detailsMap;
+  }, [compliance.violations, empAssignments]);
+
   const parseDateLocal = (dateStr: string): Date => {
     const [year, month, day] = dateStr.split('-').map(Number);
     return new Date(year, month - 1, day);
@@ -681,6 +718,7 @@ export function PersonView({
           shiftPatterns={shiftPatterns}
           projects={projects}
           violationAssignmentSeverity={violationAssignmentSeverity}
+          violationAssignmentDetails={violationAssignmentDetails}
           fatigueResults={fatigueAnalysis?.results || null}
           highlightedDate={highlightedDate}
           showFRI={showFRI}

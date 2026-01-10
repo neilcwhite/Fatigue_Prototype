@@ -14,7 +14,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Tooltip from '@mui/material/Tooltip';
 import { Calendar, Edit2, Trash2, X } from '@/components/ui/Icons';
-import type { AssignmentCamel, ShiftPatternCamel, ProjectCamel, NetworkRailPeriod } from '@/lib/types';
+import type { AssignmentCamel, ShiftPatternCamel, ProjectCamel, NetworkRailPeriod, ComplianceViolation } from '@/lib/types';
 
 // Helper to get FRI chip colors for MUI (per NR/L2/OHS/003: ≤1.6 = OK, >1.6 = BREACH)
 const getFRIChipSx = (fri: number | null | undefined) => {
@@ -133,6 +133,7 @@ interface ScheduleCalendarProps {
   shiftPatterns: ShiftPatternCamel[];
   projects: ProjectCamel[];
   violationAssignmentSeverity: Map<number, 'breach' | 'level2' | 'level1' | 'warning' | 'info'>;
+  violationAssignmentDetails: Map<number, ComplianceViolation[]>;
   fatigueResults: FatigueResult[] | null;
   highlightedDate: string | null;
   showFRI: boolean;
@@ -167,6 +168,12 @@ const getAssignmentDisplayName = (assignment: AssignmentCamel, pattern: ShiftPat
   return pattern.name;
 };
 
+// Helper to build violation tooltip text from violation array
+const getViolationTooltip = (violations: ComplianceViolation[]): string => {
+  if (violations.length === 0) return '';
+  return violations.map(v => `⚠️ ${v.message}`).join('\n');
+};
+
 export function ScheduleCalendar({
   currentPeriod,
   calendarDates,
@@ -175,6 +182,7 @@ export function ScheduleCalendar({
   shiftPatterns,
   projects,
   violationAssignmentSeverity,
+  violationAssignmentDetails,
   fatigueResults,
   highlightedDate,
   showFRI,
@@ -417,8 +425,35 @@ export function ScheduleCalendar({
                     return pattern?.isNight || false;
                   });
 
+                  // Collect all violations for this date for tooltip
+                  const dateViolations: ComplianceViolation[] = [];
+                  dateAssignments.forEach((a) => {
+                    const violations = violationAssignmentDetails.get(a.id);
+                    if (violations) {
+                      violations.forEach((v) => {
+                        // Avoid duplicates
+                        if (!dateViolations.find((dv) => dv.type === v.type && dv.date === v.date)) {
+                          dateViolations.push(v);
+                        }
+                      });
+                    }
+                  });
+                  const violationTooltip = getViolationTooltip(dateViolations);
+
+                  // Debug logging for color mismatch investigation
+                  if (date === '2026-01-10' || date === '2026-01-11') {
+                    console.log(`[${date}] dateViolationSeverity:`, dateViolationSeverity, 'dateFRI:', dateFRI, 'dateFGI:', dateFGI, 'hasNightShift:', hasNightShift);
+                    console.log(`[${date}] dateViolations:`, dateViolations);
+                  }
+
                   return (
-                    <Box
+                    <Tooltip
+                      title={violationTooltip || ''}
+                      arrow
+                      placement="top"
+                      disableInteractive={!violationTooltip}
+                    >
+                      <Box
                       key={date}
                       data-testid={`calendar-cell-${date}`}
                       sx={{
@@ -628,6 +663,7 @@ export function ScheduleCalendar({
                         </Box>
                       )}
                     </Box>
+                    </Tooltip>
                   );
                 })}
               </Box>
