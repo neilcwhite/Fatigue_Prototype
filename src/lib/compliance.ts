@@ -123,7 +123,7 @@ export interface EmployeeComplianceStatus {
  * Get shift duration for a specific date
  * Supports custom times on assignments (for ad-hoc shifts)
  */
-function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string, assignment?: AssignmentCamel): number {
+export function getShiftDuration(pattern: ShiftPatternCamel, dateStr: string, assignment?: AssignmentCamel): number {
   let startTime: string | undefined;
   let endTime: string | undefined;
 

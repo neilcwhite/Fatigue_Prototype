@@ -145,9 +145,8 @@ export function WorkVerificationModal({
 
     const { violations: complianceViolations } = checkProjectCompliance(
       project.id,
-      projectAssignments,
-      shiftPatterns,
-      employees
+      assignments,
+      shiftPatterns
     );
 
     return complianceViolations.map((v) => ({

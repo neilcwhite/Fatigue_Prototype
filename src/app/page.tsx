@@ -54,6 +54,11 @@ export default function Home() {
   const [teamCreationModal, setTeamCreationModal] = useState<{ memberIds: number[] } | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
 
+  // Role impersonation for super admins (to test permission system)
+  const [impersonatedRole, setImpersonatedRole] = useState<UserRole | null>(null);
+  const effectiveRole = impersonatedRole || (profile?.role as UserRole);
+  const isSuperAdmin = profile?.role === 'super_admin';
+
   // Load app data once we have an organisation (including fatigue assessments from Supabase)
   const {
     employees,
@@ -90,7 +95,7 @@ export default function Home() {
   } = useAppData(
     profile?.organisationId || null,
     profile?.id || null,
-    profile?.role as UserRole || null
+    effectiveRole || null
   );
 
   // Auto-select default project and employee when data loads
