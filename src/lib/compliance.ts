@@ -601,12 +601,26 @@ function isNightShiftTime(startTime: string): boolean {
 }
 
 /**
+ * Calculate calendar day number relative to window start
+ * Preserves actual gaps between shifts (e.g., weekends, rest days)
+ */
+function calculateCalendarDayNumber(assignmentDate: string, windowStartDate: string): number {
+  const date1 = parseLocalDate(assignmentDate);
+  const date2 = parseLocalDate(windowStartDate);
+  const daysDiff = Math.floor((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24));
+  return daysDiff + 1;
+}
+
+/**
  * Check Fatigue Risk Index (FRI) thresholds per NR/L2/OHS/003 Chart 1
  *
  * Checks 4 FRI thresholds:
  * 1. Good Practice: 30 (day) / 40 (night) - Green info
  * 2. Level 2 FRI: 35 (day) / 45 (night) - Amber, requires FAMP
  * 3. Risk Index: >1.6 - Red breach, stop work
+ *
+ * NOTE: Uses 28-day rolling window with gap-preserving calendar day numbers
+ * to match the calendar display calculation and avoid inflated FRI values.
  */
 export function checkFatigueRiskIndex(
   employeeId: number,
@@ -621,89 +635,130 @@ export function checkFatigueRiskIndex(
 
   if (assignments.length === 0) return violations;
 
-  // Sort by date
-  const sorted = [...assignments].sort((a, b) =>
+  // Get all assignments for this employee, sorted by date
+  const employeeAssignments = [...assignments].sort((a, b) =>
     parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime()
   );
 
-  // Build shift sequence for FRI calculation
-  const shiftSequence = sorted.map((assignment, index) => {
-    const pattern = patternMap.get(assignment.shiftPatternId);
-    if (!pattern) return null;
+  // Get unique assignment dates
+  const uniqueDates = [...new Set(employeeAssignments.map(a => a.date))];
 
-    const times = getShiftTimes(pattern, assignment.date, assignment);
-    if (!times) return null;
+  // Check FRI for each date using 28-day rolling window
+  for (const checkDate of uniqueDates) {
+    // Calculate 28-day window ending on checkDate
+    const targetDate = parseLocalDate(checkDate);
+    const windowStart = new Date(targetDate);
+    windowStart.setDate(windowStart.getDate() - 27); // 28 days including target
+    const windowStartStr = `${windowStart.getFullYear()}-${String(windowStart.getMonth() + 1).padStart(2, '0')}-${String(windowStart.getDate()).padStart(2, '0')}`;
 
-    // Use pattern values if available, otherwise use NR Excel VBA defaults
-    // (not worst-case values, to match what's displayed to user)
-    return {
-      day: index + 1, // Sequential day number
-      startTime: times.start,
-      endTime: times.end,
-      commuteIn: pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : 20, // VBA default 40 total
-      commuteOut: pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : 20,
-      workload: pattern.workload || 2, // VBA default: 2 (moderate)
-      attention: pattern.attention || 3, // VBA default: 3 (maps to internal 1)
-      breakFreq: pattern.breakFrequency || 180,
-      breakLen: pattern.breakLength || 15, // VBA default: 15 minutes
-    };
-  }).filter(Boolean);
+    // Filter to assignments in 28-day window
+    const windowAssignments = employeeAssignments.filter(a =>
+      a.date >= windowStartStr && a.date <= checkDate
+    );
 
-  // Calculate FRI for each shift
-  shiftSequence.forEach((shift, index) => {
-    if (!shift) return;
+    if (windowAssignments.length === 0) continue;
 
-    const friResult = calculateRiskIndex(shift, index, shiftSequence);
-    const assignment = sorted[index];
-    const pattern = patternMap.get(assignment.shiftPatternId);
-    if (!pattern) return;
+    // Calculate calendar day numbers (preserving gaps)
+    const calendarDays = windowAssignments.map(a =>
+      calculateCalendarDayNumber(a.date, windowStartStr)
+    );
 
-    const times = getShiftTimes(pattern, assignment.date, assignment);
-    if (!times) return;
+    const firstDay = Math.min(...calendarDays);
 
-    const isNight = isNightShiftTime(times.start);
-    const fatigueScore = friResult.fatigueIndex; // The fatigue score (FGI)
-    const riskIndex = friResult.riskIndex;       // The risk index (FRI)
+    // Build shift sequence with gap-preserving day numbers
+    const shiftSequence: any[] = [];
 
-    // Check thresholds in order of severity (highest to lowest)
+    for (let i = 0; i < windowAssignments.length; i++) {
+      const assignment = windowAssignments[i];
+      const pattern = patternMap.get(assignment.shiftPatternId);
 
-    // 1. Risk Index >1.6 - RED BREACH (Chart 1)
-    if (riskIndex > FRI_THRESHOLDS.RISK_SCORE_LIMIT) {
-      violations.push({
-        type: 'ELEVATED_FATIGUE_INDEX',
-        severity: 'breach',  // Red - hard limit
-        employeeId,
-        date: assignment.date,
-        message: `FRI risk index ${riskIndex.toFixed(2)} exceeds ${FRI_THRESHOLDS.RISK_SCORE_LIMIT} (NR/L2/OHS/003 Chart 1)`,
-        value: Math.round(riskIndex * 100) / 100,
-        limit: FRI_THRESHOLDS.RISK_SCORE_LIMIT,
-      });
+      if (!pattern) continue;
+
+      const calendarDay = calendarDays[i];
+      const sequenceDay = calendarDay - firstDay + 1; // Renumber starting at 1, preserve gaps
+
+      // Get shift times
+      const times = getShiftTimes(pattern, assignment.date, assignment);
+      if (!times) continue;
+
+      // Build shift definition matching PersonView logic
+      // Use assignment-level overrides if available, otherwise pattern defaults
+      const shift = {
+        day: sequenceDay, // ← FIX: Use gap-preserving day number instead of sequential
+        startTime: times.start,
+        endTime: times.end,
+        dutyType: pattern.dutyType || 'Non-Possession',
+        commuteIn: assignment.commuteTimeIn ?? (pattern.commuteTime ? Math.floor(pattern.commuteTime / 2) : 20),
+        commuteOut: assignment.commuteTimeOut ?? (pattern.commuteTime ? Math.ceil(pattern.commuteTime / 2) : 20),
+        workload: assignment.workload ?? pattern.workload ?? 2,
+        attention: assignment.attention ?? pattern.attention ?? 3,
+        breakFreq: assignment.breakFrequency ?? pattern.breakFrequency ?? 180,
+        breakLen: assignment.breakLength ?? pattern.breakLength ?? 15,
+      };
+
+      shiftSequence.push(shift);
     }
-    // 2. Level 2 FRI: 35 (day) / 45 (night) - AMBER (Chart 1 Level 2 Trigger)
-    else if (fatigueScore > (isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME)) {
-      violations.push({
-        type: 'LEVEL_2_FRI_EXCEEDANCE',
-        severity: 'level2',  // Amber - requires FAMP
-        employeeId,
-        date: assignment.date,
-        message: `LEVEL 2 FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Requires FAMP`,
-        value: Math.round(fatigueScore * 10) / 10,
-        limit: isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME,
-      });
+
+    if (shiftSequence.length === 0) continue;
+
+    // Calculate FRI for the shift on checkDate
+    const todayIndex = windowAssignments.findIndex(a => a.date === checkDate);
+
+    if (todayIndex >= 0 && shiftSequence[todayIndex]) {
+      const shift = shiftSequence[todayIndex];
+      const friResult = calculateRiskIndex(shift, todayIndex, shiftSequence);
+      const assignment = windowAssignments[todayIndex];
+      const pattern = patternMap.get(assignment.shiftPatternId);
+
+      if (!pattern) continue;
+
+      const times = getShiftTimes(pattern, assignment.date, assignment);
+      if (!times) continue;
+
+      const isNight = isNightShiftTime(times.start);
+      const fatigueScore = friResult.fatigueIndex; // The fatigue score (FGI)
+      const riskIndex = friResult.riskIndex;       // The risk index (FRI)
+
+      // Check thresholds in order of severity (highest to lowest)
+
+      // 1. Risk Index >1.6 - RED BREACH (Chart 1)
+      if (riskIndex > FRI_THRESHOLDS.RISK_SCORE_LIMIT) {
+        violations.push({
+          type: 'ELEVATED_FATIGUE_INDEX',
+          severity: 'breach',  // Red - hard limit
+          employeeId,
+          date: checkDate,
+          message: `FRI risk index ${riskIndex.toFixed(2)} exceeds ${FRI_THRESHOLDS.RISK_SCORE_LIMIT} (NR/L2/OHS/003 Chart 1)`,
+          value: Math.round(riskIndex * 100) / 100,
+          limit: FRI_THRESHOLDS.RISK_SCORE_LIMIT,
+        });
+      }
+      // 2. Level 2 FRI: 35 (day) / 45 (night) - AMBER (Chart 1 Level 2 Trigger)
+      else if (fatigueScore > (isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME)) {
+        violations.push({
+          type: 'LEVEL_2_FRI_EXCEEDANCE',
+          severity: 'level2',  // Amber - requires FAMP
+          employeeId,
+          date: checkDate,
+          message: `LEVEL 2 FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Requires FAMP`,
+          value: Math.round(fatigueScore * 10) / 10,
+          limit: isNight ? FRI_THRESHOLDS.LEVEL_2_FRI_NIGHTTIME : FRI_THRESHOLDS.LEVEL_2_FRI_DAYTIME,
+        });
+      }
+      // 3. Good Practice: 30 (day) / 40 (night) - GREEN INFO (Chart 1 Good Practice Trigger)
+      else if (fatigueScore > (isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME)) {
+        violations.push({
+          type: 'GOOD_PRACTICE_FRI',
+          severity: 'info',  // Green - informational, monitor and record
+          employeeId,
+          date: checkDate,
+          message: `Good Practice FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Monitor and record controls`,
+          value: Math.round(fatigueScore * 10) / 10,
+          limit: isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME,
+        });
+      }
     }
-    // 3. Good Practice: 30 (day) / 40 (night) - GREEN INFO (Chart 1 Good Practice Trigger)
-    else if (fatigueScore > (isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME)) {
-      violations.push({
-        type: 'GOOD_PRACTICE_FRI',
-        severity: 'info',  // Green - informational, monitor and record
-        employeeId,
-        date: assignment.date,
-        message: `Good Practice FRI: Fatigue score ${fatigueScore.toFixed(1)} exceeds ${isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME} ${isNight ? 'night' : 'day'}time (NR/L2/OHS/003 Chart 1) - Monitor and record controls`,
-        value: Math.round(fatigueScore * 10) / 10,
-        limit: isNight ? FRI_THRESHOLDS.GOOD_PRACTICE_FRI_NIGHTTIME : FRI_THRESHOLDS.GOOD_PRACTICE_FRI_DAYTIME,
-      });
-    }
-  });
+  }
 
   return violations;
 }
