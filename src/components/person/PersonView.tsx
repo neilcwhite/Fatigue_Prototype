@@ -229,12 +229,10 @@ export function PersonView({
         prevDate.setDate(prevDate.getDate() - 1);
         const prevDateStr = prevDate.toISOString().split('T')[0];
         violationAssignments = empAssignments.filter(a => a.date === violation.date || a.date === prevDateStr);
-      } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING') {
-        if (violation.relatedDates) {
-          violationAssignments = empAssignments.filter(a => violation.relatedDates?.includes(a.date) || a.date === violation.date);
-        } else {
-          violationAssignments = empAssignments.filter(a => a.date === violation.date);
-        }
+      } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING' || violation.type === 'CONSECUTIVE_DAYS_WARNING') {
+        // ONLY apply to the violation date, NOT all related dates
+        // Related dates are just context - the violation is on the specific day that crosses the threshold
+        violationAssignments = empAssignments.filter(a => a.date === violation.date);
       } else {
         violationAssignments = empAssignments.filter(a => a.date === violation.date);
       }
@@ -272,12 +270,10 @@ export function PersonView({
         prevDate.setDate(prevDate.getDate() - 1);
         const prevDateStr = prevDate.toISOString().split('T')[0];
         violationAssignments = empAssignments.filter(a => a.date === violation.date || a.date === prevDateStr);
-      } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING') {
-        if (violation.relatedDates) {
-          violationAssignments = empAssignments.filter(a => violation.relatedDates?.includes(a.date) || a.date === violation.date);
-        } else {
-          violationAssignments = empAssignments.filter(a => a.date === violation.date);
-        }
+      } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING' || violation.type === 'CONSECUTIVE_DAYS_WARNING') {
+        // ONLY apply to the violation date, NOT all related dates
+        // Related dates are just context - the violation is on the specific day that crosses the threshold
+        violationAssignments = empAssignments.filter(a => a.date === violation.date);
       } else {
         violationAssignments = empAssignments.filter(a => a.date === violation.date);
       }
