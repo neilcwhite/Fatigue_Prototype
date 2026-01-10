@@ -171,7 +171,7 @@ const getAssignmentDisplayName = (assignment: AssignmentCamel, pattern: ShiftPat
 // Helper to build violation tooltip text from violation array
 const getViolationTooltip = (violations: ComplianceViolation[]): string => {
   if (violations.length === 0) return '';
-  return violations.map(v => `⚠️ ${v.message}`).join('\n');
+  return violations.map(v => v.message).join('\n');
 };
 
 export function ScheduleCalendar({

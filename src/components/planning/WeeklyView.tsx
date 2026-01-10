@@ -329,7 +329,7 @@ export function WeeklyView({
                                     hasViolation ? 'bg-red-200/50 ring-1 ring-red-400' : 'bg-white/50'
                                   }`}
                                   title={violations.length > 0
-                                    ? `${employeeName}\n\n${violations.map(v => `⚠️ ${v.message}`).join('\n')}`
+                                    ? `${employeeName}\n\n${violations.map(v => v.message).join('\n')}`
                                     : employeeName
                                   }
                                 >

@@ -303,7 +303,7 @@ export function TimelineView({
   const getTileStyle = (
     violations: ComplianceViolation[],
     futureViolations?: { hasWarning: boolean; hasError: boolean }
-  ) => {
+  ): { className: string; style?: React.CSSProperties } => {
     // Current date has a violation - change fill color
     const hasBreach = violations.some(v => v.severity === 'breach');
     const hasLevel2 = violations.some(v => v.severity === 'level2');
@@ -316,10 +316,14 @@ export function TimelineView({
 
     // Fill color based on THIS date's violations (4-tier)
     let fillClass = 'bg-green-100 text-green-800';
+    let customStyle: React.CSSProperties | undefined = undefined;
+
     if (hasBreach) {
       fillClass = 'bg-red-100 text-red-800';
     } else if (hasLevel2) {
-      fillClass = 'bg-orange-100 text-orange-800';
+      // Use custom orange color matching Person view (#fed7aa background, #ea580c border)
+      fillClass = 'text-orange-900'; // Keep text class for contrast
+      customStyle = { backgroundColor: '#fed7aa' };
     } else if (hasLevel1) {
       fillClass = 'bg-yellow-100 text-yellow-800';
     } else if (hasWarning) {
@@ -331,33 +335,38 @@ export function TimelineView({
     if (hasBreach || hasFutureError) {
       borderClass = 'border-2 border-red-400';
     } else if (hasLevel2) {
-      borderClass = 'border-2 border-orange-400';
+      borderClass = 'border-2';
+      if (!customStyle) customStyle = {};
+      customStyle.borderColor = '#ea580c'; // Darker orange border matching Person view
     } else if (hasLevel1 || hasFutureWarning) {
       borderClass = 'border-2 border-yellow-400';
     } else if (hasWarning) {
       borderClass = 'border border-gray-400';
     }
 
-    return `${fillClass} ${borderClass}`;
+    return {
+      className: `${fillClass} ${borderClass}`,
+      style: customStyle
+    };
   };
 
   // Get just the background color for the hover buttons overlay (4-tier)
-  const getTileBackground = (violations: ComplianceViolation[]) => {
+  const getTileBackground = (violations: ComplianceViolation[]): { className: string; style?: React.CSSProperties } => {
     const hasBreach = violations.some(v => v.severity === 'breach');
     const hasLevel2 = violations.some(v => v.severity === 'level2');
     const hasLevel1 = violations.some(v => v.severity === 'level1');
     const hasWarning = violations.some(v => v.severity === 'warning');
-    if (hasBreach) return 'bg-red-100';
-    if (hasLevel2) return 'bg-orange-100';
-    if (hasLevel1) return 'bg-yellow-100';
-    if (hasWarning) return 'bg-gray-100';
-    return 'bg-green-100';
+    if (hasBreach) return { className: 'bg-red-100' };
+    if (hasLevel2) return { className: '', style: { backgroundColor: '#fed7aa' } }; // Custom orange matching Person view
+    if (hasLevel1) return { className: 'bg-yellow-100' };
+    if (hasWarning) return { className: 'bg-gray-100' };
+    return { className: 'bg-green-100' };
   };
 
   // Format violation tooltip
   const getViolationTooltip = (violations: ComplianceViolation[]): string => {
     if (violations.length === 0) return '';
-    return violations.map(v => `⚠️ ${v.message}`).join('\n');
+    return violations.map(v => v.message).join('\n');
   };
 
   return (
@@ -497,12 +506,15 @@ export function TimelineView({
                             }
                           };
 
+                          const tileStyle = getTileStyle(assignment.violations, futureViolations);
+
                           return (
                             <div
                               key={assignment.id}
                               data-employee-tile
                               onClick={handleChipClick}
-                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${getTileStyle(assignment.violations, futureViolations)}`}
+                              className={`text-[10px] leading-tight px-1 py-0.5 mb-0.5 rounded group hover:opacity-90 transition-all cursor-pointer ${tileStyle.className}`}
+                              style={tileStyle.style}
                               title={
                                 hasViolations
                                   ? `${assignment.employeeName}${assignment.timeDisplay ? `\n${assignment.timeDisplay}` : ''}\n\n${getViolationTooltip(assignment.violations)}\n\nClick to view employee and resolve issues`
@@ -530,7 +542,10 @@ export function TimelineView({
                                   {assignment.employeeName}
                                 </span>
                                 {/* Edit/Repeat/Delete buttons - overlay on hover with solid background matching tile */}
-                                <div className={`absolute right-0 top-0 bottom-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-r px-0.5 ${getTileBackground(assignment.violations)}`}>
+                                <div
+                                  className={`absolute right-0 top-0 bottom-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-r px-0.5 ${getTileBackground(assignment.violations).className}`}
+                                  style={getTileBackground(assignment.violations).style}
+                                >
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();

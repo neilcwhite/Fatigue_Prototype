@@ -18,36 +18,8 @@ interface ViolationsListProps {
 }
 
 const getViolationIcon = (type: string): string => {
-  switch (type) {
-    case 'MAX_SHIFT_LENGTH':
-      return '⏱️';
-    case 'INSUFFICIENT_REST':
-      return '😴';
-    case 'MAX_WEEKLY_HOURS':
-      return '🚫';
-    case 'LEVEL_1_EXCEEDANCE':
-      return '⚠️';
-    case 'LEVEL_2_EXCEEDANCE':
-      return '🚨';
-    case 'APPROACHING_WEEKLY_LIMIT':
-      return '⚠️';
-    case 'MAX_CONSECUTIVE_DAYS':
-      return '📅';
-    case 'CONSECUTIVE_DAYS_WARNING':
-      return '📅';
-    case 'CONSECUTIVE_NIGHTS_WARNING':
-      return '🌙';
-    case 'MAX_CONSECUTIVE_NIGHTS':
-      return '🌙';
-    case 'DAY_NIGHT_TRANSITION':
-      return '🔄';
-    case 'MULTIPLE_SHIFTS_SAME_DAY':
-      return '⚡';
-    case 'ELEVATED_FATIGUE_INDEX':
-      return '😵';
-    default:
-      return '⚠️';
-  }
+  // No emojis - return empty string
+  return '';
 };
 
 const getViolationTitle = (type: string): string => {

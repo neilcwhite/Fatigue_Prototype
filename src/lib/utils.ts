@@ -149,84 +149,84 @@ export function getViolationMetadata(type: ViolationType): ViolationMetadata {
     case 'MAX_SHIFT_LENGTH':
       return {
         label: 'Shift Length',
-        icon: '⏱️',
+        icon: '',
         color: 'text-red-600',
         description: `Maximum shift duration exceeded (${COMPLIANCE_LIMITS.MAX_SHIFT_HOURS} hours)`,
       };
     case 'INSUFFICIENT_REST':
       return {
         label: 'Rest Period',
-        icon: '🛏️',
+        icon: '',
         color: 'text-red-600',
         description: `Minimum rest period not met (${COMPLIANCE_LIMITS.MIN_REST_HOURS} hours)`,
       };
     case 'MAX_WEEKLY_HOURS':
       return {
         label: 'Weekly Hours',
-        icon: '📅',
+        icon: '',
         color: 'text-red-600',
         description: `Maximum weekly hours exceeded (${COMPLIANCE_LIMITS.MAX_WEEKLY_HOURS} hours)`,
       };
     case 'APPROACHING_WEEKLY_LIMIT':
       return {
         label: 'Weekly Hours Warning',
-        icon: '📅',
+        icon: '',
         color: 'text-amber-600',
         description: `Approaching weekly hours limit (${COMPLIANCE_LIMITS.APPROACHING_WEEKLY_HOURS}+ hours)`,
       };
     case 'MAX_CONSECUTIVE_DAYS':
       return {
         label: 'Consecutive Days',
-        icon: '📆',
+        icon: '',
         color: 'text-red-600',
         description: `Maximum consecutive working days exceeded (${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_DAYS} days)`,
       };
     case 'CONSECUTIVE_DAYS_WARNING':
       return {
         label: 'Consecutive Days Warning',
-        icon: '📆',
+        icon: '',
         color: 'text-amber-600',
         description: `Approaching consecutive days limit (${COMPLIANCE_LIMITS.CONSECUTIVE_DAYS_WARNING}+ days)`,
       };
     case 'MAX_CONSECUTIVE_NIGHTS':
       return {
         label: 'Consecutive Nights',
-        icon: '🌙',
+        icon: '',
         color: 'text-red-600',
         description: `Maximum consecutive night shifts exceeded (${COMPLIANCE_LIMITS.MAX_CONSECUTIVE_NIGHTS} nights)`,
       };
     case 'CONSECUTIVE_NIGHTS_WARNING':
       return {
         label: 'Consecutive Nights Warning',
-        icon: '🌙',
+        icon: '',
         color: 'text-amber-600',
         description: `Approaching consecutive nights limit (${COMPLIANCE_LIMITS.CONSECUTIVE_NIGHTS_WARNING}+ nights)`,
       };
     case 'DAY_NIGHT_TRANSITION':
       return {
         label: 'Day/Night Transition',
-        icon: '🔄',
+        icon: '',
         color: 'text-red-600',
         description: 'Unsafe transition from day shift to night shift',
       };
     case 'MULTIPLE_SHIFTS_SAME_DAY':
       return {
         label: 'Multiple Shifts',
-        icon: '⚠️',
+        icon: '',
         color: 'text-red-600',
         description: 'Multiple shifts assigned on the same day',
       };
     case 'ELEVATED_FATIGUE_INDEX':
       return {
         label: 'High Fatigue',
-        icon: '😴',
+        icon: '',
         color: 'text-amber-600',
         description: 'Fatigue Risk Index is elevated',
       };
     default:
       return {
         label: 'Unknown',
-        icon: '⚠️',
+        icon: '',
         color: 'text-slate-600',
         description: 'Unknown violation type',
       };

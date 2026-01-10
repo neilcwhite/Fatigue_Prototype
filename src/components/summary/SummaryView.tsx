@@ -197,18 +197,8 @@ export function SummaryView({
   };
 
   const getViolationIcon = (type: string) => {
-    switch (type) {
-      case 'MAX_SHIFT_LENGTH': return '⏱️';
-      case 'INSUFFICIENT_REST': return '😴';
-      case 'MAX_WEEKLY_HOURS': return '📊';
-      case 'APPROACHING_WEEKLY_LIMIT': return '⚠️';
-      case 'MAX_CONSECUTIVE_DAYS': return '📅';
-      case 'CONSECUTIVE_NIGHTS_WARNING': return '🌙';
-      case 'MAX_CONSECUTIVE_NIGHTS': return '🌙';
-      case 'DAY_NIGHT_TRANSITION': return '🔄';
-      case 'MULTIPLE_SHIFTS_SAME_DAY': return '⚡';
-      default: return '⚠️';
-    }
+    // No emojis - return empty string
+    return '';
   };
 
   const projectPatterns = useMemo(() =>

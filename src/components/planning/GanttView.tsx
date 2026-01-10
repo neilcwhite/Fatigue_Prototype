@@ -251,7 +251,7 @@ export function GanttView({
                       }
                     }}
                     title={cellViolations.length > 0
-                      ? cellViolations.map(v => `⚠️ ${v.message}`).join('\n')
+                      ? cellViolations.map(v => v.message).join('\n')
                       : 'Drop employee here'
                     }
                   >
