@@ -62,6 +62,7 @@ export default function Home() {
     shiftPatterns,
     assignments,
     fatigueAssessments,
+    workVerificationRecords,
     loading: dataLoading,
     error: dataError,
     createProject,
@@ -81,6 +82,7 @@ export default function Home() {
     deleteShiftPattern,
     createFatigueAssessment,
     updateFatigueAssessment,
+    createWorkVerification,
     addProjectMember,
     updateProjectMemberRole,
     removeProjectMember,
@@ -454,6 +456,9 @@ export default function Home() {
         {currentView === 'summary' && selectedProjectData && (
           <SummaryView
             user={user}
+            userRole={profile?.role as UserRole}
+            managerName={profile?.fullName || user?.email || 'Unknown'}
+            managerId={user?.id}
             onSignOut={signOut}
             onBack={handleBackToDashboard}
             project={selectedProjectData}
@@ -462,6 +467,7 @@ export default function Home() {
             assignments={assignments}
             shiftPatterns={shiftPatterns}
             fatigueAssessments={fatigueAssessments}
+            workVerificationRecords={workVerificationRecords}
             onSelectProject={(id) => setSelectedProject(id)}
             onNavigateToPerson={handleNavigateToPerson}
             onNavigateToPlanning={handleSelectProject}
@@ -469,6 +475,7 @@ export default function Home() {
             onViewAssessment={(assessmentId) => {
               setCurrentView('assessments');
             }}
+            onCreateWorkVerification={createWorkVerification}
           />
         )}
 

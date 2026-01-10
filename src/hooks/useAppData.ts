@@ -13,6 +13,8 @@ import type {
   ProjectMemberCamel,
   ProjectMemberRole,
   UserRole,
+  WorkVerificationRecordCamel,
+  WorkVerificationRecordRow,
 } from '@/lib/types';
 import { filterAccessibleProjects, roleBypassesProjectAccess } from '@/lib/permissions';
 
@@ -205,6 +207,7 @@ interface AppData {
   fatigueAssessments: FatigueAssessment[];
   /** Current user's project memberships (for access filtering) */
   projectMembers: ProjectMemberCamel[];
+  workVerificationRecords: WorkVerificationRecordCamel[];
   loading: boolean;
   error: string | null;
 }
@@ -242,6 +245,10 @@ interface UseAppDataReturn extends AppData {
   createFatigueAssessment: (data: FatigueAssessment) => Promise<void>;
   updateFatigueAssessment: (id: string, data: Partial<FatigueAssessment>) => Promise<void>;
   deleteFatigueAssessment: (id: string) => Promise<void>;
+  // Work verification operations
+  createWorkVerification: (data: Partial<WorkVerificationRecordCamel>) => Promise<void>;
+  updateWorkVerification: (id: string, data: Partial<WorkVerificationRecordCamel>) => Promise<void>;
+  deleteWorkVerification: (id: string) => Promise<void>;
   // Project member operations (for access control)
   addProjectMember: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
   updateProjectMemberRole: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
@@ -263,6 +270,7 @@ export function useAppData(
     assignments: [],
     fatigueAssessments: [],
     projectMembers: [],
+    workVerificationRecords: [],
     loading: true,
     error: null,
   });
@@ -283,7 +291,7 @@ export function useAppData(
       // Build project members query - only fetch for current user if they don't have canViewAllProjects
       const shouldLoadUserMembers = userId && userRole && !roleBypassesProjectAccess(userRole);
 
-      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes, projectMembersRes] = await Promise.all([
+      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes, projectMembersRes, workVerificationsRes] = await Promise.all([
         supabase.from('employees').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('projects').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('teams').select('*').eq('organisation_id', organisationId).order('name'),
@@ -294,6 +302,8 @@ export function useAppData(
         shouldLoadUserMembers
           ? supabase.from('project_members').select('*').eq('organisation_id', organisationId).eq('user_id', userId)
           : Promise.resolve({ data: [], error: null }),
+        // Load work verification records
+        supabase.from('work_verification_records').select('*').eq('organisation_id', organisationId).order('sign_off_date', { ascending: false }),
       ]);
 
       // Check for errors on any query - surface them instead of silently showing empty data
@@ -308,6 +318,8 @@ export function useAppData(
         assessmentsRes.error && !assessmentsRes.error.message.includes('does not exist') && `Assessments: ${assessmentsRes.error.message}`,
         // Don't fail if project_members table doesn't exist - it's optional (for backwards compatibility)
         projectMembersRes.error && !projectMembersRes.error.message.includes('does not exist') && `Project members: ${projectMembersRes.error.message}`,
+        // Don't fail if work_verification_records table doesn't exist - it's optional
+        workVerificationsRes.error && !workVerificationsRes.error.message.includes('does not exist') && `Work verifications: ${workVerificationsRes.error.message}`,
       ].filter(Boolean);
 
       if (errors.length > 0) {
@@ -441,6 +453,24 @@ export function useAppData(
         updatedAt: fa.updated_at,
       }));
 
+      // Map work verification records from snake_case to camelCase
+      const workVerificationRecords: WorkVerificationRecordCamel[] = (workVerificationsRes.data || []).map((wv: WorkVerificationRecordRow) => ({
+        id: wv.id,
+        organisationId: wv.organisation_id,
+        projectId: wv.project_id,
+        periodNumber: wv.period_number,
+        startDate: wv.start_date,
+        endDate: wv.end_date,
+        managerId: wv.manager_id,
+        managerName: wv.manager_name,
+        managerRole: wv.manager_role,
+        signOffDate: wv.sign_off_date,
+        comments: wv.comments,
+        summaryData: wv.summary_data,
+        createdAt: wv.created_at,
+        updatedAt: wv.updated_at,
+      }));
+
       setData({
         employees,
         projects,
@@ -449,6 +479,7 @@ export function useAppData(
         assignments,
         fatigueAssessments,
         projectMembers,
+        workVerificationRecords,
         loading: false,
         error: null,
       });
@@ -475,7 +506,7 @@ export function useAppData(
   useEffect(() => {
     if (!supabase || !organisationId) return;
 
-    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments', 'project_members'];
+    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments', 'project_members', 'work_verification_records'];
 
     const channel = supabase.channel(`org-${organisationId}-changes`);
 
@@ -1019,6 +1050,66 @@ export function useAppData(
     await loadAllData();
   };
 
+  // ==================== WORK VERIFICATION OPERATIONS ====================
+
+  const createWorkVerification = async (data: Partial<WorkVerificationRecordCamel>) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const id = crypto.randomUUID();
+
+    const insertData: Partial<WorkVerificationRecordRow> = {
+      id,
+      organisation_id: organisationId,
+      project_id: data.projectId,
+      period_number: data.periodNumber,
+      start_date: data.startDate,
+      end_date: data.endDate,
+      manager_id: data.managerId,
+      manager_name: data.managerName,
+      manager_role: data.managerRole,
+      sign_off_date: data.signOffDate || new Date().toISOString(),
+      comments: data.comments,
+      summary_data: data.summaryData as unknown as Record<string, unknown>,
+    };
+
+    const { error } = await supabase
+      .from('work_verification_records')
+      .insert(insertData);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
+  const updateWorkVerification = async (id: string, updateData: Partial<WorkVerificationRecordCamel>) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const updateObj: Partial<WorkVerificationRecordRow> = {};
+    if (updateData.comments !== undefined) updateObj.comments = updateData.comments;
+    if (updateData.summaryData !== undefined) updateObj.summary_data = updateData.summaryData as unknown as Record<string, unknown>;
+
+    const { error } = await supabase
+      .from('work_verification_records')
+      .update(updateObj)
+      .eq('id', id)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
+  const deleteWorkVerification = async (id: string) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    const { error } = await supabase
+      .from('work_verification_records')
+      .delete()
+      .eq('id', id)
+      .eq('organisation_id', organisationId);
+
+    if (error) throw error;
+    await loadAllData();
+  };
+
   // ==================== PROJECT MEMBER OPERATIONS (ACCESS CONTROL) ====================
 
   const addProjectMember = async (projectId: number, memberUserId: string, role: ProjectMemberRole) => {
@@ -1109,6 +1200,9 @@ export function useAppData(
     createFatigueAssessment,
     updateFatigueAssessment,
     deleteFatigueAssessment,
+    createWorkVerification,
+    updateWorkVerification,
+    deleteWorkVerification,
     addProjectMember,
     updateProjectMemberRole,
     removeProjectMember,

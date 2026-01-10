@@ -577,3 +577,76 @@ export interface FatigueAssessmentRow {
   updated_at: string;
   created_by?: string;
 }
+
+// ==================== WORK VERIFICATION RECORDS ====================
+
+export interface ViolationSummary {
+  type: ViolationType;
+  count: number;
+  dates: string[]; // ISO date strings
+}
+
+export interface EmployeeWorkSummary {
+  employeeId: number;
+  employeeName: string;
+  plannedHours: number;
+  actualHours: number;
+  assignmentsCount: number;
+  customTimesCount: number;
+  violations: ViolationType[];
+}
+
+export interface ShiftPatternUsage {
+  patternId: string;
+  patternName: string;
+  assignmentCount: number;
+}
+
+export interface WorkVerificationSummaryData {
+  totalAssignments: number;
+  totalHoursPlanned: number;
+  totalHoursActual: number;
+  modificationsCount: number;
+  farpAssessmentsCount: number;
+  completedFarps: number;
+  pendingFarps: number;
+  violations: ViolationSummary[];
+  employeeBreakdown: EmployeeWorkSummary[];
+  shiftPatternsUsed: ShiftPatternUsage[];
+}
+
+// Database row (snake_case)
+export interface WorkVerificationRecordRow {
+  id: string;
+  organisation_id: string;
+  project_id: number;
+  period_number?: number;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  manager_id: string;
+  manager_name: string;
+  manager_role: UserRole;
+  sign_off_date: string; // ISO timestamp
+  comments?: string;
+  summary_data: WorkVerificationSummaryData;
+  created_at: string;
+  updated_at: string;
+}
+
+// CamelCase variant for UI
+export interface WorkVerificationRecordCamel {
+  id: string;
+  organisationId: string;
+  projectId: number;
+  periodNumber?: number;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  managerId: string;
+  managerName: string;
+  managerRole: UserRole;
+  signOffDate: string; // ISO timestamp
+  comments?: string;
+  summaryData: WorkVerificationSummaryData;
+  createdAt: string;
+  updatedAt: string;
+}

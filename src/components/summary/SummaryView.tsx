@@ -23,16 +23,21 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import { AlertTriangle, CheckCircle, Users, Clock, Calendar, XCircle, ChevronDown, ChevronUp, Edit2, Eye, FileText } from '@/components/ui/Icons';
-import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule, SupabaseUser, FatigueAssessment } from '@/lib/types';
+import type { ProjectCamel, EmployeeCamel, AssignmentCamel, ShiftPatternCamel, WeeklySchedule, SupabaseUser, FatigueAssessment, UserRole, WorkVerificationRecordCamel } from '@/lib/types';
 import {
   checkProjectCompliance,
   checkEmployeeCompliance,
   type ComplianceViolation
 } from '@/lib/compliance';
 import { parseTimeToHours, calculateDutyLength } from '@/lib/fatigue';
+import { WorkVerificationModal } from '@/components/modals/WorkVerificationModal';
+import { hasPermission, getRoleLevel } from '@/lib/permissions';
 
 interface SummaryViewProps {
   user: SupabaseUser;
+  userRole?: UserRole;
+  managerName?: string;
+  managerId?: string;
   onSignOut: () => void;
   onBack: () => void;
   project: ProjectCamel;
@@ -41,12 +46,14 @@ interface SummaryViewProps {
   assignments: AssignmentCamel[];
   shiftPatterns: ShiftPatternCamel[];
   fatigueAssessments?: FatigueAssessment[];
+  workVerificationRecords?: WorkVerificationRecordCamel[];
   onSelectProject: (id: number) => void;
   onNavigateToPerson: (employeeId: number) => void;
   onNavigateToPlanning: (projectId: number) => void;
   onEditShiftPattern?: (pattern: ShiftPatternCamel) => void;
   onViewAssessment?: (assessmentId: string) => void;
   onCreateAssessment?: (violation: ComplianceViolation) => void;
+  onCreateWorkVerification?: (record: Partial<WorkVerificationRecordCamel>) => Promise<void>;
 }
 
 function getShiftDuration(pattern: ShiftPatternCamel, date: string): number {
@@ -79,6 +86,9 @@ function getShiftDuration(pattern: ShiftPatternCamel, date: string): number {
 
 export function SummaryView({
   user,
+  userRole,
+  managerName,
+  managerId,
   onSignOut,
   onBack,
   project,
@@ -87,22 +97,44 @@ export function SummaryView({
   assignments,
   shiftPatterns,
   fatigueAssessments = [],
+  workVerificationRecords = [],
   onSelectProject,
   onNavigateToPerson,
   onNavigateToPlanning,
   onEditShiftPattern,
   onViewAssessment,
   onCreateAssessment,
+  onCreateWorkVerification,
 }: SummaryViewProps) {
+  const [showWorkVerificationModal, setShowWorkVerificationModal] = useState(false);
+
   const projectAssignments = useMemo(() =>
     assignments.filter(a => a.projectId === project.id),
     [assignments, project.id]
+  );
+
+  const projectVerifications = useMemo(() =>
+    workVerificationRecords.filter(wv => wv.projectId === project.id),
+    [workVerificationRecords, project.id]
   );
 
   const complianceResult = useMemo(() =>
     checkProjectCompliance(project.id, assignments, shiftPatterns),
     [project.id, assignments, shiftPatterns]
   );
+
+  // Check if user can verify work (manager level or above)
+  const canVerifyWork = useMemo(() => {
+    if (!userRole) return false;
+    return getRoleLevel(userRole) >= 2; // manager, sheq, admin, super_admin
+  }, [userRole]);
+
+  const handleWorkVerification = async (record: Partial<WorkVerificationRecordCamel>) => {
+    if (onCreateWorkVerification) {
+      await onCreateWorkVerification(record);
+      setShowWorkVerificationModal(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const uniqueEmployeeIds = [...new Set(projectAssignments.map(a => a.employeeId))];
@@ -241,6 +273,22 @@ export function SummaryView({
             {project.name}
           </Typography>
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 2 }}>
+            {canVerifyWork && onCreateWorkVerification && (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setShowWorkVerificationModal(true)}
+                startIcon={<FileText className="w-4 h-4" />}
+                sx={{
+                  bgcolor: 'secondary.main',
+                  '&:hover': {
+                    bgcolor: 'secondary.dark',
+                  },
+                }}
+              >
+                Work Verification
+              </Button>
+            )}
             <Typography variant="body2" sx={{ color: 'grey.400' }}>{user?.email}</Typography>
             <Button
               variant="outlined"
@@ -694,7 +742,95 @@ export function SummaryView({
             <Typography variant="body2">No compliance issues detected for this project.</Typography>
           </Alert>
         )}
+
+        {/* Work Verification History */}
+        {projectVerifications.length > 0 && (
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <CheckCircle className="w-5 h-5 text-success-main" />
+              Work Verification History
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Manager sign-offs demonstrating planned and controlled fatigue management
+            </Typography>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {projectVerifications.slice(0, 10).map((verification) => (
+                <Paper key={verification.id} sx={{ p: 2, bgcolor: 'grey.50', border: 1, borderColor: 'grey.200' }}>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 3 }}>
+                      <Typography variant="caption" color="text.secondary">Period</Typography>
+                      <Typography variant="body2" fontWeight={600}>
+                        {verification.periodNumber
+                          ? `P${verification.periodNumber}`
+                          : `${new Date(verification.startDate).toLocaleDateString('en-GB')} - ${new Date(verification.endDate).toLocaleDateString('en-GB')}`
+                        }
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 3 }}>
+                      <Typography variant="caption" color="text.secondary">Signed Off By</Typography>
+                      <Typography variant="body2">{verification.managerName}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        ({verification.managerRole.toUpperCase()})
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 3 }}>
+                      <Typography variant="caption" color="text.secondary">Date</Typography>
+                      <Typography variant="body2">
+                        {new Date(verification.signOffDate).toLocaleDateString('en-GB')}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 3 }}>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Chip
+                          label={`${verification.summaryData.totalAssignments} assignments`}
+                          size="small"
+                          color="primary"
+                          sx={{ mb: 0.5 }}
+                        />
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          {verification.summaryData.totalHoursActual.toFixed(1)}h worked
+                        </Typography>
+                      </Box>
+                    </Grid>
+                    {verification.comments && (
+                      <Grid size={{ xs: 12 }}>
+                        <Typography variant="caption" color="text.secondary">Comments:</Typography>
+                        <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                          {verification.comments}
+                        </Typography>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Paper>
+              ))}
+            </Box>
+
+            {projectVerifications.length > 10 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+                Showing 10 of {projectVerifications.length} verification records
+              </Typography>
+            )}
+          </Paper>
+        )}
       </Box>
+
+      {/* Work Verification Modal */}
+      {canVerifyWork && managerName && managerId && userRole && (
+        <WorkVerificationModal
+          open={showWorkVerificationModal}
+          onClose={() => setShowWorkVerificationModal(false)}
+          onSave={handleWorkVerification}
+          project={project}
+          assignments={assignments}
+          shiftPatterns={shiftPatterns}
+          employees={employees}
+          fatigueAssessments={fatigueAssessments}
+          managerName={managerName}
+          managerRole={userRole}
+          managerId={managerId}
+        />
+      )}
     </Box>
   );
 }
