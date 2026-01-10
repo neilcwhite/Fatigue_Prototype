@@ -94,6 +94,15 @@ export function AddShiftModal({
   const selectedPattern = isCustomTimesMode ? null : shiftPatterns.find(p => p.id === selectedPatternId);
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
+  // Get the pattern to use for defaults (works in both normal and custom mode)
+  const patternForDefaults = useMemo(() => {
+    if (selectedPattern) return selectedPattern;
+    if (isCustomTimesMode) {
+      return customPatternForProject || availablePatterns[0];
+    }
+    return null;
+  }, [selectedPattern, isCustomTimesMode, customPatternForProject, availablePatterns]);
+
   // Check if shift pattern runs on the selected date
   const patternRunsOnDate = useMemo(() => {
     if (!selectedPattern) return true; // No pattern selected yet
@@ -133,19 +142,21 @@ export function AddShiftModal({
   };
 
   const handleApplyPatternDefaults = () => {
-    if (!selectedPattern) return;
+    if (!patternForDefaults) return;
 
     // Apply commute defaults
-    if (selectedPattern.commuteTime) {
-      setCommuteIn(Math.floor(selectedPattern.commuteTime / 2));
-      setCommuteOut(Math.ceil(selectedPattern.commuteTime / 2));
+    if (patternForDefaults.commuteTime) {
+      setCommuteIn(Math.floor(patternForDefaults.commuteTime / 2));
+      setCommuteOut(Math.ceil(patternForDefaults.commuteTime / 2));
     }
 
     // Apply other defaults
-    if (selectedPattern.workload) setWorkload(selectedPattern.workload);
-    if (selectedPattern.attention) setAttention(selectedPattern.attention);
-    if (selectedPattern.breakFrequency) setBreakFrequency(selectedPattern.breakFrequency);
-    if (selectedPattern.breakLength) setBreakLength(selectedPattern.breakLength);
+    if (patternForDefaults.workload) setWorkload(patternForDefaults.workload);
+    if (patternForDefaults.attention) setAttention(patternForDefaults.attention);
+    if (patternForDefaults.breakFrequency) setBreakFrequency(patternForDefaults.breakFrequency);
+    if (patternForDefaults.breakLength) setBreakLength(patternForDefaults.breakLength);
+    if (patternForDefaults.continuousWork) setContinuousWork(patternForDefaults.continuousWork);
+    if (patternForDefaults.breakAfterContinuous) setBreakAfterContinuous(patternForDefaults.breakAfterContinuous);
   };
 
   const handlePatternChange = (patternId: string) => {
@@ -403,7 +414,7 @@ export function AddShiftModal({
                 <Typography variant="subtitle2" color="text.secondary">
                   Fatigue Parameters (Optional Overrides)
                 </Typography>
-                {selectedPattern && (
+                {patternForDefaults && (
                   <Button
                     size="small"
                     variant="outlined"
@@ -413,6 +424,25 @@ export function AddShiftModal({
                   </Button>
                 )}
               </Box>
+
+              {/* Show pattern defaults info */}
+              {patternForDefaults && (
+                <Alert severity="info" sx={{ py: 0.5 }}>
+                  <Typography variant="caption" fontWeight={600}>
+                    Pattern Defaults from "{patternForDefaults.name}":
+                  </Typography>
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                    Commute: {patternForDefaults.commuteTime ? `${Math.floor(patternForDefaults.commuteTime / 2)}min in, ${Math.ceil(patternForDefaults.commuteTime / 2)}min out` : 'Not set'} •{' '}
+                    Workload: {patternForDefaults.workload ?? 'Not set'} •{' '}
+                    Attention: {patternForDefaults.attention ?? 'Not set'}
+                    <br />
+                    Break Frequency: {patternForDefaults.breakFrequency ?? 'Not set'}min •{' '}
+                    Break Length: {patternForDefaults.breakLength ?? 'Not set'}min •{' '}
+                    Continuous Work: {patternForDefaults.continuousWork ?? 'Not set'}min •{' '}
+                    Break After: {patternForDefaults.breakAfterContinuous ?? 'Not set'}min
+                  </Typography>
+                </Alert>
+              )}
 
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
@@ -507,18 +537,6 @@ export function AddShiftModal({
                   helperText="Rest after continuous work"
                 />
               </Box>
-
-              {selectedPattern && (
-                <Alert severity="info" sx={{ py: 0.5 }}>
-                  <Typography variant="caption">
-                    <strong>Pattern defaults:</strong> Commute: {selectedPattern.commuteTime ? `${selectedPattern.commuteTime} mins` : 'Not set'} |
-                    Workload: {selectedPattern.workload || 'Not set'} |
-                    Attention: {selectedPattern.attention || 'Not set'} |
-                    Breaks: {selectedPattern.breakFrequency ? `every ${selectedPattern.breakFrequency} mins` : 'Not set'}
-                    ({selectedPattern.breakLength ? `${selectedPattern.breakLength} mins each` : 'Not set'})
-                  </Typography>
-                </Alert>
-              )}
             </Box>
           )}
 

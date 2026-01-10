@@ -300,6 +300,8 @@ export interface ShiftPatternCamel {
   commuteTime?: number;   // minutes
   breakFrequency?: number; // minutes between breaks
   breakLength?: number;   // minutes per break
+  continuousWork?: number; // minutes max continuous work time
+  breakAfterContinuous?: number; // minutes rest after continuous work
 }
 
 export interface AssignmentCamel {
