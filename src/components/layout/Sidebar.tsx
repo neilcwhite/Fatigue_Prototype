@@ -64,6 +64,10 @@ export function Sidebar({
   selectedProjectName,
   selectedEmployeeName,
   onOpenHelp,
+  currentRole,
+  impersonatedRole,
+  onRoleChange,
+  isSuperAdmin,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -237,6 +241,28 @@ export function Sidebar({
           </Tooltip>
         </List>
       </Box>
+
+      {/* Role Impersonation Dropdown (Super Admin Only) */}
+      {isSuperAdmin && currentRole && onRoleChange && !collapsed && (
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            p: 2,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            bgcolor: impersonatedRole ? 'warning.50' : 'background.paper',
+          }}
+        >
+          <RoleImpersonationDropdown
+            currentRole={currentRole}
+            impersonatedRole={impersonatedRole || null}
+            onRoleChange={onRoleChange}
+          />
+        </Box>
+      )}
     </Drawer>
   );
 }

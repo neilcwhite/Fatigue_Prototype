@@ -364,6 +364,10 @@ export default function Home() {
         selectedProjectName={selectedProjectData?.name}
         selectedEmployeeName={selectedEmployeeData?.name}
         onOpenHelp={openOnboardingPanel}
+        currentRole={profile?.role as UserRole}
+        impersonatedRole={impersonatedRole}
+        onRoleChange={setImpersonatedRole}
+        isSuperAdmin={isSuperAdmin}
       />
 
       {/* Onboarding Panel */}
