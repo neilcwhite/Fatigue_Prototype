@@ -579,6 +579,7 @@ export interface FatigueAssessmentRow {
 }
 
 // ==================== WORK VERIFICATION RECORDS ====================
+// NOTE: Period-based verification is being replaced by weekly shift verification
 
 export interface ViolationSummary {
   type: ViolationType;
@@ -647,6 +648,59 @@ export interface WorkVerificationRecordCamel {
   signOffDate: string; // ISO timestamp
   comments?: string;
   summaryData: WorkVerificationSummaryData;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==================== WEEKLY SHIFT VERIFICATION ====================
+
+export interface SignedOffShift {
+  shiftPatternId: string;
+  shiftPatternName: string;
+  signedOffBy: string; // UUID of manager
+  signedOffByName: string;
+  signedOffAt: string; // ISO timestamp
+  employeeCount: number; // Unique employees who worked this pattern in the week
+  totalAssignments: number; // Total assignments for this pattern in the week
+  notes?: string;
+}
+
+// Database row (snake_case)
+export interface WeeklyShiftVerificationRow {
+  id: string;
+  organisation_id: string;
+  project_id: number;
+  week_start_date: string; // YYYY-MM-DD (Saturday)
+  week_end_date: string; // YYYY-MM-DD (Friday)
+  year: number;
+  period_number: number;
+  week_in_period: number; // 1-4
+  signed_off_shifts: SignedOffShift[];
+  is_fully_signed_off: boolean;
+  completed_by_id?: string;
+  completed_by_name?: string;
+  completed_by_role?: UserRole;
+  completed_at?: string; // ISO timestamp
+  created_at: string;
+  updated_at: string;
+}
+
+// CamelCase variant for UI
+export interface WeeklyShiftVerificationCamel {
+  id: string;
+  organisationId: string;
+  projectId: number;
+  weekStartDate: string; // YYYY-MM-DD (Saturday)
+  weekEndDate: string; // YYYY-MM-DD (Friday)
+  year: number;
+  periodNumber: number;
+  weekInPeriod: number; // 1-4
+  signedOffShifts: SignedOffShift[];
+  isFullySignedOff: boolean;
+  completedById?: string;
+  completedByName?: string;
+  completedByRole?: UserRole;
+  completedAt?: string; // ISO timestamp
   createdAt: string;
   updatedAt: string;
 }

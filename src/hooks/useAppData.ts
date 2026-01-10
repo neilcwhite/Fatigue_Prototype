@@ -15,6 +15,9 @@ import type {
   UserRole,
   WorkVerificationRecordCamel,
   WorkVerificationRecordRow,
+  WeeklyShiftVerificationCamel,
+  WeeklyShiftVerificationRow,
+  SignedOffShift,
 } from '@/lib/types';
 import { filterAccessibleProjects, roleBypassesProjectAccess } from '@/lib/permissions';
 
@@ -208,6 +211,7 @@ interface AppData {
   /** Current user's project memberships (for access filtering) */
   projectMembers: ProjectMemberCamel[];
   workVerificationRecords: WorkVerificationRecordCamel[];
+  weeklyVerifications: WeeklyShiftVerificationCamel[];
   loading: boolean;
   error: string | null;
 }
@@ -249,6 +253,10 @@ interface UseAppDataReturn extends AppData {
   createWorkVerification: (data: Partial<WorkVerificationRecordCamel>) => Promise<void>;
   updateWorkVerification: (id: string, data: Partial<WorkVerificationRecordCamel>) => Promise<void>;
   deleteWorkVerification: (id: string) => Promise<void>;
+  // Weekly shift verification operations
+  signOffShift: (weekStartDate: string, projectId: number, shiftPatternId: string, shiftPatternName: string, employeeCount: number, assignmentCount: number, managerId: string, managerName: string, managerRole: UserRole, notes?: string) => Promise<void>;
+  unsignShift: (weekStartDate: string, projectId: number, shiftPatternId: string) => Promise<void>;
+  completeWeek: (weekStartDate: string, projectId: number, managerId: string, managerName: string, managerRole: UserRole) => Promise<void>;
   // Project member operations (for access control)
   addProjectMember: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
   updateProjectMemberRole: (projectId: number, userId: string, role: ProjectMemberRole) => Promise<void>;
@@ -271,6 +279,7 @@ export function useAppData(
     fatigueAssessments: [],
     projectMembers: [],
     workVerificationRecords: [],
+    weeklyVerifications: [],
     loading: true,
     error: null,
   });
@@ -291,7 +300,7 @@ export function useAppData(
       // Build project members query - only fetch for current user if they don't have canViewAllProjects
       const shouldLoadUserMembers = userId && userRole && !roleBypassesProjectAccess(userRole);
 
-      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes, projectMembersRes, workVerificationsRes] = await Promise.all([
+      const [employeesRes, projectsRes, teamsRes, patternsRes, assignmentsRes, assessmentsRes, projectMembersRes, workVerificationsRes, weeklyVerificationsRes] = await Promise.all([
         supabase.from('employees').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('projects').select('*').eq('organisation_id', organisationId).order('name'),
         supabase.from('teams').select('*').eq('organisation_id', organisationId).order('name'),
@@ -304,6 +313,8 @@ export function useAppData(
           : Promise.resolve({ data: [], error: null }),
         // Load work verification records
         supabase.from('work_verification_records').select('*').eq('organisation_id', organisationId).order('sign_off_date', { ascending: false }),
+        // Load weekly shift verifications
+        supabase.from('weekly_shift_verification').select('*').eq('organisation_id', organisationId).order('week_start_date', { ascending: false }),
       ]);
 
       // Check for errors on any query - surface them instead of silently showing empty data
@@ -320,6 +331,8 @@ export function useAppData(
         projectMembersRes.error && !projectMembersRes.error.message.includes('does not exist') && `Project members: ${projectMembersRes.error.message}`,
         // Don't fail if work_verification_records table doesn't exist - it's optional
         workVerificationsRes.error && !workVerificationsRes.error.message.includes('does not exist') && `Work verifications: ${workVerificationsRes.error.message}`,
+        // Don't fail if weekly_shift_verification table doesn't exist - it's optional
+        weeklyVerificationsRes.error && !weeklyVerificationsRes.error.message.includes('does not exist') && `Weekly verifications: ${weeklyVerificationsRes.error.message}`,
       ].filter(Boolean);
 
       if (errors.length > 0) {
@@ -471,6 +484,26 @@ export function useAppData(
         updatedAt: wv.updated_at,
       }));
 
+      // Map weekly shift verifications from snake_case to camelCase
+      const weeklyVerifications: WeeklyShiftVerificationCamel[] = (weeklyVerificationsRes.data || []).map((wv: WeeklyShiftVerificationRow) => ({
+        id: wv.id,
+        organisationId: wv.organisation_id,
+        projectId: wv.project_id,
+        weekStartDate: wv.week_start_date,
+        weekEndDate: wv.week_end_date,
+        year: wv.year,
+        periodNumber: wv.period_number,
+        weekInPeriod: wv.week_in_period,
+        signedOffShifts: wv.signed_off_shifts,
+        isFullySignedOff: wv.is_fully_signed_off,
+        completedById: wv.completed_by_id,
+        completedByName: wv.completed_by_name,
+        completedByRole: wv.completed_by_role,
+        completedAt: wv.completed_at,
+        createdAt: wv.created_at,
+        updatedAt: wv.updated_at,
+      }));
+
       setData({
         employees,
         projects,
@@ -480,6 +513,7 @@ export function useAppData(
         fatigueAssessments,
         projectMembers,
         workVerificationRecords,
+        weeklyVerifications,
         loading: false,
         error: null,
       });
@@ -506,7 +540,7 @@ export function useAppData(
   useEffect(() => {
     if (!supabase || !organisationId) return;
 
-    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments', 'project_members', 'work_verification_records'];
+    const tables = ['employees', 'projects', 'teams', 'shift_patterns', 'assignments', 'fatigue_assessments', 'project_members', 'work_verification_records', 'weekly_shift_verification'];
 
     const channel = supabase.channel(`org-${organisationId}-changes`);
 
@@ -1110,6 +1144,168 @@ export function useAppData(
     await loadAllData();
   };
 
+  // ==================== WEEKLY SHIFT VERIFICATION OPERATIONS ====================
+
+  const signOffShift = async (
+    weekStartDate: string,
+    projectId: number,
+    shiftPatternId: string,
+    shiftPatternName: string,
+    employeeCount: number,
+    assignmentCount: number,
+    managerId: string,
+    managerName: string,
+    managerRole: UserRole,
+    notes?: string
+  ) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Get week end date (Friday)
+    const weekEndDate = new Date(weekStartDate);
+    weekEndDate.setDate(weekEndDate.getDate() + 6);
+    const weekEndDateStr = weekEndDate.toISOString().split('T')[0];
+
+    // Create signed off shift object
+    const signedShift: SignedOffShift = {
+      shiftPatternId,
+      shiftPatternName,
+      signedOffBy: managerId,
+      signedOffByName: managerName,
+      signedOffAt: new Date().toISOString(),
+      employeeCount,
+      totalAssignments: assignmentCount,
+      notes,
+    };
+
+    // Check if record exists for this week
+    const { data: existing, error: fetchError } = await supabase
+      .from('weekly_shift_verification')
+      .select('*')
+      .eq('organisation_id', organisationId)
+      .eq('project_id', projectId)
+      .eq('week_start_date', weekStartDate)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows
+      throw fetchError;
+    }
+
+    if (existing) {
+      // Update existing record - add this shift to signed_off_shifts array
+      const currentShifts = (existing.signed_off_shifts as SignedOffShift[]) || [];
+
+      // Remove any existing sign-off for this pattern (replace)
+      const filteredShifts = currentShifts.filter(
+        (s) => s.shiftPatternId !== shiftPatternId
+      );
+      const updatedShifts = [...filteredShifts, signedShift];
+
+      const { error: updateError } = await supabase
+        .from('weekly_shift_verification')
+        .update({
+          signed_off_shifts: updatedShifts,
+        })
+        .eq('id', existing.id);
+
+      if (updateError) throw updateError;
+    } else {
+      // Create new record
+      // TODO: Get period metadata dynamically
+      const { error: insertError } = await supabase
+        .from('weekly_shift_verification')
+        .insert({
+          id: crypto.randomUUID(),
+          organisation_id: organisationId,
+          project_id: projectId,
+          week_start_date: weekStartDate,
+          week_end_date: weekEndDateStr,
+          year: new Date(weekStartDate).getFullYear(),
+          period_number: 1, // TODO: Calculate from week start date
+          week_in_period: 1, // TODO: Calculate from week start date
+          signed_off_shifts: [signedShift],
+          is_fully_signed_off: false,
+        });
+
+      if (insertError) throw insertError;
+    }
+
+    await loadAllData();
+  };
+
+  const unsignShift = async (
+    weekStartDate: string,
+    projectId: number,
+    shiftPatternId: string
+  ) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Get existing record
+    const { data: existing, error: fetchError } = await supabase
+      .from('weekly_shift_verification')
+      .select('*')
+      .eq('organisation_id', organisationId)
+      .eq('project_id', projectId)
+      .eq('week_start_date', weekStartDate)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!existing) throw new Error('Verification record not found');
+
+    // Remove the shift from signed_off_shifts array
+    const currentShifts = (existing.signed_off_shifts as SignedOffShift[]) || [];
+    const updatedShifts = currentShifts.filter(
+      (s) => s.shiftPatternId !== shiftPatternId
+    );
+
+    const { error: updateError } = await supabase
+      .from('weekly_shift_verification')
+      .update({
+        signed_off_shifts: updatedShifts,
+        is_fully_signed_off: false, // Unsigning a shift means week is no longer complete
+      })
+      .eq('id', existing.id);
+
+    if (updateError) throw updateError;
+    await loadAllData();
+  };
+
+  const completeWeek = async (
+    weekStartDate: string,
+    projectId: number,
+    managerId: string,
+    managerName: string,
+    managerRole: UserRole
+  ) => {
+    if (!supabase || !organisationId) throw new Error('Not configured');
+
+    // Get existing record
+    const { data: existing, error: fetchError } = await supabase
+      .from('weekly_shift_verification')
+      .select('*')
+      .eq('organisation_id', organisationId)
+      .eq('project_id', projectId)
+      .eq('week_start_date', weekStartDate)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!existing) throw new Error('Verification record not found');
+
+    // Mark as fully signed off
+    const { error: updateError } = await supabase
+      .from('weekly_shift_verification')
+      .update({
+        is_fully_signed_off: true,
+        completed_by_id: managerId,
+        completed_by_name: managerName,
+        completed_by_role: managerRole,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+
+    if (updateError) throw updateError;
+    await loadAllData();
+  };
+
   // ==================== PROJECT MEMBER OPERATIONS (ACCESS CONTROL) ====================
 
   const addProjectMember = async (projectId: number, memberUserId: string, role: ProjectMemberRole) => {
@@ -1203,6 +1399,9 @@ export function useAppData(
     createWorkVerification,
     updateWorkVerification,
     deleteWorkVerification,
+    signOffShift,
+    unsignShift,
+    completeWeek,
     addProjectMember,
     updateProjectMemberRole,
     removeProjectMember,
