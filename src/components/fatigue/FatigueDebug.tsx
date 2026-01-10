@@ -439,11 +439,19 @@ export default function FatigueDebug() {
                       slotProps={{ htmlInput: { style: { padding: '4px 8px' } } }}
                     />
                   </TableCell>
-                  {/* Results columns */}
-                  <TableCell sx={{ backgroundColor: '#e3f2fd', fontWeight: 'bold', color: result && result.riskIndex >= 1.2 ? '#d32f2f' : result && result.riskIndex >= 1.1 ? '#ed6c02' : 'inherit' }}>
+                  {/* Results columns - Per NR/L2/OHS/003: FRI >1.6 = RED breach, FGI >35 day/45 night = YELLOW Level 2 */}
+                  <TableCell sx={{
+                    backgroundColor: '#e3f2fd',
+                    fontWeight: 'bold',
+                    color: result && result.riskIndex > 1.6 ? '#d32f2f' : 'inherit' // Red if >1.6 (breach)
+                  }}>
                     {result ? result.riskIndex.toFixed(3) : '-'}
                   </TableCell>
-                  <TableCell sx={{ backgroundColor: '#fff3e0', fontWeight: 'bold', color: result && result.fatigueIndex >= 35 ? '#d32f2f' : result && result.fatigueIndex >= 25 ? '#ed6c02' : 'inherit' }}>
+                  <TableCell sx={{
+                    backgroundColor: '#fff3e0',
+                    fontWeight: 'bold',
+                    color: result && result.fatigueIndex > 35 ? '#ed6c02' : result && result.fatigueIndex > 30 ? '#84cc16' : 'inherit' // Yellow if >35 (Level 2), Light green if >30 (Good Practice)
+                  }}>
                     {result ? result.fatigueIndex.toFixed(1) : '-'}
                   </TableCell>
                   <TableCell sx={{ backgroundColor: '#e8f5e9' }}>
