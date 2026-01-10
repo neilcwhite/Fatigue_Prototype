@@ -14,6 +14,8 @@ import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 import { Home, Calendar, Users, User, BarChart, Settings, ChevronLeft, ChevronRight, HelpCircle, FileText } from '@/components/ui/Icons';
 import SettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import type { UserRole } from '@/lib/types';
+import { RoleImpersonationDropdown } from '@/components/admin/RoleImpersonationDropdown';
 
 export type ViewMode = 'dashboard' | 'planning' | 'person' | 'summary' | 'fatigue' | 'teams' | 'assessments' | 'admin';
 
@@ -44,6 +46,11 @@ interface SidebarProps {
   selectedProjectName?: string;
   selectedEmployeeName?: string;
   onOpenHelp?: () => void;
+  // Role impersonation for super admins
+  currentRole?: UserRole;
+  impersonatedRole?: UserRole | null;
+  onRoleChange?: (role: UserRole | null) => void;
+  isSuperAdmin?: boolean;
 }
 
 const DRAWER_WIDTH_EXPANDED = 220;
