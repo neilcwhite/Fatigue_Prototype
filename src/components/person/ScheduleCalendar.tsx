@@ -68,12 +68,12 @@ const getWorstViolationCellSx = (
   // Check FGI for Level 2 (requires FAMP)
   const level2Threshold = isNight ? 45 : 35;
   if (fgi !== null && fgi !== undefined && fgi > level2Threshold) {
-    return { bgcolor: '#ffedd5', borderColor: '#f97316' }; // Amber - Level 2 FGI
+    return { bgcolor: '#fed7aa', borderColor: '#ea580c' }; // Orange - Level 2 FGI (more distinct from yellow)
   }
 
   // Level 2 from other violations (>72h weekly)
   if (violationSeverity === 'level2') {
-    return { bgcolor: '#ffedd5', borderColor: '#f97316' }; // Amber - Level 2
+    return { bgcolor: '#fed7aa', borderColor: '#ea580c' }; // Orange - Level 2 (more distinct from yellow)
   }
 
   // Level 1 (60-72h weekly)

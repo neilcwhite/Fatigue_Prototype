@@ -224,11 +224,9 @@ export function PersonView({
           return aDate >= windowStart && aDate <= windowEnd;
         });
       } else if (violation.type === 'INSUFFICIENT_REST') {
-        const violationDate = new Date(violation.date);
-        const prevDate = new Date(violationDate);
-        prevDate.setDate(prevDate.getDate() - 1);
-        const prevDateStr = prevDate.toISOString().split('T')[0];
-        violationAssignments = empAssignments.filter(a => a.date === violation.date || a.date === prevDateStr);
+        // ONLY apply to the violation date (the day with insufficient rest)
+        // Don't apply to the previous day - that day is fine, it's the NEXT day that has the problem
+        violationAssignments = empAssignments.filter(a => a.date === violation.date);
       } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING' || violation.type === 'CONSECUTIVE_DAYS_WARNING') {
         // ONLY apply to the violation date, NOT all related dates
         // Related dates are just context - the violation is on the specific day that crosses the threshold
@@ -265,11 +263,9 @@ export function PersonView({
           return aDate >= windowStart && aDate <= windowEnd;
         });
       } else if (violation.type === 'INSUFFICIENT_REST') {
-        const violationDate = new Date(violation.date);
-        const prevDate = new Date(violationDate);
-        prevDate.setDate(prevDate.getDate() - 1);
-        const prevDateStr = prevDate.toISOString().split('T')[0];
-        violationAssignments = empAssignments.filter(a => a.date === violation.date || a.date === prevDateStr);
+        // ONLY apply to the violation date (the day with insufficient rest)
+        // Don't apply to the previous day - that day is fine, it's the NEXT day that has the problem
+        violationAssignments = empAssignments.filter(a => a.date === violation.date);
       } else if (violation.type === 'MAX_CONSECUTIVE_DAYS' || violation.type === 'MAX_CONSECUTIVE_NIGHTS' || violation.type === 'CONSECUTIVE_NIGHTS_WARNING' || violation.type === 'CONSECUTIVE_DAYS_WARNING') {
         // ONLY apply to the violation date, NOT all related dates
         // Related dates are just context - the violation is on the specific day that crosses the threshold
