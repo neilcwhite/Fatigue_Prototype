@@ -302,10 +302,8 @@ export function ScheduleCalendar({
               <Typography variant="caption" fontWeight={500} color="text.secondary">
                 Cell (FRI):
               </Typography>
-              <Chip label="<1.0" size="small" sx={{ bgcolor: '#bbf7d0', fontSize: '0.6rem', height: 18 }} />
-              <Chip label="1.0-1.1" size="small" sx={{ bgcolor: '#fef3c7', fontSize: '0.6rem', height: 18 }} />
-              <Chip label="1.1-1.2" size="small" sx={{ bgcolor: '#fed7aa', fontSize: '0.6rem', height: 18 }} />
-              <Chip label=">=1.2" size="small" sx={{ bgcolor: '#fecaca', fontSize: '0.6rem', height: 18 }} />
+              <Chip label="≤1.6" size="small" sx={{ bgcolor: '#bbf7d0', fontSize: '0.6rem', height: 18 }} title="FRI ≤1.6 = OK (Compliant)" />
+              <Chip label=">1.6" size="small" sx={{ bgcolor: '#fecaca', fontSize: '0.6rem', height: 18 }} title="FRI >1.6 = BREACH (Stop work)" />
             </Box>
           )}
         </Box>
