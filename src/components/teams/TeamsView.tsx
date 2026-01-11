@@ -27,7 +27,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Checkbox from '@mui/material/Checkbox';
 import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
-import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X, Upload } from '@/components/ui/Icons';
+import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X, Upload, Settings } from '@/components/ui/Icons';
 import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser, Employee, CSVImportRow } from '@/lib/types';
 import { useNotification } from '@/hooks/useNotification';
 import { CSVImportModal } from '@/components/admin/CSVImportModal';
@@ -79,12 +79,16 @@ export function TeamsView({
   // Assignment modal state
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningTeam, setAssigningTeam] = useState<TeamCamel | null>(null);
+  const [assignmentWorkflow, setAssignmentWorkflow] = useState<'select' | 'existing' | 'oneoff' | 'create'>('select');
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [assignStartDate, setAssignStartDate] = useState('');
   const [assignEndDate, setAssignEndDate] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
+
+  // Day of week selection for one-off shifts
+  const [selectedDays, setSelectedDays] = useState<boolean[]>([true, true, true, true, true, true, true]); // Sun-Sat
 
   // Custom times state for assignment modal
   const [useCustomTimes, setUseCustomTimes] = useState(false);
@@ -232,11 +236,13 @@ export function TeamsView({
 
   const openAssignModal = (team: TeamCamel) => {
     setAssigningTeam(team);
+    setAssignmentWorkflow('select');
     setSelectedProjectId(projects.length > 0 ? projects[0].id : null);
     setSelectedPatternId(null);
     setAssignStartDate('');
     setAssignEndDate('');
     setAssignError(null);
+    setSelectedDays([true, true, true, true, true, true, true]);
     setUseCustomTimes(false);
     setCustomStartTime('07:00');
     setCustomEndTime('19:00');
@@ -375,18 +381,27 @@ export function TeamsView({
     setAssignError(null);
 
     try {
-      // Build list of dates based on pattern schedule
+      // Build list of dates based on workflow and pattern schedule
       const dates: string[] = [];
       const current = new Date(start);
 
-      // If using custom times mode or override, include all dates in range
-      if (isCustomTimesMode || useCustomTimes) {
+      if (assignmentWorkflow === 'oneoff') {
+        // One-off custom shift: use selected days of week
+        while (current <= end) {
+          const dayOfWeek = current.getDay(); // 0 = Sunday
+          if (selectedDays[dayOfWeek]) {
+            dates.push(current.toISOString().split('T')[0]);
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (isCustomTimesMode || useCustomTimes) {
+        // Custom times mode: include all dates in range
         while (current <= end) {
           dates.push(current.toISOString().split('T')[0]);
           current.setDate(current.getDate() + 1);
         }
       } else {
-        // Use pattern's weekly schedule
+        // Existing pattern: use pattern's weekly schedule
         while (current <= end) {
           const dayOfWeek = current.getDay();
           const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
@@ -845,7 +860,7 @@ export function TeamsView({
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Date Range Display */}
+            {/* Team Info */}
             <Alert severity="info" sx={{ py: 0.5 }}>
               <Typography variant="body2">
                 Team assignments for <strong>{assigningTeam?.name}</strong> ({assigningTeam?.memberIds?.length || 0} members)
@@ -858,7 +873,170 @@ export function TeamsView({
               </Alert>
             )}
 
-            {/* Project Selection */}
+            {/* WORKFLOW SELECTION - Step 1 */}
+            {assignmentWorkflow === 'select' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
+                <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+                  How would you like to assign this team?
+                </Typography>
+
+                {/* Option 1: Use Existing Pattern */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    border: 2,
+                    borderColor: 'divider',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                  onClick={() => setAssignmentWorkflow('existing')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Calendar className="w-6 h-6 text-green-600" />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Use Existing Pattern
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Quick assignment using a saved shift pattern with all times and parameters already configured
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Paper>
+
+                {/* Option 2: One-Off Custom Shift */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    border: 2,
+                    borderColor: 'divider',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                  onClick={() => {
+                    setAssignmentWorkflow('oneoff');
+                    setSelectedPatternId(CUSTOM_PATTERN_VALUE);
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Plus className="w-6 h-6 text-blue-600" />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        One-Off Custom Shift
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Define custom times and select specific days of the week (not saved as a pattern)
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Paper>
+
+                {/* Option 3: Create New Pattern First */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    border: 2,
+                    borderColor: 'divider',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                  onClick={() => setAssignmentWorkflow('create')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Settings className="w-6 h-6 text-purple-600" />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Create New Pattern First
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Build a reusable shift pattern in Shift Builder with full configuration options
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Paper>
+              </Box>
+            )}
+
+            {/* CREATE NEW PATTERN WORKFLOW - Navigate to Shift Builder */}
+            {assignmentWorkflow === 'create' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
+                <Alert severity="info">
+                  <Typography variant="body2" fontWeight={600} gutterBottom>
+                    Create Pattern in Shift Builder
+                  </Typography>
+                  <Typography variant="body2">
+                    Click the button below to open Shift Builder where you can create a fully configured shift pattern.
+                    After creating the pattern, return here to assign the team.
+                  </Typography>
+                </Alert>
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => {
+                    // TODO: Navigate to Shift Builder view
+                    // For now, just show message
+                    alert('Navigate to Shift Builder - Implementation pending');
+                  }}
+                  startIcon={<Settings className="w-5 h-5" />}
+                  sx={{
+                    bgcolor: '#9333ea',
+                    '&:hover': { bgcolor: '#7e22ce' },
+                  }}
+                >
+                  Open Shift Builder
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setAssignmentWorkflow('select')}
+                  startIcon={<ChevronLeft className="w-4 h-4" />}
+                >
+                  Back to Options
+                </Button>
+              </Box>
+            )}
+
+            {/* EXISTING PATTERN & ONE-OFF WORKFLOWS - Main Assignment UI */}
+            {(assignmentWorkflow === 'existing' || assignmentWorkflow === 'oneoff') && (
+              <>
+                {/* Back Button */}
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => {
+                    setAssignmentWorkflow('select');
+                    setSelectedPatternId(null);
+                  }}
+                  startIcon={<ChevronLeft className="w-4 h-4" />}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Change Workflow
+                </Button>
+
+                {/* Project Selection */}
             <TextField
               select
               label="Project"
@@ -923,7 +1101,9 @@ export function TeamsView({
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Alert severity="info" sx={{ py: 0.5 }}>
                   <Typography variant="caption">
-                    Enter custom start and end times for these shifts.
+                    {assignmentWorkflow === 'oneoff'
+                      ? 'Define custom shift times and select which days of the week to work.'
+                      : 'Enter custom start and end times for these shifts.'}
                     {customPatternForProject ? (
                       <><br />Using pattern: <strong>{customPatternForProject.name}</strong></>
                     ) : availablePatterns.length > 0 ? (
@@ -951,6 +1131,68 @@ export function TeamsView({
                     slotProps={{ htmlInput: { step: 300 } }}
                   />
                 </Box>
+
+                {/* Day of Week Selector - Only for One-Off Workflow */}
+                {assignmentWorkflow === 'oneoff' && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={600}>
+                      Select Days of Week
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
+                      Choose which days this shift should repeat within the date range
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <Chip
+                          key={day}
+                          label={day}
+                          onClick={() => {
+                            const newDays = [...selectedDays];
+                            newDays[index] = !newDays[index];
+                            setSelectedDays(newDays);
+                          }}
+                          color={selectedDays[index] ? 'primary' : 'default'}
+                          variant={selectedDays[index] ? 'filled' : 'outlined'}
+                          sx={{
+                            cursor: 'pointer',
+                            minWidth: 60,
+                            fontWeight: selectedDays[index] ? 600 : 400,
+                          }}
+                        />
+                      ))}
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setSelectedDays([true, true, true, true, true, true, true])}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setSelectedDays([false, false, true, true, true, true, true])}
+                      >
+                        Weekdays Only
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setSelectedDays([true, true, false, false, false, false, false])}
+                      >
+                        Weekends Only
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => setSelectedDays([false, false, false, false, false, false, false])}
+                      >
+                        Clear All
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
               </Box>
             )}
 
@@ -1165,40 +1407,49 @@ export function TeamsView({
                 <Typography variant="body2">
                   This will create assignments for <strong>{assigningTeam?.memberIds?.length || 0}</strong> team members
                   from <strong>{assignStartDate}</strong> to <strong>{assignEndDate}</strong>{' '}
-                  {isCustomTimesMode || useCustomTimes ? 'on all days in range' : 'on days when the shift pattern is active'}.
+                  {assignmentWorkflow === 'oneoff'
+                    ? 'on selected days of the week'
+                    : isCustomTimesMode || useCustomTimes
+                    ? 'on all days in range'
+                    : 'on days when the shift pattern is active'}.
                 </Typography>
                 <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
                   Employees already assigned individually will be skipped automatically.
                 </Typography>
               </Alert>
             )}
+              </>
+            )}
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => setShowAssignModal(false)} disabled={assigning}>
-            Cancel
+            {assignmentWorkflow === 'select' || assignmentWorkflow === 'create' ? 'Close' : 'Cancel'}
           </Button>
-          <Button
-            onClick={handleBulkAssign}
-            variant="contained"
-            sx={{
-              bgcolor: '#22c55e',
-              '&:hover': {
-                bgcolor: '#16a34a',
-              },
-            }}
-            disabled={
-              assigning ||
-              !selectedProjectId ||
-              !selectedPatternId ||
-              !assignStartDate ||
-              !assignEndDate ||
-              (isCustomTimesMode && availablePatterns.length === 0)
-            }
-            startIcon={assigning ? <CircularProgress size={16} color="inherit" /> : <Calendar className="w-4 h-4" />}
-          >
-            {assigning ? 'Assigning...' : 'Assign Team'}
-          </Button>
+          {(assignmentWorkflow === 'existing' || assignmentWorkflow === 'oneoff') && (
+            <Button
+              onClick={handleBulkAssign}
+              variant="contained"
+              sx={{
+                bgcolor: '#22c55e',
+                '&:hover': {
+                  bgcolor: '#16a34a',
+                },
+              }}
+              disabled={
+                assigning ||
+                !selectedProjectId ||
+                !selectedPatternId ||
+                !assignStartDate ||
+                !assignEndDate ||
+                (isCustomTimesMode && availablePatterns.length === 0) ||
+                (assignmentWorkflow === 'oneoff' && !selectedDays.some(d => d))
+              }
+              startIcon={assigning ? <CircularProgress size={16} color="inherit" /> : <Calendar className="w-4 h-4" />}
+            >
+              {assigning ? 'Assigning...' : 'Assign Team'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
