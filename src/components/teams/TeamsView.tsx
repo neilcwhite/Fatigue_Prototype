@@ -31,6 +31,7 @@ import { ChevronLeft, Plus, Edit2, Trash2, Users, Calendar, X, Upload } from '@/
 import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, AssignmentCamel, SupabaseUser, Employee, CSVImportRow } from '@/lib/types';
 import { useNotification } from '@/hooks/useNotification';
 import { CSVImportModal } from '@/components/admin/CSVImportModal';
+import { toTitleCase } from '@/lib/utils';
 
 interface TeamsViewProps {
   user: SupabaseUser;
@@ -539,9 +540,10 @@ export function TeamsView({
                 label="Team Name"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                placeholder="e.g., Night Shift Team A"
+                placeholder="e.g., C2*** - Night Shift Team A"
                 fullWidth
                 required
+                helperText="Include project number (e.g., C2***) to help identify teams"
               />
 
               <Box sx={{ display: 'flex', gap: 2, height: 400 }}>
@@ -593,7 +595,7 @@ export function TeamsView({
                             onClick={() => addMember(emp.id)}
                           >
                             <ListItemText
-                              primary={emp.name}
+                              primary={toTitleCase(emp.name)}
                               secondary={emp.role || 'No role assigned'}
                               primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
                               secondaryTypographyProps={{ fontSize: '0.75rem' }}
@@ -648,7 +650,7 @@ export function TeamsView({
                             onClick={() => removeMember(emp.id)}
                           >
                             <ListItemText
-                              primary={emp.name}
+                              primary={toTitleCase(emp.name)}
                               secondary={emp.role || 'No role assigned'}
                               primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
                               secondaryTypographyProps={{ fontSize: '0.75rem' }}
@@ -672,7 +674,16 @@ export function TeamsView({
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>
             <Button onClick={() => setShowModal(false)}>Cancel</Button>
-            <Button type="submit" variant="contained" color="secondary">
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{
+                bgcolor: '#22c55e',
+                '&:hover': {
+                  bgcolor: '#16a34a',
+                },
+              }}
+            >
               {editingTeam ? 'Save Changes' : 'Create Team'}
             </Button>
           </DialogActions>
