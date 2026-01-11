@@ -73,6 +73,7 @@ export function TeamsView({
   const [editingTeam, setEditingTeam] = useState<TeamCamel | null>(null);
   const [teamName, setTeamName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Assignment modal state
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -108,6 +109,7 @@ export function TeamsView({
     setEditingTeam(null);
     setTeamName('');
     setSelectedMembers([]);
+    setSearchQuery('');
     setShowModal(true);
   };
 
@@ -115,6 +117,7 @@ export function TeamsView({
     setEditingTeam(team);
     setTeamName(team.name);
     setSelectedMembers(team.memberIds || []);
+    setSearchQuery('');
     setShowModal(true);
   };
 
@@ -159,6 +162,28 @@ export function TeamsView({
         : [...prev, employeeId]
     );
   };
+
+  const addMember = (employeeId: number) => {
+    if (!selectedMembers.includes(employeeId)) {
+      setSelectedMembers(prev => [...prev, employeeId]);
+    }
+  };
+
+  const removeMember = (employeeId: number) => {
+    setSelectedMembers(prev => prev.filter(id => id !== employeeId));
+  };
+
+  // Filter available employees (not in team, matching search)
+  const availableEmployees = employees.filter(emp => {
+    const notInTeam = !selectedMembers.includes(emp.id);
+    const matchesSearch = searchQuery.trim() === '' ||
+      emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (emp.role && emp.role.toLowerCase().includes(searchQuery.toLowerCase()));
+    return notInTeam && matchesSearch;
+  });
+
+  // Get team members
+  const teamMembers = employees.filter(emp => selectedMembers.includes(emp.id));
 
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -502,14 +527,14 @@ export function TeamsView({
         )}
       </Box>
 
-      {/* Create/Edit Team Modal */}
-      <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
+      {/* Create/Edit Team Modal - Drag & Drop Interface */}
+      <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="md" fullWidth>
         <DialogTitle>
           {editingTeam ? 'Edit Team' : 'Create Team'}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent dividers>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               <TextField
                 label="Team Name"
                 value={teamName}
@@ -519,38 +544,130 @@ export function TeamsView({
                 required
               />
 
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Select Members ({selectedMembers.length} selected)
-                </Typography>
-                <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto' }}>
-                  {employees.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-                      No employees available
-                    </Typography>
-                  ) : (
-                    <List dense>
-                      {employees.map(emp => (
-                        <ListItem key={emp.id} disablePadding>
-                          <ListItemButton onClick={() => toggleMember(emp.id)}>
-                            <ListItemIcon>
-                              <Checkbox
-                                edge="start"
-                                checked={selectedMembers.includes(emp.id)}
-                                disableRipple
-                              />
-                            </ListItemIcon>
+              <Box sx={{ display: 'flex', gap: 2, height: 400 }}>
+                {/* Available Employees Panel */}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Available Employees ({availableEmployees.length})
+                  </Typography>
+
+                  <TextField
+                    placeholder="Search employees..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    size="small"
+                    fullWidth
+                  />
+
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      flex: 1,
+                      overflow: 'auto',
+                      bgcolor: 'grey.50',
+                    }}
+                  >
+                    {availableEmployees.length === 0 ? (
+                      <Box sx={{ p: 4, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {searchQuery ? 'No employees match your search' : 'No employees available'}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <List dense sx={{ p: 1 }}>
+                        {availableEmployees.map(emp => (
+                          <ListItem
+                            key={emp.id}
+                            sx={{
+                              mb: 0.5,
+                              bgcolor: 'white',
+                              border: 1,
+                              borderColor: 'grey.300',
+                              borderRadius: 1,
+                              cursor: 'pointer',
+                              '&:hover': {
+                                bgcolor: 'primary.50',
+                                borderColor: 'primary.300',
+                              },
+                            }}
+                            onClick={() => addMember(emp.id)}
+                          >
                             <ListItemText
                               primary={emp.name}
-                              secondary={emp.role}
+                              secondary={emp.role || 'No role assigned'}
+                              primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                              secondaryTypographyProps={{ fontSize: '0.75rem' }}
                             />
-                          </ListItemButton>
-                        </ListItem>
-                      ))}
-                    </List>
-                  )}
-                </Paper>
+                            <Plus className="w-4 h-4 text-green-600" />
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                  </Paper>
+                </Box>
+
+                {/* Team Members Panel */}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Team Members ({teamMembers.length})
+                  </Typography>
+
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      flex: 1,
+                      overflow: 'auto',
+                      bgcolor: 'success.50',
+                      borderColor: 'success.300',
+                      mt: 4.5, // Align with available list (after search box)
+                    }}
+                  >
+                    {teamMembers.length === 0 ? (
+                      <Box sx={{ p: 4, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Click employees from the left to add them to this team
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <List dense sx={{ p: 1 }}>
+                        {teamMembers.map(emp => (
+                          <ListItem
+                            key={emp.id}
+                            sx={{
+                              mb: 0.5,
+                              bgcolor: 'white',
+                              border: 1,
+                              borderColor: 'success.300',
+                              borderRadius: 1,
+                              cursor: 'pointer',
+                              '&:hover': {
+                                bgcolor: 'error.50',
+                                borderColor: 'error.300',
+                              },
+                            }}
+                            onClick={() => removeMember(emp.id)}
+                          >
+                            <ListItemText
+                              primary={emp.name}
+                              secondary={emp.role || 'No role assigned'}
+                              primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: 500 }}
+                              secondaryTypographyProps={{ fontSize: '0.75rem' }}
+                            />
+                            <X className="w-4 h-4 text-red-600" />
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                  </Paper>
+                </Box>
               </Box>
+
+              <Alert severity="info" sx={{ py: 0.5 }}>
+                <Typography variant="caption">
+                  Click an employee from the left panel to add them to the team. Click a team member on the right to remove them.
+                  Employees can be in multiple teams.
+                </Typography>
+              </Alert>
             </Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>
