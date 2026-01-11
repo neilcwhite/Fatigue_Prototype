@@ -86,6 +86,25 @@ export function TeamsView({
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
 
+  // Custom times state for assignment modal
+  const [useCustomTimes, setUseCustomTimes] = useState(false);
+  const [customStartTime, setCustomStartTime] = useState('07:00');
+  const [customEndTime, setCustomEndTime] = useState('19:00');
+
+  // Fatigue parameters state for assignment modal
+  const [commuteIn, setCommuteIn] = useState<number | ''>('');
+  const [commuteOut, setCommuteOut] = useState<number | ''>('');
+  const [workload, setWorkload] = useState<number | ''>('');
+  const [attention, setAttention] = useState<number | ''>('');
+  const [breakFrequency, setBreakFrequency] = useState<number | ''>('');
+  const [breakLength, setBreakLength] = useState<number | ''>('');
+  const [continuousWork, setContinuousWork] = useState<number | ''>('');
+  const [breakAfterContinuous, setBreakAfterContinuous] = useState<number | ''>('');
+
+  // Special value for "enter custom times" option
+  const CUSTOM_PATTERN_VALUE = '__CUSTOM__';
+  const isCustomTimesMode = selectedPatternId === CUSTOM_PATTERN_VALUE;
+
   // Add Employee modal state
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [newEmployeeName, setNewEmployeeName] = useState('');
@@ -218,12 +237,72 @@ export function TeamsView({
     setAssignStartDate('');
     setAssignEndDate('');
     setAssignError(null);
+    setUseCustomTimes(false);
+    setCustomStartTime('07:00');
+    setCustomEndTime('19:00');
+    setCommuteIn('');
+    setCommuteOut('');
+    setWorkload('');
+    setAttention('');
+    setBreakFrequency('');
+    setBreakLength('');
+    setContinuousWork('');
+    setBreakAfterContinuous('');
     setShowAssignModal(true);
   };
 
   const projectPatterns = selectedProjectId
     ? shiftPatterns.filter(sp => sp.projectId === selectedProjectId)
     : [];
+
+  // Find a "Custom" pattern for the selected project (to use when entering custom times)
+  const customPatternForProject = selectedProjectId
+    ? shiftPatterns.find(
+        p => p.projectId === selectedProjectId && p.name.toLowerCase().startsWith('custom')
+      )
+    : null;
+
+  const availablePatterns = projectPatterns;
+
+  const selectedPattern = isCustomTimesMode ? null : shiftPatterns.find(p => p.id === selectedPatternId);
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  // Get the pattern to use for defaults (works in both normal and custom mode)
+  const patternForDefaults = selectedPattern || (isCustomTimesMode ? (customPatternForProject || availablePatterns[0]) : null);
+
+  // Handler to apply pattern defaults to fatigue parameters
+  const handleApplyPatternDefaults = () => {
+    if (!patternForDefaults) return;
+
+    // Apply commute defaults
+    if (patternForDefaults.commuteTime) {
+      setCommuteIn(Math.floor(patternForDefaults.commuteTime / 2));
+      setCommuteOut(Math.ceil(patternForDefaults.commuteTime / 2));
+    }
+
+    // Apply other defaults
+    if (patternForDefaults.workload) setWorkload(patternForDefaults.workload);
+    if (patternForDefaults.attention) setAttention(patternForDefaults.attention);
+    if (patternForDefaults.breakFrequency) setBreakFrequency(patternForDefaults.breakFrequency);
+    if (patternForDefaults.breakLength) setBreakLength(patternForDefaults.breakLength);
+    if (patternForDefaults.continuousWork) setContinuousWork(patternForDefaults.continuousWork);
+    if (patternForDefaults.breakAfterContinuous) setBreakAfterContinuous(patternForDefaults.breakAfterContinuous);
+  };
+
+  const handleProjectChange = (projectId: number) => {
+    setSelectedProjectId(projectId);
+    setSelectedPatternId(null); // Reset pattern when project changes
+    setAssignError(null);
+  };
+
+  const handlePatternChange = (patternId: string) => {
+    setSelectedPatternId(patternId);
+    setAssignError(null);
+    // Reset custom times when pattern changes
+    if (patternId !== CUSTOM_PATTERN_VALUE) {
+      setUseCustomTimes(false);
+    }
+  };
 
   const handleCSVImport = async (rows: CSVImportRow[]) => {
     try {
@@ -248,8 +327,23 @@ export function TeamsView({
   };
 
   const handleBulkAssign = async () => {
-    if (!assigningTeam || !selectedProjectId || !selectedPatternId || !assignStartDate || !assignEndDate) {
-      setAssignError('Please fill in all fields');
+    if (!assigningTeam || !selectedProjectId || !assignStartDate || !assignEndDate) {
+      setAssignError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate pattern selection
+    if (isCustomTimesMode) {
+      if (!customStartTime || !customEndTime) {
+        setAssignError('Please enter both start and end times');
+        return;
+      }
+      if (availablePatterns.length === 0) {
+        setAssignError('No shift patterns exist for this project. Please create one first in the Planning view.');
+        return;
+      }
+    } else if (!selectedPatternId) {
+      setAssignError('Please select a shift pattern');
       return;
     }
 
@@ -266,7 +360,12 @@ export function TeamsView({
       return;
     }
 
-    const pattern = shiftPatterns.find(sp => sp.id === selectedPatternId);
+    // Determine which pattern ID to use
+    const patternIdToUse = isCustomTimesMode
+      ? (customPatternForProject?.id || availablePatterns[0]?.id)
+      : selectedPatternId;
+
+    const pattern = shiftPatterns.find(sp => sp.id === patternIdToUse);
     if (!pattern) {
       setAssignError('Shift pattern not found');
       return;
@@ -276,18 +375,29 @@ export function TeamsView({
     setAssignError(null);
 
     try {
+      // Build list of dates based on pattern schedule
       const dates: string[] = [];
       const current = new Date(start);
-      while (current <= end) {
-        const dayOfWeek = current.getDay();
-        const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
-          ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dayKey = dayNames[dayOfWeek];
 
-        if (pattern.weeklySchedule && pattern.weeklySchedule[dayKey]) {
+      // If using custom times mode or override, include all dates in range
+      if (isCustomTimesMode || useCustomTimes) {
+        while (current <= end) {
           dates.push(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
         }
-        current.setDate(current.getDate() + 1);
+      } else {
+        // Use pattern's weekly schedule
+        while (current <= end) {
+          const dayOfWeek = current.getDay();
+          const dayNames: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] =
+            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const dayKey = dayNames[dayOfWeek];
+
+          if (pattern.weeklySchedule && pattern.weeklySchedule[dayKey]) {
+            dates.push(current.toISOString().split('T')[0]);
+          }
+          current.setDate(current.getDate() + 1);
+        }
       }
 
       if (dates.length === 0) {
@@ -296,20 +406,48 @@ export function TeamsView({
         return;
       }
 
+      // Determine if we need custom times
+      const needsCustomTimes = isCustomTimesMode || useCustomTimes;
+
       let created = 0;
+      let skipped = 0;
+
       for (const employeeId of memberIds) {
         for (const date of dates) {
-          await onCreateAssignment({
-            employeeId,
-            projectId: selectedProjectId,
-            shiftPatternId: selectedPatternId,
-            date,
-          });
-          created++;
+          try {
+            await onCreateAssignment({
+              employeeId,
+              projectId: selectedProjectId,
+              shiftPatternId: patternIdToUse,
+              date,
+              customStartTime: needsCustomTimes ? customStartTime : undefined,
+              customEndTime: needsCustomTimes ? customEndTime : undefined,
+              commuteIn: commuteIn !== '' ? commuteIn : undefined,
+              commuteOut: commuteOut !== '' ? commuteOut : undefined,
+              workload: workload !== '' ? workload : undefined,
+              attention: attention !== '' ? attention : undefined,
+              breakFrequency: breakFrequency !== '' ? breakFrequency : undefined,
+              breakLength: breakLength !== '' ? breakLength : undefined,
+              continuousWork: continuousWork !== '' ? continuousWork : undefined,
+              breakAfterContinuous: breakAfterContinuous !== '' ? breakAfterContinuous : undefined,
+            });
+            created++;
+          } catch (err) {
+            // If assignment already exists, skip it silently (user requested this)
+            if (err instanceof Error && err.message.includes('already assigned')) {
+              skipped++;
+            } else {
+              throw err; // Re-throw other errors
+            }
+          }
         }
       }
 
-      showSuccess(`Created ${created} assignments for ${memberIds.length} team members over ${dates.length} days`);
+      const message = skipped > 0
+        ? `Created ${created} assignments (skipped ${skipped} duplicate${skipped !== 1 ? 's' : ''}) for ${memberIds.length} team members over ${dates.length} days`
+        : `Created ${created} assignments for ${memberIds.length} team members over ${dates.length} days`;
+
+      showSuccess(message);
       setShowAssignModal(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create assignments';
@@ -690,11 +828,13 @@ export function TeamsView({
         </form>
       </Dialog>
 
-      {/* Assignment Modal */}
-      <Dialog open={showAssignModal} onClose={() => setShowAssignModal(false)} maxWidth="sm" fullWidth>
+      {/* Assignment Modal - Full AddShiftModal Experience */}
+      <Dialog open={showAssignModal} onClose={() => setShowAssignModal(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
-            Assign Team to Shift Pattern
+            <Typography variant="h6" fontWeight={600}>
+              Assign Team to Shift Pattern
+            </Typography>
             <Typography variant="body2" color="text.secondary">
               Assigning: <strong>{assigningTeam?.name}</strong> ({assigningTeam?.memberIds?.length || 0} members)
             </Typography>
@@ -703,18 +843,27 @@ export function TeamsView({
             <X className="w-5 h-5" />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            {assignError && <Alert severity="error">{assignError}</Alert>}
+        <DialogContent>
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Date Range Display */}
+            <Alert severity="info" sx={{ py: 0.5 }}>
+              <Typography variant="body2">
+                Team assignments for <strong>{assigningTeam?.name}</strong> ({assigningTeam?.memberIds?.length || 0} members)
+              </Typography>
+            </Alert>
 
+            {assignError && (
+              <Alert severity="error" sx={{ py: 0.5 }}>
+                {assignError}
+              </Alert>
+            )}
+
+            {/* Project Selection */}
             <TextField
               select
               label="Project"
               value={selectedProjectId || ''}
-              onChange={(e) => {
-                setSelectedProjectId(Number(e.target.value));
-                setSelectedPatternId(null);
-              }}
+              onChange={(e) => handleProjectChange(Number(e.target.value))}
               fullWidth
               required
             >
@@ -724,28 +873,88 @@ export function TeamsView({
               ))}
             </TextField>
 
+            {/* Shift Pattern Selection with Custom Times Option */}
             <TextField
               select
               label="Shift Pattern"
               value={selectedPatternId || ''}
-              onChange={(e) => setSelectedPatternId(e.target.value)}
+              onChange={(e) => handlePatternChange(e.target.value)}
               fullWidth
               required
               disabled={!selectedProjectId}
             >
-              <MenuItem value="">Select a shift pattern...</MenuItem>
-              {projectPatterns.map(sp => (
-                <MenuItem key={sp.id} value={sp.id}>
-                  {sp.name} ({sp.startTime} - {sp.endTime})
-                </MenuItem>
-              ))}
+              {!selectedProjectId ? (
+                <MenuItem disabled value="">Select a project first</MenuItem>
+              ) : (
+                [
+                  // Custom times option - always available
+                  <MenuItem key="__custom__" value={CUSTOM_PATTERN_VALUE}>
+                    Enter Custom Times
+                    <Chip label="Manual" size="small" color="secondary" sx={{ height: 18, fontSize: '0.65rem', ml: 1 }} />
+                  </MenuItem>,
+                  // Divider
+                  ...(availablePatterns.length > 0 ? [
+                    <MenuItem key="__divider__" disabled value="" sx={{ borderTop: 1, borderColor: 'divider', mt: 0.5, pt: 1 }}>
+                      <Typography variant="caption" color="text.secondary">— or select a pattern —</Typography>
+                    </MenuItem>
+                  ] : []),
+                  // Existing patterns
+                  ...availablePatterns.map((pattern) => (
+                    <MenuItem key={pattern.id} value={pattern.id}>
+                      {pattern.name}
+                      {pattern.isNight && <Chip label="Night" size="small" color="info" sx={{ height: 18, fontSize: '0.65rem', ml: 1 }} />}
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                        {pattern.startTime || '?'} - {pattern.endTime || '?'}
+                      </Typography>
+                    </MenuItem>
+                  ))
+                ]
+              )}
             </TextField>
+
             {selectedProjectId && projectPatterns.length === 0 && (
               <Alert severity="warning" variant="outlined">
                 No shift patterns defined for this project. Create one in Planning view first.
               </Alert>
             )}
 
+            {/* Custom Times Mode - time inputs shown immediately */}
+            {isCustomTimesMode && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Alert severity="info" sx={{ py: 0.5 }}>
+                  <Typography variant="caption">
+                    Enter custom start and end times for these shifts.
+                    {customPatternForProject ? (
+                      <><br />Using pattern: <strong>{customPatternForProject.name}</strong></>
+                    ) : availablePatterns.length > 0 ? (
+                      <><br />Using pattern: <strong>{availablePatterns[0].name}</strong> (with custom times)</>
+                    ) : (
+                      <><br /><strong>Warning:</strong> No shift patterns exist for this project. Create one in Planning view first.</>
+                    )}
+                  </Typography>
+                </Alert>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Start Time"
+                    type="time"
+                    value={customStartTime}
+                    onChange={(e) => setCustomStartTime(e.target.value)}
+                    fullWidth
+                    slotProps={{ htmlInput: { step: 300 } }}
+                  />
+                  <TextField
+                    label="End Time"
+                    type="time"
+                    value={customEndTime}
+                    onChange={(e) => setCustomEndTime(e.target.value)}
+                    fullWidth
+                    slotProps={{ htmlInput: { step: 300 } }}
+                  />
+                </Box>
+              </Box>
+            )}
+
+            {/* Date Range Selection */}
             <Grid container spacing={2}>
               <Grid size={{ xs: 6 }}>
                 <TextField
@@ -771,25 +980,222 @@ export function TeamsView({
               </Grid>
             </Grid>
 
+            {/* Fatigue Parameters - shown when pattern is selected OR in custom mode */}
+            {(selectedPatternId || isCustomTimesMode) && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Fatigue Parameters (Optional Overrides)
+                  </Typography>
+                  {patternForDefaults && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleApplyPatternDefaults}
+                    >
+                      Apply Pattern Defaults
+                    </Button>
+                  )}
+                </Box>
+
+                {/* Show pattern defaults info */}
+                {patternForDefaults && (
+                  <Alert severity="info" sx={{ py: 0.5 }}>
+                    <Typography variant="caption" fontWeight={600}>
+                      Pattern Defaults from "{patternForDefaults.name}":
+                    </Typography>
+                    <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                      Commute: {patternForDefaults.commuteTime ? `${Math.floor(patternForDefaults.commuteTime / 2)}min in, ${Math.ceil(patternForDefaults.commuteTime / 2)}min out` : 'Not set'} •{' '}
+                      Workload: {patternForDefaults.workload ?? 'Not set'} •{' '}
+                      Attention: {patternForDefaults.attention ?? 'Not set'}
+                      <br />
+                      Break Frequency: {patternForDefaults.breakFrequency ?? 'Not set'}min •{' '}
+                      Break Length: {patternForDefaults.breakLength ?? 'Not set'}min •{' '}
+                      Continuous Work: {patternForDefaults.continuousWork ?? 'Not set'}min •{' '}
+                      Break After: {patternForDefaults.breakAfterContinuous ?? 'Not set'}min
+                    </Typography>
+                  </Alert>
+                )}
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Commute In (mins)"
+                    type="number"
+                    value={commuteIn}
+                    onChange={(e) => setCommuteIn(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ htmlInput: { min: 0, max: 240 } }}
+                    helperText="Travel to work"
+                  />
+                  <TextField
+                    label="Commute Out (mins)"
+                    type="number"
+                    value={commuteOut}
+                    onChange={(e) => setCommuteOut(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ htmlInput: { min: 0, max: 240 } }}
+                    helperText="Travel from work"
+                  />
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Workload"
+                    type="number"
+                    value={workload}
+                    onChange={(e) => setWorkload(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    select
+                    helperText="1=High, 4=Low"
+                  >
+                    <MenuItem value={1}>1 - High</MenuItem>
+                    <MenuItem value={2}>2 - Moderate</MenuItem>
+                    <MenuItem value={3}>3 - Light</MenuItem>
+                    <MenuItem value={4}>4 - Very Light</MenuItem>
+                  </TextField>
+                  <TextField
+                    label="Attention"
+                    type="number"
+                    value={attention}
+                    onChange={(e) => setAttention(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    select
+                    helperText="1=High, 4=Low"
+                  >
+                    <MenuItem value={1}>1 - Continuous</MenuItem>
+                    <MenuItem value={2}>2 - Frequent</MenuItem>
+                    <MenuItem value={3}>3 - Occasional</MenuItem>
+                    <MenuItem value={4}>4 - Minimal</MenuItem>
+                  </TextField>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Break Frequency (mins)"
+                    type="number"
+                    value={breakFrequency}
+                    onChange={(e) => setBreakFrequency(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ htmlInput: { min: 30, max: 480 } }}
+                    helperText="Time between breaks"
+                  />
+                  <TextField
+                    label="Break Length (mins)"
+                    type="number"
+                    value={breakLength}
+                    onChange={(e) => setBreakLength(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ htmlInput: { min: 5, max: 120 } }}
+                    helperText="Duration of each break"
+                  />
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Continuous Work (mins)"
+                    type="number"
+                    value={continuousWork}
+                    onChange={(e) => setContinuousWork(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ htmlInput: { min: 30, max: 720 } }}
+                    helperText="Max continuous work time"
+                  />
+                  <TextField
+                    label="Break After Continuous (mins)"
+                    type="number"
+                    value={breakAfterContinuous}
+                    onChange={(e) => setBreakAfterContinuous(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ htmlInput: { min: 5, max: 120 } }}
+                    helperText="Rest after continuous work"
+                  />
+                </Box>
+              </Box>
+            )}
+
+            {/* Selected Pattern Info */}
+            {selectedPattern && !isCustomTimesMode && (
+              <Alert severity="success" sx={{ py: 0.5 }}>
+                <Typography variant="caption">
+                  <strong>{selectedPattern.name}</strong> ({selectedPattern.dutyType})
+                  {selectedPattern.isNight && ' - Night Shift'}
+                  <br />
+                  Default times: {selectedPattern.startTime || '?'} - {selectedPattern.endTime || '?'}
+                </Typography>
+              </Alert>
+            )}
+
+            {/* Custom Times Toggle - only for existing patterns */}
+            {selectedPatternId && !isCustomTimesMode && (
+              <Box>
+                <Button
+                  variant={useCustomTimes ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => setUseCustomTimes(!useCustomTimes)}
+                >
+                  {useCustomTimes ? 'Using Custom Times' : 'Override Times'}
+                </Button>
+
+                {useCustomTimes && (
+                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <TextField
+                      label="Start Time"
+                      type="time"
+                      value={customStartTime}
+                      onChange={(e) => setCustomStartTime(e.target.value)}
+                      fullWidth
+                      slotProps={{ htmlInput: { step: 300 } }}
+                    />
+                    <TextField
+                      label="End Time"
+                      type="time"
+                      value={customEndTime}
+                      onChange={(e) => setCustomEndTime(e.target.value)}
+                      fullWidth
+                      slotProps={{ htmlInput: { step: 300 } }}
+                    />
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            {/* Summary Info */}
             {selectedPatternId && assignStartDate && assignEndDate && (
               <Alert severity="info" variant="outlined">
-                This will create assignments for <strong>{assigningTeam?.memberIds?.length || 0}</strong> team members
-                from <strong>{assignStartDate}</strong> to <strong>{assignEndDate}</strong> on days
-                when the shift pattern is active.
+                <Typography variant="body2">
+                  This will create assignments for <strong>{assigningTeam?.memberIds?.length || 0}</strong> team members
+                  from <strong>{assignStartDate}</strong> to <strong>{assignEndDate}</strong>{' '}
+                  {isCustomTimesMode || useCustomTimes ? 'on all days in range' : 'on days when the shift pattern is active'}.
+                </Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                  Employees already assigned individually will be skipped automatically.
+                </Typography>
               </Alert>
             )}
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, bgcolor: 'action.hover' }}>
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => setShowAssignModal(false)} disabled={assigning}>
             Cancel
           </Button>
           <Button
             onClick={handleBulkAssign}
             variant="contained"
-            color="secondary"
-            disabled={assigning || !selectedProjectId || !selectedPatternId || !assignStartDate || !assignEndDate}
-            startIcon={assigning ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{
+              bgcolor: '#22c55e',
+              '&:hover': {
+                bgcolor: '#16a34a',
+              },
+            }}
+            disabled={
+              assigning ||
+              !selectedProjectId ||
+              !selectedPatternId ||
+              !assignStartDate ||
+              !assignEndDate ||
+              (isCustomTimesMode && availablePatterns.length === 0)
+            }
+            startIcon={assigning ? <CircularProgress size={16} color="inherit" /> : <Calendar className="w-4 h-4" />}
           >
             {assigning ? 'Assigning...' : 'Assign Team'}
           </Button>
