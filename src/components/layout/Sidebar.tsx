@@ -30,7 +30,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
   { id: 'planning', label: 'Planning', icon: <Calendar className="w-5 h-5" />, requiresProject: true },
-  { id: 'summary', label: 'Project View', icon: <BarChart className="w-5 h-5" />, requiresProject: true },
+  { id: 'summary', label: 'Project Overview', icon: <BarChart className="w-5 h-5" />, requiresProject: true },
   { id: 'person', label: 'Person View', icon: <User className="w-5 h-5" />, requiresEmployee: true },
   { id: 'teams', label: 'Team Management', icon: <Users className="w-5 h-5" /> },
   { id: 'assessments', label: 'Assessments', icon: <FileText className="w-5 h-5" /> },

@@ -28,6 +28,7 @@ import { Spinner, ChevronLeft } from '@/components/ui/Icons';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { OnboardingPanel } from '@/components/onboarding/OnboardingPanel';
 import { TutorialOverlay } from '@/components/onboarding/TutorialOverlay';
+import { ProjectSelector } from '@/components/common/ProjectSelector';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import type { ShiftPatternCamel, WeeklySchedule, ProjectCamel, UserRole } from '@/lib/types';
 
@@ -432,6 +433,22 @@ export default function Home() {
           />
         )}
 
+        {currentView === 'planning' && !selectedProjectData && (
+          <ProjectSelector
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            title="Planning"
+            subtitle="Select a project to view planning"
+            projects={projects}
+            employees={employees}
+            assignments={assignments}
+            shiftPatterns={shiftPatterns}
+            onSelectProject={handleSelectProject}
+            onCreateProject={() => setShowProjectModal(true)}
+          />
+        )}
+
         {currentView === 'planning' && selectedProjectData && (
           <PlanningView
             user={user}
@@ -484,6 +501,22 @@ export default function Home() {
               // Navigate to assessments view - for now, just go to assessments page
               setCurrentView('assessments');
             }}
+          />
+        )}
+
+        {currentView === 'summary' && !selectedProjectData && (
+          <ProjectSelector
+            user={user}
+            onSignOut={signOut}
+            onBack={handleBackToDashboard}
+            title="Project Overview"
+            subtitle="Select a project to view overview"
+            projects={projects}
+            employees={employees}
+            assignments={assignments}
+            shiftPatterns={shiftPatterns}
+            onSelectProject={handleNavigateToSummary}
+            onCreateProject={() => setShowProjectModal(true)}
           />
         )}
 
