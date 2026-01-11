@@ -32,6 +32,7 @@ import type { TeamCamel, EmployeeCamel, ProjectCamel, ShiftPatternCamel, Assignm
 import { useNotification } from '@/hooks/useNotification';
 import { CSVImportModal } from '@/components/admin/CSVImportModal';
 import { toTitleCase } from '@/lib/utils';
+import { DEFAULT_FATIGUE_PARAMS } from '@/lib/fatigue';
 
 interface TeamsViewProps {
   user: SupabaseUser;
@@ -308,19 +309,18 @@ export function TeamsView({
   const handleApplyPatternDefaults = () => {
     if (!patternForDefaults) return;
 
-    // Apply commute defaults
-    if (patternForDefaults.commuteTime) {
-      setCommuteIn(Math.floor(patternForDefaults.commuteTime / 2));
-      setCommuteOut(Math.ceil(patternForDefaults.commuteTime / 2));
-    }
+    // Apply commute defaults (or use system default if pattern doesn't have it)
+    const commuteTime = patternForDefaults.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime;
+    setCommuteIn(Math.floor(commuteTime / 2));
+    setCommuteOut(Math.ceil(commuteTime / 2));
 
-    // Apply other defaults
-    if (patternForDefaults.workload) setWorkload(patternForDefaults.workload);
-    if (patternForDefaults.attention) setAttention(patternForDefaults.attention);
-    if (patternForDefaults.breakFrequency) setBreakFrequency(patternForDefaults.breakFrequency);
-    if (patternForDefaults.breakLength) setBreakLength(patternForDefaults.breakLength);
-    if (patternForDefaults.continuousWork) setContinuousWork(patternForDefaults.continuousWork);
-    if (patternForDefaults.breakAfterContinuous) setBreakAfterContinuous(patternForDefaults.breakAfterContinuous);
+    // Apply other defaults (use system defaults if pattern doesn't have them)
+    setWorkload(patternForDefaults.workload ?? DEFAULT_FATIGUE_PARAMS.workload);
+    setAttention(patternForDefaults.attention ?? DEFAULT_FATIGUE_PARAMS.attention);
+    setBreakFrequency(patternForDefaults.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency);
+    setBreakLength(patternForDefaults.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength);
+    setContinuousWork(patternForDefaults.continuousWork ?? DEFAULT_FATIGUE_PARAMS.continuousWork);
+    setBreakAfterContinuous(patternForDefaults.breakAfterContinuous ?? DEFAULT_FATIGUE_PARAMS.breakAfterContinuous);
   };
 
   const handleProjectChange = (projectId: number) => {
@@ -1031,8 +1031,8 @@ export function TeamsView({
                     }}
                     startIcon={<Settings className="w-5 h-5" />}
                     sx={{
-                      bgcolor: '#9333ea',
-                      '&:hover': { bgcolor: '#7e22ce' },
+                      bgcolor: '#16a34a',
+                      '&:hover': { bgcolor: '#15803d' },
                     }}
                   >
                     Open Shift Builder
@@ -1284,14 +1284,14 @@ export function TeamsView({
                       Pattern Defaults from "{patternForDefaults.name}":
                     </Typography>
                     <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                      Commute: {patternForDefaults.commuteTime ? `${Math.floor(patternForDefaults.commuteTime / 2)}min in, ${Math.ceil(patternForDefaults.commuteTime / 2)}min out` : 'Not set'} •{' '}
-                      Workload: {patternForDefaults.workload ?? 'Not set'} •{' '}
-                      Attention: {patternForDefaults.attention ?? 'Not set'}
+                      Commute: {Math.floor((patternForDefaults.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime) / 2)}min in, {Math.ceil((patternForDefaults.commuteTime ?? DEFAULT_FATIGUE_PARAMS.commuteTime) / 2)}min out •{' '}
+                      Workload: {patternForDefaults.workload ?? DEFAULT_FATIGUE_PARAMS.workload} •{' '}
+                      Attention: {patternForDefaults.attention ?? DEFAULT_FATIGUE_PARAMS.attention}
                       <br />
-                      Break Frequency: {patternForDefaults.breakFrequency ?? 'Not set'}min •{' '}
-                      Break Length: {patternForDefaults.breakLength ?? 'Not set'}min •{' '}
-                      Continuous Work: {patternForDefaults.continuousWork ?? 'Not set'}min •{' '}
-                      Break After: {patternForDefaults.breakAfterContinuous ?? 'Not set'}min
+                      Break Frequency: {patternForDefaults.breakFrequency ?? DEFAULT_FATIGUE_PARAMS.breakFrequency}min •{' '}
+                      Break Length: {patternForDefaults.breakLength ?? DEFAULT_FATIGUE_PARAMS.breakLength}min •{' '}
+                      Continuous Work: {patternForDefaults.continuousWork ?? DEFAULT_FATIGUE_PARAMS.continuousWork}min •{' '}
+                      Break After: {patternForDefaults.breakAfterContinuous ?? DEFAULT_FATIGUE_PARAMS.breakAfterContinuous}min
                     </Typography>
                   </Alert>
                 )}
