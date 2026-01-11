@@ -238,7 +238,7 @@ interface UseAppDataReturn extends AppData {
   updateTeam: (id: number, data: Partial<TeamCamel>) => Promise<void>;
   deleteTeam: (id: number) => Promise<void>;
   // Shift pattern operations
-  createShiftPattern: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
+  createShiftPattern: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<string>;
   updateShiftPattern: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
   deleteShiftPattern: (id: string) => Promise<void>;
   // Assignment operations
@@ -790,6 +790,7 @@ export function useAppData(
 
     if (error) throw error;
     await loadAllData();
+    return id; // Return the new pattern ID
   };
 
   const updateShiftPattern = async (id: string, updateData: Partial<ShiftPatternCamel>) => {

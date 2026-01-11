@@ -66,13 +66,15 @@ interface FatigueViewProps {
   employees?: EmployeeCamel[];
   shiftPatterns?: ShiftPatternCamel[];
   assignments?: AssignmentCamel[];
-  onCreateShiftPattern?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<void>;
+  onCreateShiftPattern?: (data: Omit<ShiftPatternCamel, 'id' | 'organisationId'>) => Promise<string>;
   onUpdateShiftPattern?: (id: string, data: Partial<ShiftPatternCamel>) => Promise<void>;
   onDeleteShiftPattern?: (id: string) => Promise<void>;
   onUpdateAssignment?: (id: number, data: Partial<AssignmentCamel>) => Promise<void>;
   onCreateProject?: (name: string, startDate?: string, endDate?: string) => Promise<ProjectCamel>;
+  onPatternCreated?: (patternId: string) => void;
   initialProjectId?: number;
   startInCreateMode?: boolean;
+  pendingTeamAssignment?: { teamId: number; teamName: string } | null;
 }
 
 const TEMPLATES = {
@@ -240,8 +242,10 @@ export function FatigueView({
   onDeleteShiftPattern,
   onUpdateAssignment,
   onCreateProject,
+  onPatternCreated,
   initialProjectId,
   startInCreateMode,
+  pendingTeamAssignment,
 }: FatigueViewProps) {
   const { showSuccess, showError } = useNotification();
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -1033,7 +1037,7 @@ export function FatigueView({
       const weeklySchedule = shiftsToWeeklySchedule(shifts, params);
       const firstWorking = workingShifts[0];
 
-      await onCreateShiftPattern({
+      const newPatternId = await onCreateShiftPattern({
         projectId: saveProjectId,
         name: savePatternName.trim(),
         startTime: firstWorking.startTime,
@@ -1052,6 +1056,11 @@ export function FatigueView({
       setSavePatternName('');
       setSaveProjectId(null);
       setSaveError(null);
+
+      // Notify parent component of the new pattern
+      if (onPatternCreated && newPatternId) {
+        onPatternCreated(newPatternId);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save pattern';
       setSaveError(message);
@@ -1339,6 +1348,20 @@ export function FatigueView({
         >
           <Typography variant="body2">
             <strong>Review Mode</strong> - Viewing {loadedPattern?.name} from {loadedProject?.name}. Click "Edit Pattern" to make changes.
+          </Typography>
+        </Alert>
+      )}
+
+      {/* Team Assignment Context Banner */}
+      {pendingTeamAssignment && (
+        <Alert
+          severity="success"
+          sx={{ borderRadius: 0 }}
+          icon={<Users className="w-5 h-5" />}
+        >
+          <Typography variant="body2">
+            <strong>Creating pattern for team:</strong> {pendingTeamAssignment.teamName}
+            {' '}- Once saved, you'll return to team assignment to complete the process.
           </Typography>
         </Alert>
       )}

@@ -54,6 +54,10 @@ export default function Home() {
   const [teamCreationModal, setTeamCreationModal] = useState<{ memberIds: number[] } | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
 
+  // Pending team assignment (after creating pattern in Shift Builder)
+  const [pendingTeamAssignment, setPendingTeamAssignment] = useState<{ teamId: number; teamName: string } | null>(null);
+  const [newlyCreatedPatternId, setNewlyCreatedPatternId] = useState<string | null>(null);
+
   // Role impersonation for super admins (to test permission system)
   const [impersonatedRole, setImpersonatedRole] = useState<UserRole | null>(null);
   const effectiveRole = impersonatedRole || (profile?.role as UserRole);
@@ -228,6 +232,25 @@ export default function Home() {
     setCurrentView('dashboard');
     setSelectedProject(null);
     setSelectedEmployee(null);
+  };
+
+  const handleNavigateToShiftBuilder = (teamId: number, teamName: string) => {
+    setPendingTeamAssignment({ teamId, teamName });
+    setCurrentView('fatigue');
+  };
+
+  const handlePatternCreated = (patternId: string) => {
+    // Store the newly created pattern ID
+    setNewlyCreatedPatternId(patternId);
+    // Navigate back to Teams view
+    if (pendingTeamAssignment) {
+      setCurrentView('teams');
+    }
+  };
+
+  const handleClearPendingAssignment = () => {
+    setPendingTeamAssignment(null);
+    setNewlyCreatedPatternId(null);
   };
 
   const handleCreateTeamWithMembers = (memberIds: number[]) => {
@@ -428,7 +451,9 @@ export default function Home() {
               setShiftBuilderCreateMode({ projectId: selectedProject! });
               setCurrentView('fatigue');
             }}
-            onCreateShiftPatternDirect={createShiftPattern}
+            onCreateShiftPatternDirect={async (data) => {
+              await createShiftPattern(data);
+            }}
             onNavigateToPerson={(empId) => {
               setSelectedEmployee(empId);
               setCurrentView('person');
@@ -494,6 +519,7 @@ export default function Home() {
             onSignOut={signOut}
             onBack={() => {
               setShiftBuilderCreateMode(null);
+              setPendingTeamAssignment(null);
               handleBackToDashboard();
             }}
             projects={projects}
@@ -505,8 +531,10 @@ export default function Home() {
             onUpdateShiftPattern={updateShiftPattern}
             onDeleteShiftPattern={deleteShiftPattern}
             onUpdateAssignment={updateAssignment}
+            onPatternCreated={handlePatternCreated}
             initialProjectId={shiftBuilderCreateMode?.projectId}
             startInCreateMode={!!shiftBuilderCreateMode}
+            pendingTeamAssignment={pendingTeamAssignment}
           />
         )}
 
@@ -515,6 +543,10 @@ export default function Home() {
             user={user}
             onSignOut={signOut}
             onBack={handleBackToDashboard}
+            onNavigateToShiftBuilder={handleNavigateToShiftBuilder}
+            newlyCreatedPatternId={newlyCreatedPatternId}
+            pendingTeamAssignment={pendingTeamAssignment}
+            onClearPendingAssignment={handleClearPendingAssignment}
             teams={teams}
             employees={employees}
             projects={projects}

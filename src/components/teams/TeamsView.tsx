@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -37,6 +37,10 @@ interface TeamsViewProps {
   user: SupabaseUser;
   onSignOut: () => void;
   onBack: () => void;
+  onNavigateToShiftBuilder?: (teamId: number, teamName: string) => void;
+  newlyCreatedPatternId?: string | null;
+  pendingTeamAssignment?: { teamId: number; teamName: string } | null;
+  onClearPendingAssignment?: () => void;
   teams: TeamCamel[];
   employees: EmployeeCamel[];
   projects: ProjectCamel[];
@@ -59,6 +63,10 @@ export function TeamsView({
   user,
   onSignOut,
   onBack,
+  onNavigateToShiftBuilder,
+  newlyCreatedPatternId,
+  pendingTeamAssignment,
+  onClearPendingAssignment,
   teams,
   employees,
   projects,
@@ -128,6 +136,26 @@ export function TeamsView({
     team_id: emp.teamId,
     organisation_id: emp.organisationId,
   }));
+
+  // Handle return from Shift Builder with newly created pattern
+  useEffect(() => {
+    if (pendingTeamAssignment && newlyCreatedPatternId) {
+      // Find the team
+      const team = teams.find(t => t.id === pendingTeamAssignment.teamId);
+      if (team) {
+        // Reopen assignment modal with the team
+        setAssigningTeam(team);
+        setShowAssignModal(true);
+        // Pre-select the newly created pattern
+        setSelectedPatternId(newlyCreatedPatternId);
+        setAssignmentWorkflow('existing'); // Set to 'existing' workflow
+        // Clear the pending state
+        if (onClearPendingAssignment) {
+          onClearPendingAssignment();
+        }
+      }
+    }
+  }, [pendingTeamAssignment, newlyCreatedPatternId, teams, onClearPendingAssignment]);
 
   const openCreateModal = () => {
     setEditingTeam(null);
@@ -987,26 +1015,35 @@ export function TeamsView({
                   </Typography>
                   <Typography variant="body2">
                     Click the button below to open Shift Builder where you can create a fully configured shift pattern.
-                    After creating the pattern, return here to assign the team.
+                    After creating the pattern, return to Team Management to assign this team.
                   </Typography>
                 </Alert>
 
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={() => {
-                    // TODO: Navigate to Shift Builder view
-                    // For now, just show message
-                    alert('Navigate to Shift Builder - Implementation pending');
-                  }}
-                  startIcon={<Settings className="w-5 h-5" />}
-                  sx={{
-                    bgcolor: '#9333ea',
-                    '&:hover': { bgcolor: '#7e22ce' },
-                  }}
-                >
-                  Open Shift Builder
-                </Button>
+                {onNavigateToShiftBuilder ? (
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => {
+                      if (assigningTeam) {
+                        onNavigateToShiftBuilder(assigningTeam.id, assigningTeam.name);
+                        setShowAssignModal(false);
+                      }
+                    }}
+                    startIcon={<Settings className="w-5 h-5" />}
+                    sx={{
+                      bgcolor: '#9333ea',
+                      '&:hover': { bgcolor: '#7e22ce' },
+                    }}
+                  >
+                    Open Shift Builder
+                  </Button>
+                ) : (
+                  <Alert severity="warning">
+                    <Typography variant="body2">
+                      Navigation to Shift Builder not configured. Please contact your administrator.
+                    </Typography>
+                  </Alert>
+                )}
 
                 <Button
                   variant="outlined"
